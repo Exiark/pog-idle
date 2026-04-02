@@ -11,9 +11,9 @@
 <!-- Notification offline -->
 <div id="offline-notif" style="display:none">
   <span id="offline-msg"></span>
-  <div>
+  <div style="display:flex;gap:6px">
     <button onclick="collectOfflineUI(1)">Collecter</button>
-    <button onclick="collectOfflineUI(2)">×2 — 5 gemmes</button>
+    <button class="btn-primary" onclick="collectOfflineUI(2)">×2 — 5 gemmes</button>
   </div>
 </div>
 
@@ -32,53 +32,93 @@
 
 <!-- Tabs -->
 <nav id="tabs">
-  <button class="tab active" data-tab="combat"   onclick="setTab('combat')">Combat</button>
-  <button class="tab"        data-tab="tower"    onclick="setTab('tower')">Tour</button>
-  <button class="tab"        data-tab="kini"     onclick="setTab('kini')">Kinis</button>
-  <button class="tab"        data-tab="pogs"     onclick="setTab('pogs')">Pogs</button>
-  <button class="tab"        data-tab="packs"    onclick="setTab('packs')">Packs</button>
-  <button class="tab"        data-tab="talents"  onclick="setTab('talents')">Talents</button>
-  <button class="tab"        data-tab="daily"    onclick="setTab('daily')">Journalier</button>
+  <button class="tab active" data-tab="combat"  onclick="setTab('combat')">⚔ Combat</button>
+  <button class="tab"        data-tab="tower"   onclick="setTab('tower')">🗼 Tour</button>
+  <button class="tab"        data-tab="kini"    onclick="setTab('kini')">🥏 Kinis</button>
+  <button class="tab"        data-tab="pogs"    onclick="setTab('pogs')">🎴 Pogs</button>
+  <button class="tab"        data-tab="packs"   onclick="setTab('packs')">🎁 Packs</button>
+  <button class="tab"        data-tab="talents" onclick="setTab('talents')">⭐ Talents</button>
+  <button class="tab"        data-tab="daily"   onclick="setTab('daily')">📅 Journalier</button>
 </nav>
 
 <!-- COMBAT -->
 <div class="view" data-view="combat">
-  <div id="world-name">Monde 1</div>
-  <div id="wave-info">Vague <span id="wave-num">1</span></div>
+
+  <!-- Frise de progression -->
+  <div id="wave-frise"></div>
+
+  <!-- Fiche kini -->
+  <div id="kini-card"></div>
 
   <!-- Boss panel -->
-<div id="boss-panel">
-  <div style="display:flex;align-items:center;justify-content:space-between">
-    <div>
-      <div id="boss-name">Boss</div>
-      <div id="boss-desc"></div>
-    </div>
-    <div style="text-align:right;min-width:120px">
-      <div id="boss-hp-bar-track">
-        <div id="boss-hp-bar-fill" style="width:100%"></div>
+  <div id="boss-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div id="boss-name">Boss</div>
+        <div id="boss-desc"></div>
       </div>
-      <div id="boss-hp-text">100/100 PV</div>
+      <div style="text-align:right;min-width:120px">
+        <div id="boss-hp-bar-track">
+          <div id="boss-hp-bar-fill" style="width:100%"></div>
+        </div>
+        <div id="boss-hp-text">100/100 PV</div>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- Arena -->
-<div id="arena">
-  <div id="kini-ball">K</div>
-  <div id="enemy-pile"></div>
-  <div id="crit-container"></div>
-</div>
+  <!-- Monde + Vague -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div id="world-name" style="font-size:13px;font-weight:500">Monde 1</div>
+    <div style="font-size:12px;color:var(--text-muted)">
+      Vague <span id="wave-num">1</span>/11
+    </div>
+  </div>
 
+  <!-- Arena principale -->
+  <div id="arena">
+
+    <!-- Kini lanceur -->
+    <div id="kini-launcher">
+      <div id="kini-ball">K</div>
+      <div id="kini-label">Kini</div>
+    </div>
+
+    <!-- Pile verticale de pogs -->
+    <div id="pog-stack"></div>
+    <div id="stack-counter"></div>
+
+    <!-- Zone pogs gagnés -->
+    <div id="pog-won-zone">
+      <div id="pog-won-label">Gagnés</div>
+    </div>
+
+    <!-- Textes flottants critiques -->
+    <div id="crit-container"></div>
+
+  </div>
+
+  <!-- Barre de progression vague -->
   <div id="wave-progress">
     <div id="wave-bar"></div>
   </div>
   <div id="wave-pct">0%</div>
 
+  <!-- Log de combat -->
   <div id="log"></div>
 
-  <div id="team-slots"></div>
-  <div id="team-bonus"></div>
-  <div id="active-kini-info"></div>
+  <!-- Équipe de pogs -->
+  <div style="
+    background:white;border:0.5px solid var(--gray-border);
+    border-radius:12px;padding:10px 12px;margin-top:8px
+  ">
+    <div style="font-size:11px;font-weight:500;color:var(--text-muted);
+      text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">
+      Équipe de pogs
+    </div>
+    <div id="team-slots"></div>
+    <div id="team-bonus"></div>
+  </div>
+
 </div>
 
 <!-- TOUR -->
@@ -103,8 +143,6 @@
   <div id="pity-display"></div>
   <div id="pack-buttons"></div>
   <div id="drop-rates"></div>
-
-  <!-- Animation d'ouverture -->
   <div id="pack-modal" style="display:none">
     <div id="pack-modal-box">
       <div id="pack-stage"></div>
@@ -124,14 +162,13 @@
 <!-- JOURNALIER -->
 <div class="view" data-view="daily" style="display:none">
   <div id="daily-rewards"></div>
-  <div id="daily-btn-wrap">
+  <div id="daily-btn-wrap" style="margin:8px 0">
     <button onclick="claimDailyUI()">Réclamer</button>
-    <span id="daily-status"></span>
+    <span id="daily-status" style="font-size:12px;color:var(--text-muted);margin-left:8px"></span>
   </div>
   <div id="missions-list"></div>
 </div>
 
 <script type="module" src="src/main.js"></script>
-
 </body>
 </html>

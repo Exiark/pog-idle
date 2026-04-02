@@ -2,18 +2,18 @@ import { POGS, RARITY } from '../data/pogs.js'
 import { KINIS } from '../data/kinis.js'
 
 export function renderTeam(state) {
-  const slotsDiv  = document.getElementById('team-slots')
-  const bonusDiv  = document.getElementById('team-bonus')
-  const kiniDiv   = document.getElementById('active-kini-info')
+  const slotsDiv = document.getElementById('team-slots')
+  const bonusDiv = document.getElementById('team-bonus')
+  const friseDiv = document.getElementById('wave-frise')
+  const kiniCard = document.getElementById('kini-card')
+
+  if (friseDiv) renderFrise(state, friseDiv)
+  if (kiniCard) renderKiniCard(state, kiniCard)
   if (!slotsDiv) return
 
   const maxSlots = state.talentsUnlocked.includes('t9') ? 11 : 10
 
-  // ── Slots d'équipement ──
-  slotsDiv.style.display  = 'flex'
-  slotsDiv.style.flexWrap = 'wrap'
-  slotsDiv.style.gap      = '5px'
-  slotsDiv.style.margin   = '8px 0'
+  slotsDiv.style.cssText = 'display:flex;flex-wrap:wrap;gap:5px;margin:8px 0'
 
   slotsDiv.innerHTML = Array.from({ length: maxSlots }, (_, i) => {
     const p = state.equippedPogs[i]
@@ -31,46 +31,183 @@ export function renderTeam(state) {
     return `<div class="slot-empty" onclick="setTab('pogs')" title="Ajouter un pog">+</div>`
   }).join('')
 
-  // ── Synergies ──
   const bonuses = calcSynergies(state)
   if (bonusDiv) {
-    bonusDiv.style.fontSize = '11px'
-    bonusDiv.style.color    = 'var(--text-muted)'
-    bonusDiv.style.margin   = '0 0 8px'
-    bonusDiv.textContent    = bonuses.length ? bonuses.join(' · ') : 'Aucune synergie active'
-  }
-
-  // ── Kini actif ──
-  if (kiniDiv) {
-    const allKinis = [...KINIS]
-    const k   = allKinis[state.selectedKini] || allKinis[0]
-    const lv  = state.kiniLevels[state.selectedKini] || 1
-    const pwr = Math.round(k.power * (1 + (lv - 1) * 0.12))
-    kiniDiv.innerHTML = `
-      <div style="font-size:12px;font-weight:500;margin-bottom:3px">
-        ${k.icon} ${k.name} <span style="color:var(--purple);font-size:11px">Lv${lv}</span>
-      </div>
-      <div style="font-size:11px;color:var(--text-muted)">
-        Puissance: ${pwr} · Vitesse: ${k.speed.toFixed(1)} · Critique: ${Math.round(k.chance * 100)}%
-      </div>`
+    bonusDiv.style.cssText = 'font-size:11px;color:var(--text-muted);margin:0 0 8px'
+    bonusDiv.textContent   = bonuses.length ? bonuses.join(' · ') : 'Aucune synergie active'
   }
 }
 
+function renderKiniCard(state, container) {
+  const k   = KINIS[state.selectedKini] || KINIS[0]
+  const lv  = state.kiniLevels[state.selectedKini] || 1
+  const xp  = state.kiniXP[state.selectedKini] || 0
+  const xpMax = lv * 60
+  const pwr = Math.round(k.power * (1 + (lv - 1) * 0.12))
+  const pct = Math.round(xp / xpMax * 100)
+
+  const typeColors = {
+    'Débutant':  { bg: '#E6F1FB', c: '#185FA5' },
+    'Puissance': { bg: '#FAECE7', c: '#993C1D' },
+    'Polyvalent':{ bg: '#EEEDFE', c: '#534AB7' },
+    'Vitesse':   { bg: '#EAF3DE', c: '#3B6D11' },
+    'Chanceux':  { bg: '#FAEEDA', c: '#854F0B' },
+  }
+  const tc = typeColors[k.type] || { bg: '#F1EFE8', c: '#5F5E5A' }
+
+  container.innerHTML = `
+    <div style="
+      background:white;
+      border:0.5px solid var(--gray-border);
+      border-radius:14px;
+      padding:12px 14px;
+      margin-bottom:10px;
+      display:flex;gap:12px;align-items:flex-start;
+    ">
+      <!-- Avatar kini -->
+      <div style="
+        width:52px;height:52px;border-radius:50%;flex-shrink:0;
+        background:${tc.bg};border:2px solid ${tc.c};
+        display:flex;align-items:center;justify-content:center;
+        font-size:22px;
+      ">${k.icon}</div>
+
+      <!-- Infos -->
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+          <span style="font-size:14px;font-weight:500">${k.name}</span>
+          <span style="
+            font-size:10px;font-weight:500;padding:2px 7px;border-radius:10px;
+            background:var(--purple);color:white;
+          ">Lv ${lv}</span>
+          <span style="
+            font-size:10px;padding:2px 7px;border-radius:10px;
+            background:${tc.bg};color:${tc.c};
+          ">${k.type}</span>
+        </div>
+
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">${k.desc}</div>
+
+        <!-- Stats en ligne -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+          ${statPill('⚔', 'Puissance', pwr)}
+          ${statPill('⚡', 'Vitesse', k.speed.toFixed(1))}
+          ${statPill('🎯', 'Précision', Math.round(k.accuracy * 100) + '%')}
+          ${statPill('★', 'Critique', Math.round(k.chance * 100) + '%')}
+        </div>
+
+        <!-- Barre XP -->
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="
+            flex:1;height:4px;background:var(--gray-bg);
+            border-radius:2px;overflow:hidden;
+          ">
+            <div style="
+              width:${pct}%;height:100%;
+              background:var(--purple);border-radius:2px;
+              transition:width 0.3s;
+            "></div>
+          </div>
+          <span style="font-size:10px;color:var(--text-muted);white-space:nowrap">
+            XP ${xp}/${xpMax}
+          </span>
+        </div>
+      </div>
+
+      <!-- Bouton changer -->
+      <button onclick="setTab('kini')" style="
+        font-size:11px;padding:5px 10px;flex-shrink:0;
+        align-self:flex-start;
+      ">Changer</button>
+    </div>`
+}
+
+function statPill(icon, label, value) {
+  return `
+    <div style="
+      display:flex;align-items:center;gap:3px;
+      background:var(--gray-bg);border-radius:8px;
+      padding:3px 8px;font-size:11px;
+    ">
+      <span style="font-size:11px">${icon}</span>
+      <span style="color:var(--text-muted)">${label}</span>
+      <span style="font-weight:500;margin-left:2px">${value}</span>
+    </div>`
+}
+
+function renderFrise(state, container) {
+  const total   = 11
+  const current = state.currentFloor
+
+  container.innerHTML = `
+    <div style="
+      display:flex;align-items:center;gap:3px;
+      padding:10px 12px;
+      background:white;
+      border:0.5px solid var(--gray-border);
+      border-radius:12px;
+      margin-bottom:10px;
+      overflow-x:auto;
+    ">
+      ${Array.from({ length: total }, (_, i) => {
+        const vague    = i + 1
+        const isBoss   = vague === 11
+        const isPast   = vague < current
+        const isCurrent = vague === current
+
+        let bg      = 'var(--gray-bg)'
+        let border  = 'var(--gray-border)'
+        let color   = 'var(--text-muted)'
+        let content = String(vague)
+
+        if (isBoss) {
+          bg      = isPast ? '#EAF3DE' : isCurrent ? '#FAECE7' : 'var(--gray-bg)'
+          border  = isPast ? '#3B6D11' : isCurrent ? '#D85A30' : 'var(--gray-border)'
+          color   = isPast ? '#173404' : isCurrent ? '#D85A30' : 'var(--text-muted)'
+          content = isPast ? '✓' : '💀'
+        } else if (isPast) {
+          bg = '#EAF3DE'; border = '#3B6D11'; color = '#173404'; content = '✓'
+        } else if (isCurrent) {
+          bg = '#EEEDFE'; border = 'var(--purple)'; color = 'var(--purple)'
+        }
+
+        return `
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">
+            <div style="
+              width:${isBoss ? '32px' : '26px'};
+              height:${isBoss ? '32px' : '26px'};
+              border-radius:50%;
+              background:${bg};
+              border:${isCurrent ? '2px' : '1px'} solid ${border};
+              color:${color};
+              font-size:${isBoss ? '14px' : '11px'};
+              font-weight:${isCurrent ? '500' : '400'};
+              display:flex;align-items:center;justify-content:center;
+            ">${content}</div>
+            <div style="
+              font-size:9px;
+              color:${isCurrent ? 'var(--purple)' : 'var(--text-muted)'};
+              font-weight:${isCurrent ? '500' : '400'};
+            ">${isBoss ? 'BOSS' : 'V' + vague}</div>
+          </div>
+          ${i < total - 1 ? `
+            <div style="
+              flex:1;height:1px;
+              background:${isPast ? '#3B6D11' : 'var(--gray-border)'};
+              min-width:6px;max-width:16px;margin-bottom:14px;
+            "></div>` : ''}
+        `
+      }).join('')}
+    </div>`
+}
+
 function calcSynergies(state) {
+  const effects = state.equippedPogs.filter(Boolean).map(p => p.effect || '')
   const bonuses = []
-  const equipped = state.equippedPogs.filter(Boolean)
-  const effects  = equipped.map(p => p.effect || '')
-
-  const idleCount  = effects.filter(e => e.startsWith('idle+')).length
-  const flipCount  = effects.filter(e => e.startsWith('flips+')).length
-  const chainCount = effects.filter(e => e.startsWith('chain')).length
-  const critCount  = effects.filter(e => e.startsWith('crit+')).length
-
-  if (idleCount  >= 2) bonuses.push('Duo Idle : gains ×1.5')
-  if (flipCount  >= 3) bonuses.push('Trio Flip : +3 flips bonus')
-  if (chainCount >= 1) bonuses.push('Synergie Chaîne active')
-  if (critCount  >= 2) bonuses.push('Duo Critique : +10% crit')
-
+  if (effects.filter(e => e.startsWith('idle+')).length  >= 2) bonuses.push('Duo Idle ×1.5')
+  if (effects.filter(e => e.startsWith('flips+')).length >= 3) bonuses.push('Trio Flip +3')
+  if (effects.some(e => e.startsWith('chain')))                bonuses.push('Chaîne active')
+  if (effects.filter(e => e.startsWith('crit+')).length  >= 2) bonuses.push('Duo Crit +10%')
   return bonuses
 }
 

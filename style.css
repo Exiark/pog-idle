@@ -2,18 +2,18 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --gold:    #FAC775;
-  --gems:    #AFA9EC;
-  --frags:   #9FE1CB;
-  --tokens:  #F5C4B3;
-  --purple:  #7F77DD;
+  --gold:        #FAC775;
+  --gems:        #AFA9EC;
+  --frags:       #9FE1CB;
+  --tokens:      #F5C4B3;
+  --purple:      #7F77DD;
   --purple-dark: #534AB7;
-  --gray-bg: #F1EFE8;
+  --gray-bg:     #F1EFE8;
   --gray-border: #D3D1C7;
-  --text:    #2C2C2A;
-  --text-muted: #888780;
-  --radius:  10px;
-  --radius-lg: 14px;
+  --text:        #2C2C2A;
+  --text-muted:  #888780;
+  --radius:      10px;
+  --radius-lg:   14px;
 }
 
 body {
@@ -88,30 +88,31 @@ body {
 
 /* ── Tabs ── */
 #tabs {
-  display: flex;
-  gap: 3px;
-  border-bottom: 0.5px solid var(--gray-border);
+  background: white;
+  border: 0.5px solid var(--gray-border);
+  border-radius: 12px;
+  padding: 4px;
   margin-bottom: 12px;
+  display: flex;
+  gap: 2px;
   overflow-x: auto;
 }
-
 .tab {
-  padding: 7px 13px;
-  font-size: 12px;
+  border-radius: 8px;
   border: none;
-  background: transparent;
+  padding: 7px 11px;
+  font-size: 12px;
   color: var(--text-muted);
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  white-space: nowrap;
-  transition: color 0.15s;
+  background: transparent;
   font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
 }
-.tab:hover { color: var(--text); }
+.tab:hover:not(.active) { background: var(--gray-bg); color: var(--text); }
 .tab.active {
-  color: var(--text);
-  border-bottom-color: var(--purple);
+  background: var(--purple);
+  color: white;
   font-weight: 500;
 }
 
@@ -157,298 +158,171 @@ button:active { transform: scale(0.97); }
 #arena {
   background: var(--gray-bg);
   border-radius: var(--radius);
-  min-height: 110px;
+  min-height: 200px;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow: hidden;
   margin-bottom: 8px;
+  gap: 20px;
+  padding: 16px;
 }
 
-#enemy-pile {
+/* ── Kini lanceur (gauche) ── */
+#kini-launcher {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  justify-content: center;
-  padding: 10px;
-  max-width: 300px;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
-
-.pog-e {
-  width: 26px; height: 26px;
-  border-radius: 50%;
-  border: 1.5px solid #888;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 10px;
-  transition: transform 0.2s, opacity 0.3s;
-}
-.pog-e.flipped {
-  opacity: 0.25;
-  transform: scale(0.8) rotate(180deg);
-}
-.pog-e.hit {
-  transform: scale(1.4);
-  background: #FAC775 !important;
-}
-
 #kini-ball {
-  position: absolute;
-  left: 14px; top: 50%;
-  transform: translateY(-50%);
-  width: 24px; height: 24px;
+  width: 40px; height: 40px;
   border-radius: 50%;
   background: var(--purple);
   border: 2px solid var(--purple-dark);
   color: white;
-  font-size: 10px; font-weight: 500;
+  font-size: 14px; font-weight: 500;
   display: flex; align-items: center; justify-content: center;
-  transition: left 0.15s ease-in;
-}
-#kini-ball.out  { left: calc(50% - 12px); }
-#kini-ball.back { left: 14px; transition: left 0.3s ease-out; }
-
-/* ── Wave bar ── */
-#wave-progress {
-  height: 5px;
-  background: var(--gray-bg);
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: 4px;
-}
-#wave-bar {
-  height: 100%;
-  background: var(--purple);
-  border-radius: 3px;
-  transition: width 0.3s;
-  width: 0%;
-}
-#wave-pct {
-  font-size: 11px;
-  color: var(--text-muted);
-  text-align: right;
-  margin-bottom: 6px;
-}
-
-/* ── Log ── */
-#log {
-  font-size: 11px;
-  color: var(--text-muted);
-  height: 50px;
-  overflow-y: auto;
-  line-height: 1.6;
-  margin-bottom: 10px;
-}
-#log .crit   { color: #BA7517; font-weight: 500; }
-#log .flip   { color: #0F6E56; }
-#log .reward { color: var(--purple-dark); font-weight: 500; }
-#log .miss   { color: #B4B2A9; }
-#log .boss   { color: #D85A30; font-weight: 500; }
-
-/* ── Pog circles ── */
-.pog-circle {
-  width: 34px; height: 34px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px;
-  cursor: pointer;
-  border: 1.5px solid transparent;
+  transition: transform 0.15s ease-in;
   position: relative;
-  flex-shrink: 0;
-  transition: opacity 0.15s;
 }
-.pog-circle:hover { opacity: 0.8; }
-.pog-circle .copies {
+#kini-ball.throw {
+  transform: translateX(60px) translateY(-10px) rotate(-20deg);
+  transition: transform 0.18s ease-in;
+}
+#kini-ball.back {
+  transform: translateX(0) translateY(0) rotate(0deg);
+  transition: transform 0.3s ease-out;
+}
+#kini-ball.boss-mode::after {
+  content: '';
   position: absolute;
-  top: -3px; right: -3px;
-  width: 13px; height: 13px;
+  width: 100%; height: 100%;
   border-radius: 50%;
-  background: var(--purple-dark);
-  color: white;
-  font-size: 8px;
-  display: flex; align-items: center; justify-content: center;
+  border: 2px solid #D85A30;
+  animation: pulse-ring 1s ease-out infinite;
 }
-
-.slot-empty {
-  width: 34px; height: 34px;
-  border-radius: 50%;
-  border: 1px dashed var(--gray-border);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  color: var(--text-muted);
-  font-size: 16px;
-}
-
-/* ── Progress bars ── */
-.bar-track {
-  height: 5px;
-  background: var(--gray-bg);
-  border-radius: 3px;
-  overflow: hidden;
-}
-.bar-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.3s;
-}
-
-/* ── Badges ── */
-.badge {
-  display: inline-block;
+#kini-label {
   font-size: 10px;
-  font-weight: 500;
-  padding: 2px 7px;
-  border-radius: 10px;
-}
-
-/* ── Kini cards ── */
-.kini-card {
-  padding: 9px 11px;
-  border: 0.5px solid var(--gray-border);
-  border-radius: var(--radius);
-  cursor: pointer;
-  margin-bottom: 6px;
-  transition: border-color 0.15s;
-}
-.kini-card:hover { border-color: #B4B2A9; }
-.kini-card.selected {
-  border: 1.5px solid var(--purple);
-  background: #EEEDFE18;
-}
-
-/* ── Pack modal ── */
-#pack-modal {
-  min-height: 420px;
-  background: rgba(0,0,0,0.5);
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 12px;
-}
-#pack-modal-box {
-  background: white;
-  border-radius: var(--radius-lg);
-  padding: 28px 24px;
-  width: 320px;
-  text-align: center;
-  border: 1.5px solid var(--gray-border);
-  transition: border-color 0.5s;
-}
-#pack-disc {
-  width: 70px; height: 70px;
-  border-radius: 50%;
-  border: 3px solid var(--gray-border);
-  margin: 16px auto;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 24px;
-  transition: border-color 0.4s, background 0.4s;
-}
-#pack-disc.spin { animation: spin 0.7s linear infinite; }
-#pack-disc.pop  { animation: pop 0.35s ease-out; }
-
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@keyframes pop  { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
-
-#pack-reveal {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  min-height: 60px;
-  margin: 12px 0;
-}
-.rev-item {
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-  opacity: 0; transform: scale(0.5) translateY(8px);
-  transition: opacity 0.25s, transform 0.25s;
-}
-.rev-item.show { opacity: 1; transform: scale(1) translateY(0); }
-.rev-disc {
-  width: 48px; height: 48px;
-  border-radius: 50%;
-  border: 2px solid;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 20px;
-}
-.rev-name   { font-size: 9px; color: var(--text-muted); max-width: 52px; text-align: center; }
-.rev-rarity { font-size: 9px; font-weight: 500; padding: 1px 5px; border-radius: 8px; }
-
-/* ── Talent grid ── */
-.talent-node {
-  padding: 10px;
-  background: var(--gray-bg);
-  border-radius: var(--radius);
-  text-align: center;
-  cursor: pointer;
-  border: 0.5px solid var(--gray-border);
-  transition: border-color 0.15s;
-}
-.talent-node:hover { border-color: #B4B2A9; }
-.talent-node.unlocked {
-  border-color: var(--purple);
-  background: #EEEDFE18;
-}
-.talent-node.locked { opacity: 0.45; cursor: not-allowed; }
-
-/* ── Offline notif ── */
-#offline-notif {
-  background: #EAF3DE;
-  border: 0.5px solid #3B6D11;
-  border-radius: var(--radius);
-  padding: 10px 14px;
-  margin-bottom: 10px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  color: #173404;
-  gap: 10px;
-}
-
-/* ── Tower placeholder ── */
-#tower-container {
-  text-align: center;
-  padding: 40px 20px;
   color: var(--text-muted);
-  font-size: 13px;
+  text-align: center;
+  max-width: 50px;
 }
 
-/* ── Responsive ── */
-@media (max-width: 500px) {
-  #tabs { gap: 0; }
-  .tab  { padding: 7px 9px; font-size: 11px; }
+/* ── Pile verticale de pogs ── */
+#pog-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  position: relative;
+  min-width: 60px;
+}
+
+.pog-stack-item {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 2px solid #888;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 500;
+  position: relative;
+  transition: transform 0.3s, opacity 0.3s;
+  cursor: default;
+  z-index: 1;
+}
+
+/* Pog du dessus — visible, coloré */
+.pog-stack-item.top {
+  border-color: var(--purple);
+  box-shadow: 0 2px 8px rgba(127,119,221,0.3);
+  z-index: 3;
+}
+
+/* Pogs cachés — face "?" */
+.pog-stack-item.hidden-pog {
+  background: #D3D1C7 !important;
+  color: #888 !important;
+  border-color: #B4B2A9 !important;
+  font-size: 11px;
+}
+
+/* Pog retourné — tombe */
+.pog-stack-item.flipped {
+  animation: pog-fall 0.5s ease-in forwards;
+}
+
+/* Pog gagné — rebondit et disparaît */
+.pog-stack-item.won {
+  animation: pog-won 0.6s ease-out forwards;
+}
+
+@keyframes pog-fall {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(80px) rotate(180deg); opacity: 0; }
+}
+
+@keyframes pog-won {
+  0%   { transform: scale(1); opacity: 1; }
+  40%  { transform: scale(1.3) translateY(-10px); }
+  100% { transform: scale(0) translateY(-30px); opacity: 0; }
+}
+
+/* Compteur de pogs restants */
+#stack-counter {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* Zone de pogs gagnés (droite) */
+#pog-won-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 50px;
+  flex-shrink: 0;
+}
+#pog-won-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+.won-pog {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  border: 1.5px solid;
+  animation: won-appear 0.3s ease-out;
+}
+@keyframes won-appear {
+  0%   { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 /* ── Effets de combat ── */
 @keyframes crit-flash {
-  0%   { background: #FAC775; transform: scale(1.5) rotate(180deg); }
-  50%  { background: #EF9F27; transform: scale(1.8) rotate(200deg); }
-  100% { opacity: 0.2; transform: scale(0.8) rotate(180deg); }
+  0%   { transform: scale(1.6) rotate(-10deg); box-shadow: 0 0 12px #EF9F27; }
+  100% { transform: scale(0.8) rotate(180deg); opacity: 0; }
 }
-
-@keyframes flip-normal {
-  0%   { transform: scale(1.2) rotate(0deg); }
-  100% { transform: scale(0.85) rotate(180deg); opacity: 0.25; }
-}
-
 @keyframes kini-shake {
-  0%, 100% { transform: translateY(-50%) rotate(0deg); }
-  25%       { transform: translateY(-50%) rotate(-15deg); }
-  75%       { transform: translateY(-50%) rotate(15deg); }
+  0%, 100% { transform: rotate(0deg); }
+  25%       { transform: rotate(-15deg); }
+  75%       { transform: rotate(15deg); }
 }
-
 @keyframes crit-text {
   0%   { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(-40px) scale(1.4); }
+  100% { opacity: 0; transform: translateY(-50px) scale(1.5); }
 }
-
 @keyframes boss-appear {
   0%   { opacity: 0; transform: scale(0.7) translateY(20px); }
-  60%  { transform: scale(1.1) translateY(-5px); }
+  60%  { transform: scale(1.05) translateY(-3px); }
   100% { opacity: 1; transform: scale(1) translateY(0); }
 }
-
 @keyframes boss-shake {
   0%, 100% { transform: translateX(0); }
   20%       { transform: translateX(-8px); }
@@ -456,37 +330,34 @@ button:active { transform: scale(0.97); }
   60%       { transform: translateX(-5px); }
   80%       { transform: translateX(5px); }
 }
-
 @keyframes pulse-ring {
   0%   { transform: scale(0.8); opacity: 1; }
   100% { transform: scale(2); opacity: 0; }
 }
-
-.pog-e.crit-flip {
-  animation: crit-flash 0.4s ease-out forwards;
-}
-.pog-e.normal-flip {
-  animation: flip-normal 0.3s ease-out forwards;
-}
-.kini-ball.shake {
-  animation: kini-shake 0.3s ease-in-out;
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes pop  {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.3); }
+  100% { transform: scale(1); }
 }
 
-/* ── Texte flottant critique ── */
+#kini-ball.shake { animation: kini-shake 0.3s ease-in-out; }
+
 .crit-label {
   position: absolute;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: #BA7517;
   pointer-events: none;
-  animation: crit-text 0.8s ease-out forwards;
-  z-index: 10;
+  animation: crit-text 0.9s ease-out forwards;
+  z-index: 20;
   white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 /* ── Boss ── */
 #boss-panel {
-  background: #500;
+  background: #3a0a0a;
   border: 1.5px solid #D85A30;
   border-radius: 12px;
   padding: 12px 14px;
@@ -496,69 +367,162 @@ button:active { transform: scale(0.97); }
 }
 #boss-panel.visible { display: block; }
 #boss-panel.shake   { animation: boss-shake 0.4s ease-in-out; }
-
 #boss-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #FAC775;
-  margin-bottom: 3px;
+  font-size: 14px; font-weight: 500; color: #FAC775; margin-bottom: 3px;
 }
-#boss-desc {
-  font-size: 11px;
-  color: #F5C4B3;
-  margin-bottom: 8px;
-}
+#boss-desc { font-size: 11px; color: #F5C4B3; margin-bottom: 8px; }
 #boss-hp-bar-track {
   height: 8px;
   background: rgba(255,255,255,0.1);
-  border-radius: 4px;
-  overflow: hidden;
+  border-radius: 4px; overflow: hidden;
 }
 #boss-hp-bar-fill {
-  height: 100%;
-  background: #E24B4A;
-  border-radius: 4px;
-  transition: width 0.3s;
+  height: 100%; background: #E24B4A;
+  border-radius: 4px; transition: width 0.3s;
 }
-#boss-hp-text {
-  font-size: 11px;
-  color: #F5C4B3;
-  margin-top: 4px;
-  text-align: right;
-}
+#boss-hp-text { font-size: 11px; color: #F5C4B3; margin-top: 4px; text-align: right; }
 
-/* ── Pulse ring autour du kini en mode boss ── */
-.kini-ball.boss-mode::after {
-  content: '';
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  border: 2px solid #D85A30;
-  animation: pulse-ring 1s ease-out infinite;
-}
-
-/* ── Onglets améliorés ── */
-#tabs {
-  background: white;
-  border: 0.5px solid var(--gray-border);
-  border-radius: 12px;
-  padding: 4px;
-  margin-bottom: 12px;
-  display: flex;
-  gap: 2px;
-  overflow-x: auto;
-}
-.tab {
-  border-radius: 8px;
-  border: none;
-  padding: 7px 12px;
-}
-.tab.active {
-  background: var(--purple);
-  color: white;
-  border-bottom: none;
-}
-.tab:hover:not(.active) {
+/* ── Wave bar ── */
+#wave-progress {
+  height: 5px;
   background: var(--gray-bg);
+  border-radius: 3px; overflow: hidden;
+  margin-bottom: 4px;
+}
+#wave-bar {
+  height: 100%; background: var(--purple);
+  border-radius: 3px; transition: width 0.3s; width: 0%;
+}
+#wave-pct {
+  font-size: 11px; color: var(--text-muted);
+  text-align: right; margin-bottom: 6px;
+}
+
+/* ── Log ── */
+#log {
+  font-size: 11px; color: var(--text-muted);
+  height: 48px; overflow-y: auto;
+  line-height: 1.6; margin-bottom: 10px;
+}
+#log .crit   { color: #BA7517; font-weight: 500; }
+#log .flip   { color: #0F6E56; }
+#log .reward { color: var(--purple-dark); font-weight: 500; }
+#log .miss   { color: #B4B2A9; }
+#log .boss   { color: #D85A30; font-weight: 500; }
+
+/* ── Pog circles (collection/équipe) ── */
+.pog-circle {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; cursor: pointer;
+  border: 1.5px solid transparent;
+  position: relative; flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.pog-circle:hover { opacity: 0.8; }
+.pog-circle .copies {
+  position: absolute; top: -3px; right: -3px;
+  width: 13px; height: 13px; border-radius: 50%;
+  background: var(--purple-dark); color: white;
+  font-size: 8px;
+  display: flex; align-items: center; justify-content: center;
+}
+.slot-empty {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 1px dashed var(--gray-border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text-muted); font-size: 16px;
+}
+
+/* ── Progress bars ── */
+.bar-track {
+  height: 5px; background: var(--gray-bg);
+  border-radius: 3px; overflow: hidden;
+}
+.bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+/* ── Badges ── */
+.badge {
+  display: inline-block; font-size: 10px; font-weight: 500;
+  padding: 2px 7px; border-radius: 10px;
+}
+
+/* ── Kini cards ── */
+.kini-card {
+  padding: 9px 11px;
+  border: 0.5px solid var(--gray-border);
+  border-radius: var(--radius);
+  cursor: pointer; margin-bottom: 6px;
+  transition: border-color 0.15s;
+}
+.kini-card:hover { border-color: #B4B2A9; }
+.kini-card.selected { border: 1.5px solid var(--purple); background: #EEEDFE18; }
+
+/* ── Pack modal ── */
+#pack-modal {
+  min-height: 420px;
+  background: rgba(0,0,0,0.5);
+  border-radius: var(--radius-lg);
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 12px;
+}
+#pack-modal-box {
+  background: white; border-radius: var(--radius-lg);
+  padding: 28px 24px; width: 320px; text-align: center;
+  border: 1.5px solid var(--gray-border); transition: border-color 0.5s;
+}
+#pack-disc {
+  width: 70px; height: 70px; border-radius: 50%;
+  border: 3px solid var(--gray-border);
+  margin: 16px auto;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; transition: border-color 0.4s, background 0.4s;
+}
+#pack-disc.spin { animation: spin 0.7s linear infinite; }
+#pack-disc.pop  { animation: pop 0.35s ease-out; }
+
+#pack-reveal {
+  display: flex; flex-wrap: wrap; justify-content: center;
+  gap: 8px; min-height: 60px; margin: 12px 0;
+}
+.rev-item {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  opacity: 0; transform: scale(0.5) translateY(8px);
+  transition: opacity 0.25s, transform 0.25s;
+}
+.rev-item.show { opacity: 1; transform: scale(1) translateY(0); }
+.rev-disc {
+  width: 48px; height: 48px; border-radius: 50%; border: 2px solid;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+}
+.rev-name   { font-size: 9px; color: var(--text-muted); max-width: 52px; text-align: center; }
+.rev-rarity { font-size: 9px; font-weight: 500; padding: 1px 5px; border-radius: 8px; }
+
+/* ── Talent grid ── */
+.talent-node {
+  padding: 10px; background: var(--gray-bg);
+  border-radius: var(--radius); text-align: center;
+  cursor: pointer; border: 0.5px solid var(--gray-border);
+  transition: border-color 0.15s;
+}
+.talent-node:hover { border-color: #B4B2A9; }
+.talent-node.unlocked { border-color: var(--purple); background: #EEEDFE18; }
+.talent-node.locked { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Offline notif ── */
+#offline-notif {
+  background: #EAF3DE; border: 0.5px solid #3B6D11;
+  border-radius: var(--radius); padding: 10px 14px;
+  margin-bottom: 10px; display: flex;
+  justify-content: space-between; align-items: center;
+  font-size: 12px; color: #173404; gap: 10px;
+}
+
+/* ── Tower ── */
+#tower-container { text-align: center; padding: 20px 10px; }
+
+/* ── Responsive ── */
+@media (max-width: 500px) {
+  .tab { padding: 7px 8px; font-size: 11px; }
 }
