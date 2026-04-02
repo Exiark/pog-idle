@@ -55,14 +55,14 @@ export const PACK_CONFIG = {
     name: 'Pack Basique',
     count: 3,
     currency: 'gold',
-    cost: 50,
+    cost: 100,
     weights: { C: 60, R: 28, E: 9, L: 2, M: 1 },
   },
   rare: {
     name: 'Pack Rare',
     count: 3,
     currency: 'gold',
-    cost: 150,
+    cost: 300,
     weights: { C: 30, R: 42, E: 19, L: 7, M: 2 },
   },
   premium: {

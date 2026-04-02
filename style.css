@@ -419,3 +419,146 @@ button:active { transform: scale(0.97); }
   #tabs { gap: 0; }
   .tab  { padding: 7px 9px; font-size: 11px; }
 }
+
+/* ── Effets de combat ── */
+@keyframes crit-flash {
+  0%   { background: #FAC775; transform: scale(1.5) rotate(180deg); }
+  50%  { background: #EF9F27; transform: scale(1.8) rotate(200deg); }
+  100% { opacity: 0.2; transform: scale(0.8) rotate(180deg); }
+}
+
+@keyframes flip-normal {
+  0%   { transform: scale(1.2) rotate(0deg); }
+  100% { transform: scale(0.85) rotate(180deg); opacity: 0.25; }
+}
+
+@keyframes kini-shake {
+  0%, 100% { transform: translateY(-50%) rotate(0deg); }
+  25%       { transform: translateY(-50%) rotate(-15deg); }
+  75%       { transform: translateY(-50%) rotate(15deg); }
+}
+
+@keyframes crit-text {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-40px) scale(1.4); }
+}
+
+@keyframes boss-appear {
+  0%   { opacity: 0; transform: scale(0.7) translateY(20px); }
+  60%  { transform: scale(1.1) translateY(-5px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes boss-shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-8px); }
+  40%       { transform: translateX(8px); }
+  60%       { transform: translateX(-5px); }
+  80%       { transform: translateX(5px); }
+}
+
+@keyframes pulse-ring {
+  0%   { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+.pog-e.crit-flip {
+  animation: crit-flash 0.4s ease-out forwards;
+}
+.pog-e.normal-flip {
+  animation: flip-normal 0.3s ease-out forwards;
+}
+.kini-ball.shake {
+  animation: kini-shake 0.3s ease-in-out;
+}
+
+/* ── Texte flottant critique ── */
+.crit-label {
+  position: absolute;
+  font-size: 13px;
+  font-weight: 500;
+  color: #BA7517;
+  pointer-events: none;
+  animation: crit-text 0.8s ease-out forwards;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+/* ── Boss ── */
+#boss-panel {
+  background: #500;
+  border: 1.5px solid #D85A30;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  display: none;
+  animation: boss-appear 0.6s ease-out;
+}
+#boss-panel.visible { display: block; }
+#boss-panel.shake   { animation: boss-shake 0.4s ease-in-out; }
+
+#boss-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #FAC775;
+  margin-bottom: 3px;
+}
+#boss-desc {
+  font-size: 11px;
+  color: #F5C4B3;
+  margin-bottom: 8px;
+}
+#boss-hp-bar-track {
+  height: 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+#boss-hp-bar-fill {
+  height: 100%;
+  background: #E24B4A;
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+#boss-hp-text {
+  font-size: 11px;
+  color: #F5C4B3;
+  margin-top: 4px;
+  text-align: right;
+}
+
+/* ── Pulse ring autour du kini en mode boss ── */
+.kini-ball.boss-mode::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid #D85A30;
+  animation: pulse-ring 1s ease-out infinite;
+}
+
+/* ── Onglets améliorés ── */
+#tabs {
+  background: white;
+  border: 0.5px solid var(--gray-border);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 12px;
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+}
+.tab {
+  border-radius: 8px;
+  border: none;
+  padding: 7px 12px;
+}
+.tab.active {
+  background: var(--purple);
+  color: white;
+  border-bottom: none;
+}
+.tab:hover:not(.active) {
+  background: var(--gray-bg);
+}

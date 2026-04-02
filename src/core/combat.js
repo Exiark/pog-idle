@@ -10,7 +10,7 @@ export function calcFlips(state) {
   const farmingPenalty = state.activeWorld < state.currentWorld ? 0.6 : 1
 
   let base = kini.power * (1 + (state.kiniLevels[state.selectedKini] - 1) * 0.12)
-  let resist = world.resistanceBase * (1 + state.currentFloor * 0.05)
+  let resist = world.resistanceBase * (1 + state.currentFloor * 0.12)
 
   getEquippedPogs(state).forEach(p => {
     if (!p?.effect) return
@@ -99,7 +99,7 @@ export function generateEnemyPile(state) {
 export function calcWaveReward(state) {
   const world = WORLDS[state.activeWorld - 1]
   const farmingMult = state.activeWorld < state.currentWorld ? 0.4 : 1
-  const baseGold = (30 + state.currentFloor * 10) * world.goldMultiplier
+  const baseGold = (15 + state.currentFloor * 5) * world.goldMultiplier
 
   let goldMult = farmingMult
   getEquippedPogs(state).forEach(p => {
@@ -128,6 +128,8 @@ export function advanceFloor(state) {
   if (state.activeWorld === state.currentWorld) {
     state.currentFloor++
     if (state.currentFloor > 11) state.currentFloor = 11
+    // Ralentit la progression
+    state.gold = Math.max(0, state.gold)
   }
 }
 

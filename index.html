@@ -46,10 +46,28 @@
   <div id="world-name">Monde 1</div>
   <div id="wave-info">Vague <span id="wave-num">1</span></div>
 
-  <div id="arena">
-    <div id="kini-ball">K</div>
-    <div id="enemy-pile"></div>
+  <!-- Boss panel -->
+<div id="boss-panel">
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div id="boss-name">Boss</div>
+      <div id="boss-desc"></div>
+    </div>
+    <div style="text-align:right;min-width:120px">
+      <div id="boss-hp-bar-track">
+        <div id="boss-hp-bar-fill" style="width:100%"></div>
+      </div>
+      <div id="boss-hp-text">100/100 PV</div>
+    </div>
   </div>
+</div>
+
+<!-- Arena -->
+<div id="arena">
+  <div id="kini-ball">K</div>
+  <div id="enemy-pile"></div>
+  <div id="crit-container"></div>
+</div>
 
   <div id="wave-progress">
     <div id="wave-bar"></div>
