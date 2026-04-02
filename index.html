@@ -3,11 +3,117 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pog Idle</title>
+  <title>Pog Idle — Tour de Babel</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>Pog Idle — En construction</h1>
-  <script type="module" src="src/main.js"></script>
+
+<!-- Notification offline -->
+<div id="offline-notif" style="display:none">
+  <span id="offline-msg"></span>
+  <div>
+    <button onclick="collectOfflineUI(1)">Collecter</button>
+    <button onclick="collectOfflineUI(2)">×2 — 5 gemmes</button>
+  </div>
+</div>
+
+<!-- HUD ressources -->
+<header id="hud">
+  <div class="res"><span class="res-dot gold">G</span><span id="d-gold">0</span> or</div>
+  <div class="res"><span class="res-dot gems">★</span><span id="d-gems">0</span> gemmes</div>
+  <div class="res"><span class="res-dot frags">F</span><span id="d-frags">0</span> frags</div>
+  <div class="res"><span class="res-dot tokens">T</span><span id="d-tokens">0</span> tokens</div>
+  <div id="acc-bar">
+    <span id="acc-lvl-badge">1</span>
+    <div id="acc-xp-bar"><div id="acc-xp-fill"></div></div>
+  </div>
+  <div id="idle-display">Idle: +0 or/s</div>
+</header>
+
+<!-- Tabs -->
+<nav id="tabs">
+  <button class="tab active" data-tab="combat"   onclick="setTab('combat')">Combat</button>
+  <button class="tab"        data-tab="tower"    onclick="setTab('tower')">Tour</button>
+  <button class="tab"        data-tab="kini"     onclick="setTab('kini')">Kinis</button>
+  <button class="tab"        data-tab="pogs"     onclick="setTab('pogs')">Pogs</button>
+  <button class="tab"        data-tab="packs"    onclick="setTab('packs')">Packs</button>
+  <button class="tab"        data-tab="talents"  onclick="setTab('talents')">Talents</button>
+  <button class="tab"        data-tab="daily"    onclick="setTab('daily')">Journalier</button>
+</nav>
+
+<!-- COMBAT -->
+<div class="view" data-view="combat">
+  <div id="world-name">Monde 1</div>
+  <div id="wave-info">Vague <span id="wave-num">1</span></div>
+
+  <div id="arena">
+    <div id="kini-ball">K</div>
+    <div id="enemy-pile"></div>
+  </div>
+
+  <div id="wave-progress">
+    <div id="wave-bar"></div>
+  </div>
+  <div id="wave-pct">0%</div>
+
+  <div id="log"></div>
+
+  <div id="team-slots"></div>
+  <div id="team-bonus"></div>
+  <div id="active-kini-info"></div>
+</div>
+
+<!-- TOUR -->
+<div class="view" data-view="tower" style="display:none">
+  <div id="tower-container"></div>
+</div>
+
+<!-- KINIS -->
+<div class="view" data-view="kini" style="display:none">
+  <div id="kini-list"></div>
+  <div id="kini-upgrade"></div>
+</div>
+
+<!-- POGS -->
+<div class="view" data-view="pogs" style="display:none">
+  <div id="pog-collection"></div>
+  <div id="album-stats"></div>
+</div>
+
+<!-- PACKS -->
+<div class="view" data-view="packs" style="display:none">
+  <div id="pity-display"></div>
+  <div id="pack-buttons"></div>
+  <div id="drop-rates"></div>
+
+  <!-- Animation d'ouverture -->
+  <div id="pack-modal" style="display:none">
+    <div id="pack-modal-box">
+      <div id="pack-stage"></div>
+      <div id="pack-disc"></div>
+      <div id="pack-reveal"></div>
+      <button id="pack-close" style="display:none" onclick="closePackModal()">Collecter !</button>
+    </div>
+  </div>
+</div>
+
+<!-- TALENTS -->
+<div class="view" data-view="talents" style="display:none">
+  <div id="talent-points-display"></div>
+  <div id="talent-grid"></div>
+</div>
+
+<!-- JOURNALIER -->
+<div class="view" data-view="daily" style="display:none">
+  <div id="daily-rewards"></div>
+  <div id="daily-btn-wrap">
+    <button onclick="claimDailyUI()">Réclamer</button>
+    <span id="daily-status"></span>
+  </div>
+  <div id="missions-list"></div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+
 </body>
 </html>
