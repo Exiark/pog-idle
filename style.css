@@ -1,4 +1,3 @@
-/* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -18,25 +17,16 @@
 
 body {
   font-family: system-ui, -apple-system, sans-serif;
-  font-size: 14px;
-  color: var(--text);
+  font-size: 14px; color: var(--text);
   background: #F8F7F4;
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 10px;
+  max-width: 760px; margin: 0 auto; padding: 10px;
 }
 
 /* ── HUD ── */
 #hud {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  background: white;
-  border: 0.5px solid var(--gray-border);
-  border-radius: var(--radius);
-  padding: 10px 14px;
-  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: white; border: 0.5px solid var(--gray-border);
+  border-radius: var(--radius); padding: 10px 14px; margin-bottom: 10px;
 }
 .res { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 500; }
 .res-dot {
@@ -61,33 +51,22 @@ body {
 
 /* ── Tabs ── */
 #tabs {
-  background: white;
-  border: 0.5px solid var(--gray-border);
-  border-radius: 12px;
-  padding: 4px;
-  margin-bottom: 12px;
-  display: flex;
-  gap: 2px;
-  overflow-x: auto;
+  background: white; border: 0.5px solid var(--gray-border);
+  border-radius: 12px; padding: 4px; margin-bottom: 12px;
+  display: flex; gap: 2px; overflow-x: auto;
 }
 .tab {
-  border-radius: 8px; border: none;
-  padding: 7px 11px; font-size: 12px;
-  color: var(--text-muted); cursor: pointer;
-  background: transparent; font-family: inherit;
-  transition: background 0.15s, color 0.15s;
-  white-space: nowrap;
+  border-radius: 8px; border: none; padding: 7px 11px; font-size: 12px;
+  color: var(--text-muted); cursor: pointer; background: transparent;
+  font-family: inherit; transition: background 0.15s, color 0.15s; white-space: nowrap;
 }
 .tab:hover:not(.active) { background: var(--gray-bg); color: var(--text); }
 .tab.active { background: var(--purple); color: white; font-weight: 500; }
 
 /* ── Cards ── */
 .card {
-  background: white;
-  border: 0.5px solid var(--gray-border);
-  border-radius: var(--radius-lg);
-  padding: 12px;
-  margin-bottom: 10px;
+  background: white; border: 0.5px solid var(--gray-border);
+  border-radius: var(--radius-lg); padding: 12px; margin-bottom: 10px;
 }
 .card-title {
   font-size: 11px; font-weight: 500; color: var(--text-muted);
@@ -96,13 +75,10 @@ body {
 
 /* ── Buttons ── */
 button {
-  padding: 7px 14px;
-  border: 0.5px solid var(--gray-border);
-  border-radius: var(--radius);
-  background: transparent; font-size: 12px;
-  cursor: pointer; color: var(--text);
-  font-family: inherit;
-  transition: background 0.1s, transform 0.1s;
+  padding: 7px 14px; border: 0.5px solid var(--gray-border);
+  border-radius: var(--radius); background: transparent;
+  font-size: 12px; cursor: pointer; color: var(--text);
+  font-family: inherit; transition: background 0.1s, transform 0.1s;
 }
 button:hover { background: var(--gray-bg); }
 button:active { transform: scale(0.97); }
@@ -110,12 +86,12 @@ button:active { transform: scale(0.97); }
 .btn-primary:hover { background: var(--purple-dark); }
 
 /* ══════════════════════════════
-   ARÈNE — pile verticale vue de côté
+   ARÈNE — tour cylindrique option A
    ══════════════════════════════ */
 #arena {
   background: var(--gray-bg);
   border-radius: var(--radius);
-  min-height: 280px;
+  min-height: 300px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -123,163 +99,186 @@ button:active { transform: scale(0.97); }
   overflow: hidden;
   margin-bottom: 8px;
   padding: 20px 16px;
-  gap: 32px;
+  gap: 28px;
 }
 
-/* ── Colonne kini (gauche) ── */
+/* ── Kini (gauche) ── */
 #kini-launcher {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 6px; flex-shrink: 0;
 }
-
 #kini-ball {
-  width: 50px; height: 50px;
-  border-radius: 50%;
-  background: var(--purple);
-  border: 2px solid var(--purple-dark);
-  color: white;
-  font-size: 20px;
+  width: 50px; height: 50px; border-radius: 50%;
+  background: var(--purple); border: 2px solid var(--purple-dark);
+  color: white; font-size: 20px;
   display: flex; align-items: center; justify-content: center;
-  transition: transform 0.18s ease-in;
-  position: relative;
-  z-index: 10;
+  transition: transform 0.18s ease-in; position: relative; z-index: 10;
 }
-#kini-ball.throw { transform: translateX(50px) translateY(10px) scale(0.9); }
+#kini-ball.throw { transform: translateX(55px) translateY(8px) scale(0.88); }
 #kini-ball.back  { transform: translateX(0) translateY(0) scale(1); transition: transform 0.28s ease-out; }
 #kini-ball.boss-mode::after {
-  content: '';
-  position: absolute;
-  width: 100%; height: 100%;
-  border-radius: 50%;
-  border: 2px solid #D85A30;
+  content: ''; position: absolute; width: 100%; height: 100%;
+  border-radius: 50%; border: 2px solid #D85A30;
   animation: pulse-ring 1s ease-out infinite;
 }
 #kini-label { font-size: 10px; color: var(--text-muted); text-align: center; max-width: 60px; }
-
-/* Flèche vers le bas */
 #kini-arrow {
-  font-size: 18px;
-  color: var(--purple);
-  line-height: 1;
+  font-size: 18px; color: var(--purple); line-height: 1;
   animation: bounce-arrow 1.2s ease-in-out infinite;
 }
 @keyframes bounce-arrow {
   0%, 100% { transform: translateY(0); }
-  50%       { transform: translateY(4px); }
+  50%       { transform: translateY(5px); }
 }
 
-/* ── Pile de pogs vue de côté (centre) ── */
+/* ── Tour cylindrique (centre) ── */
 #pog-stack-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 5px; flex-shrink: 0;
 }
 
 #pog-stack {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0;
-  position: relative;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 0;
 }
 
-/* Pog du dessus — ellipse colorée, plus haute */
-.pog-top {
-  width: 110px;
-  height: 26px;
+/* Toutes les tranches ont la même largeur = cylindre régulier */
+.pog-slice {
+  width: 100px;
+  height: 14px;
   border-radius: 50%;
-  border: 2px solid rgba(127,119,221,0.6);
+  border: 1.5px solid rgba(0,0,0,0.12);
+  margin-top: -3px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: #555;
+  transition: opacity 0.2s;
+}
+
+/* Pog du dessus — même largeur, plus épais, coloré */
+.pog-top {
+  width: 100px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(127,119,221,0.7);
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 500;
-  position: relative;
-  z-index: 4;
-  transition: transform 0.2s, opacity 0.2s;
+  position: relative; z-index: 4;
 }
 
-/* Animation quand le pog du dessus est retourné */
+/* Animation quand retourné */
 .pog-top.hit {
-  animation: pog-hit 0.35s ease-out forwards;
+  animation: pog-hit 0.4s ease-out forwards;
 }
 @keyframes pog-hit {
-  0%   { transform: translateY(0) scaleX(1); }
-  30%  { transform: translateY(-8px) scaleX(0.95); }
-  100% { transform: translateY(40px) scaleX(0.8); opacity: 0; }
+  0%   { transform: translateY(0) scaleX(1); opacity: 1; }
+  40%  { transform: translateY(-10px) scaleX(0.9); }
+  100% { transform: translateY(50px) scaleX(0.7); opacity: 0; }
 }
 
-/* Tranches des pogs en dessous — ellipses fines */
-.pog-slice {
-  border-radius: 50%;
-  border: 1.5px solid rgba(0,0,0,0.1);
-  margin-top: -3px;
-  position: relative;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 9px;
-  color: #999;
-  transition: width 0.3s;
-}
-
-/* Pog visible (2e, 3e...) */
+/* Tranche visible (2e, 3e...) */
 .pog-slice.visible {
-  height: 12px;
-  background: var(--col, #D3D1C7);
-  border-color: rgba(0,0,0,0.12);
+  background: var(--slice-col, #D3D1C7);
+  border-color: rgba(0,0,0,0.1);
 }
 
-/* Pog caché — face "?" */
+/* Tranche cachée — face "?" */
 .pog-slice.hidden-pog {
-  height: 10px;
   background: #C8C6BC;
   border-color: rgba(0,0,0,0.07);
+  color: #aaa; font-size: 9px;
 }
 
-/* Compteur sous la pile */
 #stack-counter {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 6px;
+  font-size: 11px; color: var(--text-muted);
   text-align: center;
 }
 
-/* ── Zone pogs gagnés (droite) ── */
-#pog-won-zone {
-  display: flex;
+/* ── Phase de combat ── */
+#battle-panel {
+  display: none;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  flex-shrink: 0;
-  min-width: 50px;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 0;
 }
-#pog-won-label {
-  font-size: 10px;
-  color: var(--text-muted);
-  margin-bottom: 2px;
+#battle-panel.visible { display: flex; }
+
+.battle-vs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+}
+.battle-side {
+  flex: 1;
+  background: white;
+  border: 0.5px solid var(--gray-border);
+  border-radius: 12px;
+  padding: 10px;
   text-align: center;
 }
+.battle-side.player { border-color: var(--purple); }
+.battle-side.bot    { border-color: #D85A30; }
+.battle-side-label  { font-size: 11px; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
+.battle-hp-bar {
+  height: 8px; border-radius: 4px; overflow: hidden;
+  background: var(--gray-bg); margin: 4px 0;
+}
+.battle-hp-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
+.battle-hp-fill.player { background: var(--purple); }
+.battle-hp-fill.bot    { background: #D85A30; }
+.battle-stat { font-size: 11px; color: var(--text-muted); }
+.battle-stat strong { color: var(--text); }
+
+.battle-log-entry {
+  font-size: 11px; padding: 2px 0;
+  animation: log-appear 0.3s ease-out;
+}
+@keyframes log-appear {
+  0% { opacity: 0; transform: translateX(-8px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.battle-log-entry.crit   { color: #BA7517; font-weight: 500; }
+.battle-log-entry.win    { color: #3B6D11; font-weight: 500; }
+.battle-log-entry.lose   { color: #D85A30; font-weight: 500; }
+
+/* Phase résultat */
+#result-panel {
+  display: none;
+  flex-direction: column; align-items: center;
+  gap: 10px; padding: 16px; text-align: center;
+  width: 100%;
+}
+#result-panel.visible { display: flex; }
+.result-icon { font-size: 40px; }
+.result-title { font-size: 16px; font-weight: 500; }
+.result-sub   { font-size: 12px; color: var(--text-muted); }
+
+/* ── Zone pogs gagnés ── */
+#pog-won-zone {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 3px;
+  flex-shrink: 0; min-width: 50px;
+}
+#pog-won-label { font-size: 10px; color: var(--text-muted); margin-bottom: 2px; text-align: center; }
 .won-pog {
-  width: 30px; height: 30px;
-  border-radius: 50%;
+  width: 30px; height: 30px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 11px;
-  border: 1.5px solid var(--purple);
+  font-size: 11px; border: 1.5px solid var(--purple);
   animation: won-pop 0.3s ease-out;
 }
 @keyframes won-pop {
-  0%   { transform: scale(0); opacity: 0; }
-  60%  { transform: scale(1.2); }
-  100% { transform: scale(1); opacity: 1; }
+  0%  { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.2); }
+  100%{ transform: scale(1); opacity: 1; }
 }
 
-/* ── Texte flottant critique ── */
+/* ── Texte critique flottant ── */
 .crit-label {
-  position: absolute;
-  font-size: 14px; font-weight: 500;
-  color: #BA7517;
-  pointer-events: none;
+  position: absolute; font-size: 14px; font-weight: 500;
+  color: #BA7517; pointer-events: none;
   animation: crit-float 0.9s ease-out forwards;
   z-index: 20; white-space: nowrap;
 }
@@ -305,13 +304,9 @@ button:active { transform: scale(0.97); }
 
 /* ── Boss ── */
 #boss-panel {
-  background: #3a0a0a;
-  border: 1.5px solid #D85A30;
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin-bottom: 10px;
-  display: none;
-  animation: boss-appear 0.5s ease-out;
+  background: #3a0a0a; border: 1.5px solid #D85A30;
+  border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
+  display: none; animation: boss-appear 0.5s ease-out;
 }
 #boss-panel.visible { display: block; }
 #boss-panel.shake   { animation: boss-shake 0.4s ease-in-out; }
@@ -329,8 +324,7 @@ button:active { transform: scale(0.97); }
 /* ── Log ── */
 #log {
   font-size: 11px; color: var(--text-muted);
-  height: 48px; overflow-y: auto;
-  line-height: 1.6; margin-bottom: 10px;
+  height: 48px; overflow-y: auto; line-height: 1.6; margin-bottom: 10px;
 }
 #log .crit   { color: #BA7517; font-weight: 500; }
 #log .flip   { color: #0F6E56; }
@@ -338,14 +332,12 @@ button:active { transform: scale(0.97); }
 #log .miss   { color: #B4B2A9; }
 #log .boss   { color: #D85A30; font-weight: 500; }
 
-/* ── Pog circles (collection/équipe) ── */
+/* ── Pog circles ── */
 .pog-circle {
   width: 34px; height: 34px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; cursor: pointer;
-  border: 1.5px solid transparent;
-  position: relative; flex-shrink: 0;
-  transition: opacity 0.15s;
+  font-size: 13px; cursor: pointer; border: 1.5px solid transparent;
+  position: relative; flex-shrink: 0; transition: opacity 0.15s;
 }
 .pog-circle:hover { opacity: 0.8; }
 .pog-circle .copies {
@@ -370,10 +362,8 @@ button:active { transform: scale(0.97); }
 
 /* ── Kini cards ── */
 .kini-card {
-  padding: 9px 11px;
-  border: 0.5px solid var(--gray-border);
-  border-radius: var(--radius);
-  cursor: pointer; margin-bottom: 6px;
+  padding: 9px 11px; border: 0.5px solid var(--gray-border);
+  border-radius: var(--radius); cursor: pointer; margin-bottom: 6px;
   transition: border-color 0.15s;
 }
 .kini-card:hover { border-color: #B4B2A9; }
@@ -383,8 +373,7 @@ button:active { transform: scale(0.97); }
 #pack-modal {
   min-height: 420px; background: rgba(0,0,0,0.5);
   border-radius: var(--radius-lg);
-  display: flex; align-items: center; justify-content: center;
-  margin-top: 12px;
+  display: flex; align-items: center; justify-content: center; margin-top: 12px;
 }
 #pack-modal-box {
   background: white; border-radius: var(--radius-lg);
@@ -393,8 +382,7 @@ button:active { transform: scale(0.97); }
 }
 #pack-disc {
   width: 70px; height: 70px; border-radius: 50%;
-  border: 3px solid var(--gray-border);
-  margin: 16px auto;
+  border: 3px solid var(--gray-border); margin: 16px auto;
   display: flex; align-items: center; justify-content: center;
   font-size: 24px; transition: border-color 0.4s, background 0.4s;
 }
@@ -419,9 +407,8 @@ button:active { transform: scale(0.97); }
 
 /* ── Talent grid ── */
 .talent-node {
-  padding: 10px; background: var(--gray-bg);
-  border-radius: var(--radius); text-align: center;
-  cursor: pointer; border: 0.5px solid var(--gray-border);
+  padding: 10px; background: var(--gray-bg); border-radius: var(--radius);
+  text-align: center; cursor: pointer; border: 0.5px solid var(--gray-border);
   transition: border-color 0.15s;
 }
 .talent-node:hover { border-color: #B4B2A9; }
@@ -431,8 +418,7 @@ button:active { transform: scale(0.97); }
 /* ── Offline notif ── */
 #offline-notif {
   background: #EAF3DE; border: 0.5px solid #3B6D11;
-  border-radius: var(--radius); padding: 10px 14px;
-  margin-bottom: 10px;
+  border-radius: var(--radius); padding: 10px 14px; margin-bottom: 10px;
   justify-content: space-between; align-items: center;
   font-size: 12px; color: #173404; gap: 10px;
 }
@@ -443,7 +429,6 @@ button:active { transform: scale(0.97); }
 /* ── Responsive ── */
 @media (max-width: 500px) {
   .tab { padding: 7px 8px; font-size: 11px; }
-  #arena { gap: 16px; padding: 14px 10px; }
-  .pog-top { width: 90px; }
-  .pog-slice { width: 86px !important; }
+  #arena { gap: 14px; padding: 14px 10px; }
+  .pog-top, .pog-slice { width: 80px !important; }
 }

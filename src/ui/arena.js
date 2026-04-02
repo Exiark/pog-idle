@@ -1,5 +1,5 @@
 import { POGS, RARITY } from '../data/pogs.js'
-import { KINIS } from '../data/kinis.js'
+import { KINIS }        from '../data/kinis.js'
 
 export function renderTeam(state) {
   const slotsDiv = document.getElementById('team-slots')
@@ -12,7 +12,6 @@ export function renderTeam(state) {
   if (!slotsDiv) return
 
   const maxSlots = state.talentsUnlocked.includes('t9') ? 11 : 10
-
   slotsDiv.style.cssText = 'display:flex;flex-wrap:wrap;gap:5px;margin:8px 0'
 
   slotsDiv.innerHTML = Array.from({ length: maxSlots }, (_, i) => {
@@ -20,13 +19,12 @@ export function renderTeam(state) {
     if (p) {
       const pg = POGS.find(x => x.id === p.id)
       const r  = RARITY[pg.rarity]
-      return `
-        <div class="pog-circle"
-          style="background:${r.bg};border-color:${r.color};color:${r.text}"
-          onclick="toggleEquipUI('${p.id}')"
-          title="${pg.name} — ${r.label}\n${pg.desc}">
-          <span style="font-size:12px">${pg.icon}</span>
-        </div>`
+      return `<div class="pog-circle"
+        style="background:${r.bg};border-color:${r.color};color:${r.text}"
+        onclick="toggleEquipUI('${p.id}')"
+        title="${pg.name} — ${r.label}\n${pg.desc}">
+        <span style="font-size:12px">${pg.icon}</span>
+      </div>`
     }
     return `<div class="slot-empty" onclick="setTab('pogs')" title="Ajouter un pog">+</div>`
   }).join('')
@@ -39,13 +37,7 @@ export function renderTeam(state) {
 }
 
 function renderKiniCard(state, container) {
-  const k   = KINIS[state.selectedKini] || KINIS[0]
-  const lv  = state.kiniLevels[state.selectedKini] || 1
-  const xp  = state.kiniXP[state.selectedKini] || 0
-  const xpMax = lv * 60
-  const pwr = Math.round(k.power * (1 + (lv - 1) * 0.12))
-  const pct = Math.round(xp / xpMax * 100)
-
+  const k  = KINIS[state.selectedKini] || KINIS[0]
   const typeColors = {
     'Débutant':  { bg: '#E6F1FB', c: '#185FA5' },
     'Puissance': { bg: '#FAECE7', c: '#993C1D' },
@@ -57,82 +49,45 @@ function renderKiniCard(state, container) {
 
   container.innerHTML = `
     <div style="
-      background:white;
-      border:0.5px solid var(--gray-border);
-      border-radius:14px;
-      padding:12px 14px;
-      margin-bottom:10px;
+      background:white;border:0.5px solid var(--gray-border);
+      border-radius:14px;padding:12px 14px;margin-bottom:10px;
       display:flex;gap:12px;align-items:flex-start;
     ">
-      <!-- Avatar kini -->
       <div style="
-        width:52px;height:52px;border-radius:50%;flex-shrink:0;
+        width:50px;height:50px;border-radius:50%;flex-shrink:0;
         background:${tc.bg};border:2px solid ${tc.c};
-        display:flex;align-items:center;justify-content:center;
-        font-size:22px;
+        display:flex;align-items:center;justify-content:center;font-size:22px;
       ">${k.icon}</div>
 
-      <!-- Infos -->
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
           <span style="font-size:14px;font-weight:500">${k.name}</span>
-          <span style="
-            font-size:10px;font-weight:500;padding:2px 7px;border-radius:10px;
-            background:var(--purple);color:white;
-          ">Lv ${lv}</span>
-          <span style="
-            font-size:10px;padding:2px 7px;border-radius:10px;
-            background:${tc.bg};color:${tc.c};
-          ">${k.type}</span>
+          <span style="font-size:10px;padding:2px 7px;border-radius:10px;
+            background:${tc.bg};color:${tc.c}">${k.type}</span>
+          ${k.exclusive ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;
+            background:#FAEEDA;color:#412402">Exclusif W${k.world}</span>` : ''}
         </div>
-
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">${k.desc}</div>
-
-        <!-- Stats en ligne -->
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
-          ${statPill('⚔', 'Puissance', pwr)}
-          ${statPill('⚡', 'Vitesse', k.speed.toFixed(1))}
-          ${statPill('🎯', 'Précision', Math.round(k.accuracy * 100) + '%')}
-          ${statPill('★', 'Critique', Math.round(k.chance * 100) + '%')}
-        </div>
-
-        <!-- Barre XP -->
-        <div style="display:flex;align-items:center;gap:6px">
-          <div style="
-            flex:1;height:4px;background:var(--gray-bg);
-            border-radius:2px;overflow:hidden;
-          ">
-            <div style="
-              width:${pct}%;height:100%;
-              background:var(--purple);border-radius:2px;
-              transition:width 0.3s;
-            "></div>
-          </div>
-          <span style="font-size:10px;color:var(--text-muted);white-space:nowrap">
-            XP ${xp}/${xpMax}
-          </span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${statPill('⚔', 'Atk', k.power)}
+          ${statPill('⚡', 'Vit', k.speed.toFixed(1))}
+          ${statPill('🎯', 'Préc', Math.round(k.accuracy * 100) + '%')}
+          ${statPill('★', 'Crit', Math.round(k.chance * 100) + '%')}
         </div>
       </div>
-
-      <!-- Bouton changer -->
-      <button onclick="setTab('kini')" style="
-        font-size:11px;padding:5px 10px;flex-shrink:0;
-        align-self:flex-start;
-      ">Changer</button>
+      <button onclick="setTab('kini')" style="font-size:11px;padding:5px 10px;flex-shrink:0;align-self:flex-start">
+        Changer
+      </button>
     </div>`
 }
 
 function statPill(icon, label, value) {
-  return `
-    <div style="
-      display:flex;align-items:center;gap:3px;
-      background:var(--gray-bg);border-radius:8px;
-      padding:3px 8px;font-size:11px;
-    ">
-      <span style="font-size:11px">${icon}</span>
-      <span style="color:var(--text-muted)">${label}</span>
-      <span style="font-weight:500;margin-left:2px">${value}</span>
-    </div>`
+  return `<div style="
+    display:flex;align-items:center;gap:3px;
+    background:var(--gray-bg);border-radius:8px;padding:3px 8px;font-size:11px;
+  "><span style="font-size:11px">${icon}</span>
+  <span style="color:var(--text-muted)">${label}</span>
+  <span style="font-weight:500;margin-left:2px">${value}</span></div>`
 }
 
 function renderFrise(state, container) {
@@ -142,22 +97,17 @@ function renderFrise(state, container) {
   container.innerHTML = `
     <div style="
       display:flex;align-items:center;gap:3px;
-      padding:10px 12px;
-      background:white;
+      padding:10px 12px;background:white;
       border:0.5px solid var(--gray-border);
-      border-radius:12px;
-      margin-bottom:10px;
-      overflow-x:auto;
+      border-radius:12px;margin-bottom:10px;overflow-x:auto;
     ">
       ${Array.from({ length: total }, (_, i) => {
-        const vague    = i + 1
-        const isBoss   = vague === 11
-        const isPast   = vague < current
+        const vague     = i + 1
+        const isBoss    = vague === 11
+        const isPast    = vague < current
         const isCurrent = vague === current
 
-        let bg      = 'var(--gray-bg)'
-        let border  = 'var(--gray-border)'
-        let color   = 'var(--text-muted)'
+        let bg = 'var(--gray-bg)', border = 'var(--gray-border)', color = 'var(--text-muted)'
         let content = String(vague)
 
         if (isBoss) {
@@ -174,29 +124,23 @@ function renderFrise(state, container) {
         return `
           <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">
             <div style="
-              width:${isBoss ? '32px' : '26px'};
-              height:${isBoss ? '32px' : '26px'};
-              border-radius:50%;
-              background:${bg};
+              width:${isBoss ? '32px' : '26px'};height:${isBoss ? '32px' : '26px'};
+              border-radius:50%;background:${bg};
               border:${isCurrent ? '2px' : '1px'} solid ${border};
-              color:${color};
-              font-size:${isBoss ? '14px' : '11px'};
+              color:${color};font-size:${isBoss ? '14px' : '11px'};
               font-weight:${isCurrent ? '500' : '400'};
               display:flex;align-items:center;justify-content:center;
             ">${content}</div>
-            <div style="
-              font-size:9px;
-              color:${isCurrent ? 'var(--purple)' : 'var(--text-muted)'};
-              font-weight:${isCurrent ? '500' : '400'};
-            ">${isBoss ? 'BOSS' : 'V' + vague}</div>
+            <div style="font-size:9px;color:${isCurrent ? 'var(--purple)' : 'var(--text-muted)'};
+              font-weight:${isCurrent ? '500' : '400'}">
+              ${isBoss ? 'BOSS' : 'V' + vague}
+            </div>
           </div>
-          ${i < total - 1 ? `
-            <div style="
-              flex:1;height:1px;
-              background:${isPast ? '#3B6D11' : 'var(--gray-border)'};
-              min-width:6px;max-width:16px;margin-bottom:14px;
-            "></div>` : ''}
-        `
+          ${i < total - 1 ? `<div style="
+            flex:1;height:1px;
+            background:${isPast ? '#3B6D11' : 'var(--gray-border)'};
+            min-width:6px;max-width:16px;margin-bottom:14px;
+          "></div>` : ''}`
       }).join('')}
     </div>`
 }

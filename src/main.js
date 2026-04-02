@@ -2,12 +2,13 @@ import { loadState, saveState, calcOfflineGold } from './core/state.js'
 import { collectOffline, claimDaily, updateMission, applyReward } from './core/economy.js'
 import { openPack, toggleEquip } from './core/gacha.js'
 import {
-  generateEnemyPile, doAttack, calcWaveReward,
-  advanceFloor, isBossWave, defeatBoss,
-  gainKiniXP, gainAccountXP, calcInterval,
+  generateEnemyPile, generateBotPogs, doAttack,
+  calcWaveReward, advanceFloor, isBossWave, defeatBoss,
+  gainAccountXP, calcInterval, calculateScores, simulateBattle,
+  PHASE,
 } from './core/combat.js'
 import { WORLDS } from './data/worlds.js'
-import { KINIS } from './data/kinis.js'
+import { KINIS }  from './data/kinis.js'
 
 import './ui/hud.js'
 import './ui/arena.js'
@@ -20,28 +21,35 @@ import './ui/tower.js'
 
 // ── État global ──
 let S = loadState()
-let enemyPile = []
-let fightInterval = null
-let isPaused = false
-let bossActive = false
-let bossHP = 0
-let bossMaxHP = 0
-
 window._state    = S
 window.saveState = saveState
+
+// ── État de combat ──
+let enemyPile    = []
+let botPogs      = []
+let fightInterval = null
+let currentPhase  = PHASE.FLIPPING
+let bossActive    = false
+let bossHP        = 0
+let bossMaxHP     = 0
 
 // ── Init ──
 function init() {
   checkOfflineReward()
-  initPile()
-  startFighting()
+  startNewWave()
   updateUI()
   setTab('combat')
+
   setInterval(() => saveState(S), 15000)
   setInterval(() => {
-    const rate = calcIdleRate()
+    let rate = 0
+    S.equippedPogs.forEach(p => {
+      if (!p?.effect) return
+      if (p.effect.startsWith('idle+')) rate += parseFloat(p.effect.split('+')[1])
+      if (p.effect === 'master') rate *= 2
+    })
     if (rate > 0) {
-      S.gold += rate
+      S.gold += Math.round(rate * 10) / 10
       document.getElementById('d-gold').textContent = Math.floor(S.gold)
     }
   }, 1000)
@@ -64,75 +72,187 @@ function checkOfflineReward() {
   }
 }
 
-// ── Combat ──
-function initPile() {
+// ══════════════════════════════
+// MACHINE À ÉTATS DU COMBAT
+// ══════════════════════════════
+
+function startNewWave() {
   enemyPile = generateEnemyPile(S)
+  botPogs   = generateBotPogs(S)
+  setPhase(PHASE.FLIPPING)
   renderPogStack()
   updateWaveBar()
 }
 
-function startFighting() {
-  clearInterval(fightInterval)
-  fightInterval = setInterval(tick, calcInterval(S))
+function setPhase(phase) {
+  currentPhase = phase
+  const label  = document.getElementById('phase-label')
+
+  // Cache tous les panels
+  document.getElementById('battle-panel').classList.remove('visible')
+  document.getElementById('result-panel').classList.remove('visible')
+  document.getElementById('arena').style.display = 'flex'
+
+  if (phase === PHASE.FLIPPING) {
+    if (label) label.textContent = 'Retournement des pogs...'
+    clearInterval(fightInterval)
+    fightInterval = setInterval(tickFlipping, calcInterval(S))
+
+  } else if (phase === PHASE.CALCULATING) {
+    if (label) label.textContent = 'Calcul des scores...'
+    clearInterval(fightInterval)
+    document.getElementById('arena').style.display = 'none'
+    setTimeout(startBattlePhase, 800)
+
+  } else if (phase === PHASE.BATTLING) {
+    if (label) label.textContent = 'Combat en cours !'
+    document.getElementById('battle-panel').classList.add('visible')
+
+  } else if (phase === PHASE.RESULT) {
+    if (label) label.textContent = ''
+    document.getElementById('result-panel').classList.add('visible')
+  }
 }
 
-function tick() {
-  if (isPaused) return
-  if (enemyPile.every(p => p.flipped)) return
+// ── Phase 1 : Retournement ──
+function tickFlipping() {
+  if (enemyPile.every(p => p.flipped)) {
+    clearInterval(fightInterval)
+    setTimeout(() => setPhase(PHASE.CALCULATING), 600)
+    return
+  }
 
   const result = doAttack(S, enemyPile)
-  gainKiniXP(S, S.selectedKini, result.flipped)
   renderAttack(result)
   updateWaveBar()
 
-  if (result.done && !bossActive) {
-    clearInterval(fightInterval)
-    setTimeout(endWave, 800)
-  }
-  if (bossActive && bossHP <= 0) {
-    clearInterval(fightInterval)
-    setTimeout(handleBossDefeated, 500)
-  }
+  if (bossActive) updateBossHP(result.flipped)
 }
 
-function endWave() {
-  const reward = calcWaveReward(S)
-  applyReward(S, reward)
-  gainAccountXP(S, reward.accountXP)
-  updateMission(S, 'waves', 1)
-  updateMission(S, 'gold_earned', reward.gold)
-  addLog(`Vague ${S.currentFloor} terminée ! +${reward.gold} or`, 'reward')
-  if (isBossWave(S)) { handleBoss(); return }
+// ── Phase 2 : Calcul ──
+function startBattlePhase() {
+  const playerFlipped = S.equippedPogs.filter(Boolean)
+  const scores        = calculateScores(S, playerFlipped, botPogs)
+
+  // Affiche les stats
+  document.getElementById('p-count').textContent = scores.player.count
+  document.getElementById('b-count').textContent = scores.bot.count
+  document.getElementById('p-atk').textContent   = scores.player.attack
+  document.getElementById('p-def').textContent   = scores.player.defense
+  document.getElementById('b-atk').textContent   = scores.bot.attack
+  document.getElementById('b-def').textContent   = scores.bot.defense
+  document.getElementById('p-hp-bar').style.width = '100%'
+  document.getElementById('b-hp-bar').style.width = '100%'
+  document.getElementById('battle-log').innerHTML = ''
+
+  setPhase(PHASE.BATTLING)
+
+  // Simule le combat et l'anime
+  const result = simulateBattle(scores)
+  animateBattle(result, scores)
+}
+
+// ── Animation du combat ──
+function animateBattle(result, scores) {
+  const pMaxHp   = scores.player.hp
+  const bMaxHp   = scores.bot.hp
+  const battleLog = document.getElementById('battle-log')
+  let turn = 0
+
+  const interval = setInterval(() => {
+    if (turn >= result.turns.length) {
+      clearInterval(interval)
+      setTimeout(() => showResult(result, scores), 600)
+      return
+    }
+
+    const t = result.turns[turn]
+
+    // Barre HP joueur
+    const pPct = Math.round(t.playerHp / pMaxHp * 100)
+    const bPct = Math.round(t.botHp    / bMaxHp * 100)
+    document.getElementById('p-hp-bar').style.width = pPct + '%'
+    document.getElementById('b-hp-bar').style.width = bPct + '%'
+
+    // Log du tour
+    const entry = document.createElement('div')
+    entry.className = 'battle-log-entry' + (t.playerCrit || t.botCrit ? ' crit' : '')
+    entry.textContent = `Tour ${t.turn} — Vous: -${t.botDmg}PV${t.botCrit ? ' (CRIT!)' : ''} · Bot: -${t.playerDmg}PV${t.playerCrit ? ' (CRIT!)' : ''}`
+    battleLog.insertBefore(entry, battleLog.firstChild)
+
+    turn++
+  }, 400)
+}
+
+// ── Phase 4 : Résultat ──
+function showResult(result, scores) {
+  setPhase(PHASE.RESULT)
+
+  const icon  = document.getElementById('result-icon')
+  const title = document.getElementById('result-title')
+  const sub   = document.getElementById('result-sub')
+  const btn   = document.getElementById('result-btn')
+
+  if (result.victory) {
+    icon.textContent  = '🏆'
+    title.textContent = 'Victoire !'
+
+    const reward = calcWaveReward(S)
+    applyReward(S, reward)
+    gainAccountXP(S, reward.accountXP)
+    updateMission(S, 'waves', 1)
+    updateMission(S, 'gold_earned', reward.gold)
+
+    sub.textContent  = `+${reward.gold} or · +${reward.fragments} fragments`
+    btn.textContent  = isBossWave(S) ? 'Affronter le boss !' : 'Vague suivante'
+
+    addLog(`Victoire ! +${reward.gold} or`, 'reward')
+
+    if (isBossWave(S)) {
+      btn.onclick = () => { handleBossVictory(); }
+    } else {
+      btn.onclick = () => { onVictoryNext() }
+    }
+
+  } else {
+    icon.textContent  = '💀'
+    title.textContent = 'Défaite...'
+    sub.textContent   = 'Vos pogs n\'étaient pas assez forts. Retournez-en plus !'
+    btn.textContent   = 'Réessayer'
+    btn.onclick       = () => { onDefeatRetry() }
+    addLog('Défaite — nouvel essai !', 'miss')
+  }
+
+  saveState(S)
+  updateUI()
+}
+
+function onVictoryNext() {
   advanceFloor(S)
   saveState(S)
   updateUI()
-  setTimeout(() => { initPile(); startFighting() }, 1000)
+  startNewWave()
 }
+
+function onDefeatRetry() {
+  startNewWave()
+}
+
+window.onResultNext = function() {}
 
 // ── Boss ──
 function handleBoss() {
-  isPaused = false
-  const world = WORLDS[S.activeWorld - 1]
-  addLog(`BOSS : ${world.boss.name} apparaît !`, 'boss')
-  showBossPanel(world)
-}
-
-function showBossPanel(world) {
   bossActive = true
-  bossMaxHP  = world.boss.hp
-  bossHP     = bossMaxHP
+  const world = WORLDS[S.activeWorld - 1]
+  bossMaxHP   = world.boss.hp
+  bossHP      = bossMaxHP
   document.getElementById('boss-name').textContent        = world.boss.name
   document.getElementById('boss-desc').textContent        = world.boss.desc
   document.getElementById('boss-hp-text').textContent     = `${bossHP}/${bossMaxHP} PV`
   document.getElementById('boss-hp-bar-fill').style.width = '100%'
   document.getElementById('boss-panel').classList.add('visible')
   document.getElementById('kini-ball')?.classList.add('boss-mode')
-}
-
-function hideBossPanel() {
-  bossActive = false
-  document.getElementById('boss-panel').classList.remove('visible', 'shake')
-  document.getElementById('kini-ball')?.classList.remove('boss-mode')
+  addLog(`BOSS : ${world.boss.name} apparaît !`, 'boss')
 }
 
 function updateBossHP(flipped) {
@@ -148,17 +268,23 @@ function updateBossHP(flipped) {
   setTimeout(() => panel.classList.remove('shake'), 400)
 }
 
-function handleBossDefeated() {
+function hideBossPanel() {
+  bossActive = false
+  document.getElementById('boss-panel').classList.remove('visible', 'shake')
+  document.getElementById('kini-ball')?.classList.remove('boss-mode')
+}
+
+function handleBossVictory() {
   hideBossPanel()
   const result = defeatBoss(S, S.activeWorld)
   if (result) addLog(`Boss vaincu ! Monde ${result.nextWorld} déverrouillé !`, 'reward')
-  isPaused = false
+  advanceFloor(S)
   saveState(S)
   updateUI()
-  setTimeout(() => { initPile(); startFighting() }, 1000)
+  startNewWave()
 }
 
-// ── Pile de pogs vue de côté ──
+// ── Rendu pile cylindrique option A ──
 function renderPogStack() {
   const stack   = document.getElementById('pog-stack')
   const counter = document.getElementById('stack-counter')
@@ -175,36 +301,31 @@ function renderPogStack() {
   if (label) label.textContent = k.name
 
   let html = ''
-  const maxVisible = 7
 
   if (remaining.length === 0) {
-    html = `<div style="font-size:12px;color:var(--text-muted);padding:12px">Pile vide !</div>`
+    html = `<div style="font-size:12px;color:var(--text-muted);padding:16px">Pile vide !</div>`
   } else {
-    // Pog du dessus — coloré et visible
+    // Pog du dessus — même largeur que les autres, juste plus épais
     const top    = remaining[0]
     const topCol = colors[top.id % colors.length]
-    html += `
-      <div class="pog-top" id="ptop"
-        style="background:${topCol};color:#26215C">
-        Pog ${top.id + 1}
-      </div>`
+    html += `<div class="pog-top" id="ptop"
+      style="background:${topCol};color:#26215C">
+      Pog ${top.id + 1}
+    </div>`
 
-    // Tranches des pogs suivants visibles
+    // Tranches suivantes — MÊME LARGEUR (100px) = cylindre régulier
+    const maxVisible = 8
     remaining.slice(1, maxVisible).forEach((p, i) => {
-      const w   = Math.max(60, 104 - i * 6)
       const col = colors[p.id % colors.length]
-      html += `<div class="pog-slice visible" style="width:${w}px;background:${col}88"></div>`
+      html += `<div class="pog-slice visible"
+        style="background:${col}99;border-color:rgba(0,0,0,0.1)">
+      </div>`
     })
 
     // Tranches cachées
-    const hiddenCount = Math.max(0, remaining.length - maxVisible)
-    if (hiddenCount > 0) {
-      for (let i = 0; i < Math.min(hiddenCount, 3); i++) {
-        const w = Math.max(50, 68 - i * 6)
-        html += `<div class="pog-slice hidden-pog" style="width:${w}px">
-          ${i === 0 ? '+' + hiddenCount : ''}
-        </div>`
-      }
+    const hidden = Math.max(0, remaining.length - maxVisible)
+    if (hidden > 0) {
+      html += `<div class="pog-slice hidden-pog">+ ${hidden}</div>`
     }
   }
 
@@ -216,7 +337,6 @@ function renderPogStack() {
       : 'Pile retournée !'
   }
 
-  // Zone gagnés
   if (wonZone) {
     const recent = flipped.slice(-5)
     wonZone.innerHTML = `
@@ -247,22 +367,17 @@ function renderAttack(result) {
       showCritLabel()
     }
 
-    if (bossActive) updateBossHP(result.flipped)
-
-    // Anime le pog du dessus
     const topEl = document.getElementById('ptop')
     if (topEl) {
       topEl.classList.add('hit')
-      setTimeout(() => renderPogStack(), 380)
+      setTimeout(() => renderPogStack(), 420)
     } else {
       renderPogStack()
     }
   }, 180)
 
   addLog(
-    result.isCrit
-      ? `★ CRITIQUE ! ${result.flipped} pog(s) retourné(s) !`
-      : `${result.flipped} pog(s) retourné(s)`,
+    result.isCrit ? `★ CRITIQUE ! ${result.flipped} pog(s) !` : `${result.flipped} pog(s) retourné(s)`,
     result.isCrit ? 'crit' : 'flip'
   )
 }
@@ -298,21 +413,11 @@ function addLog(msg, cls) {
   while (log.children.length > 20) log.removeChild(log.lastChild)
 }
 
-function calcIdleRate() {
-  let rate = 0
-  S.equippedPogs.forEach(p => {
-    if (!p?.effect) return
-    if (p.effect.startsWith('idle+')) rate += parseFloat(p.effect.split('+')[1])
-    if (p.effect === 'master') rate *= 2
-  })
-  return Math.round(rate * 10) / 10
-}
-
 // ── Actions window ──
 window.selectKini = function(index) {
   S.selectedKini = index
   clearInterval(fightInterval)
-  startFighting()
+  if (currentPhase === PHASE.FLIPPING) fightInterval = setInterval(tickFlipping, calcInterval(S))
   saveState(S); updateUI()
 }
 
@@ -360,8 +465,7 @@ function setTab(tab) {
 document.addEventListener('worldChanged', () => {
   clearInterval(fightInterval)
   hideBossPanel()
-  initPile()
-  startFighting()
+  startNewWave()
   updateUI()
 })
 
