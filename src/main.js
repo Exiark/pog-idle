@@ -2,23 +2,29 @@ import { loadState, saveState, calcOfflineGold } from './core/state.js'
 import { collectOffline, claimDaily, updateMission, applyReward } from './core/economy.js'
 import { openPack, toggleEquip } from './core/gacha.js'
 import {
-  generateEnemyPile,
-  doAttack,
-  calcWaveReward,
-  advanceFloor,
-  isBossWave,
-  defeatBoss,
-  gainKiniXP,
-  gainAccountXP,
-  calcInterval,
+  generateEnemyPile, doAttack, calcWaveReward,
+  advanceFloor, isBossWave, defeatBoss,
+  gainKiniXP, gainAccountXP, calcInterval,
 } from './core/combat.js'
+
+import './ui/hud.js'
+import './ui/arena.js'
+import './ui/kiniPanel.js'
+import './ui/collection.js'
+import './ui/packOpening.js'
+import './ui/talentTree.js'
+import './ui/dailyPanel.js'
+import './ui/tower.js'
 
 // ── État global ──
 let S = loadState()
 let enemyPile = []
 let fightInterval = null
 let isPaused = false
-let currentTab = 'combat'
+
+// Expose sur window pour les modules UI
+window._state    = S
+window.saveState = saveState
 
 // ── Initialisation ──
 function init() {
@@ -28,10 +34,8 @@ function init() {
   updateUI()
   setTab('combat')
 
-  // Sauvegarde automatique toutes les 15 secondes
   setInterval(() => saveState(S), 15000)
 
-  // Gains idle toutes les secondes
   setInterval(() => {
     const rate = calcIdleRate()
     if (rate > 0) {
@@ -41,7 +45,7 @@ function init() {
   }, 1000)
 }
 
-// ── Vérifie les gains offline au démarrage ──
+// ── Offline ──
 function checkOfflineReward() {
   const earned = calcOfflineGold(S)
   if (earned > 0) {
@@ -55,13 +59,13 @@ function checkOfflineReward() {
 
 function showOfflineNotif(earned) {
   const notif = document.getElementById('offline-notif')
-  const msg = document.getElementById('offline-msg')
+  const msg   = document.getElementById('offline-msg')
   if (!notif || !msg) return
-  msg.textContent = `Bon retour ! Vous avez gagné ${earned} or hors-ligne.`
+  msg.textContent    = `Bon retour ! +${earned} or gagnés hors-ligne.`
   notif.style.display = 'flex'
 }
 
-// ── Boucle de combat ──
+// ── Combat ──
 function initPile() {
   enemyPile = generateEnemyPile(S)
   renderEnemyPile()
@@ -70,12 +74,12 @@ function initPile() {
 
 function startFighting() {
   clearInterval(fightInterval)
-  const interval = calcInterval(S)
-  fightInterval = setInterval(tick, interval)
+  fightInterval = setInterval(tick, calcInterval(S))
 }
 
 function tick() {
-  if (isPaused || enemyPile.every(p => p.flipped)) return
+  if (isPaused) return
+  if (enemyPile.every(p => p.flipped)) return
 
   const result = doAttack(S, enemyPile)
   gainKiniXP(S, S.selectedKini, result.flipped)
@@ -94,34 +98,43 @@ function endWave() {
   gainAccountXP(S, reward.accountXP)
   updateMission(S, 'waves', 1)
   updateMission(S, 'gold_earned', reward.gold)
-
-  addLog(`Vague terminée ! +${reward.gold} or`, 'reward')
+  addLog(`Vague ${S.currentFloor} terminée ! +${reward.gold} or`, 'reward')
 
   if (isBossWave(S)) {
-    startBoss()
+    handleBoss()
     return
   }
 
   advanceFloor(S)
   saveState(S)
   updateUI()
-  setTimeout(() => {
-    initPile()
-    startFighting()
-  }, 1000)
+  setTimeout(() => { initPile(); startFighting() }, 1000)
 }
 
-function startBoss() {
+function handleBoss() {
   isPaused = true
-  addLog('Un BOSS apparaît !', 'boss')
+  addLog(`BOSS : ${getCurrentWorld().boss.name} !`, 'boss')
+
   setTimeout(() => {
+    const result = defeatBoss(S, S.activeWorld)
+    if (result) {
+      addLog(`Boss vaincu ! Kini ${result.kini} et pog ${result.pog} obtenus !`, 'reward')
+      if (result.nextWorld <= 7) {
+        addLog(`Monde ${result.nextWorld} déverrouillé !`, 'reward')
+      }
+    }
     isPaused = false
-    initPile()
-    startFighting()
-  }, 1500)
+    saveState(S)
+    updateUI()
+    setTimeout(() => { initPile(); startFighting() }, 1500)
+  }, 2000)
 }
 
-// ── Actions utilisateur ──
+function getCurrentWorld() {
+  return { boss: { name: `Boss Monde ${S.activeWorld}` } }
+}
+
+// ── Actions window ──
 window.selectKini = function(index) {
   S.selectedKini = index
   clearInterval(fightInterval)
@@ -133,16 +146,16 @@ window.selectKini = function(index) {
 window.openPackUI = function(type) {
   const result = openPack(S, type)
   if (result.error) { addLog(result.error, 'miss'); return }
-  result.fusionLogs.forEach(f => addLog(f.message, 'reward'))
+  result.fusionLogs?.forEach(f => addLog(f.message, 'reward'))
   saveState(S)
   updateUI()
-  // Lance l'animation d'ouverture de pack
   if (window.playPackAnim) window.playPackAnim(result.obtained)
+  if (window.setTab) window.setTab('packs')
 }
 
 window.toggleEquipUI = function(pogId) {
   const maxSlots = S.talentsUnlocked.includes('t9') ? 11 : 10
-  const result = toggleEquip(S, pogId, maxSlots)
+  const result   = toggleEquip(S, pogId, maxSlots)
   if (result.error) { addLog(result.error, 'miss'); return }
   saveState(S)
   updateUI()
@@ -151,7 +164,7 @@ window.toggleEquipUI = function(pogId) {
 window.claimDailyUI = function() {
   const reward = claimDaily(S)
   if (!reward) { addLog('Déjà réclamé aujourd\'hui !', 'miss'); return }
-  addLog(`Récompense journalière réclamée !`, 'reward')
+  addLog('Récompense journalière réclamée !', 'reward')
   saveState(S)
   updateUI()
 }
@@ -168,24 +181,34 @@ window.collectOfflineUI = function(mult) {
 
 window.setTab = setTab
 function setTab(tab) {
-  currentTab = tab
   document.querySelectorAll('.tab').forEach(t => {
     t.classList.toggle('active', t.dataset.tab === tab)
   })
   document.querySelectorAll('.view').forEach(v => {
     v.style.display = v.dataset.view === tab ? '' : 'none'
   })
+  updateUI()
 }
+
+document.addEventListener('worldChanged', () => {
+  clearInterval(fightInterval)
+  initPile()
+  startFighting()
+  updateUI()
+})
 
 // ── Rendu ──
 function updateUI() {
-  document.getElementById('d-gold').textContent      = Math.floor(S.gold)
-  document.getElementById('d-gems').textContent      = Math.floor(S.gems)
-  document.getElementById('d-frags').textContent     = Math.floor(S.fragments)
-  document.getElementById('d-tokens').textContent    = Math.floor(S.tokens)
-  document.getElementById('wave-num').textContent    = S.currentFloor
-  document.getElementById('world-name').textContent  = `Monde ${S.activeWorld}`
+  document.getElementById('d-gold').textContent   = Math.floor(S.gold)
+  document.getElementById('d-gems').textContent   = Math.floor(S.gems)
+  document.getElementById('d-frags').textContent  = Math.floor(S.fragments)
+  document.getElementById('d-tokens').textContent = Math.floor(S.tokens)
+  document.getElementById('wave-num').textContent = S.currentFloor
 
+  const wn = document.getElementById('world-name')
+  if (wn) wn.textContent = `Monde ${S.activeWorld} — ${getWorldName(S.activeWorld)}`
+
+  window._state = S
   if (window.renderHUD)        window.renderHUD(S)
   if (window.renderTeam)       window.renderTeam(S)
   if (window.renderKiniPanel)  window.renderKiniPanel(S)
@@ -196,16 +219,23 @@ function updateUI() {
   if (window.renderPacks)      window.renderPacks(S)
 }
 
+function getWorldName(id) {
+  const names = [
+    'La Rue des Pogs', 'Les Abysses Froides', 'La Forge Volcanique',
+    'Les Ruines Stellaires', 'Le Cosmos Brisé', 'L\'Olympe des Pogs', 'Le Néant Céleste'
+  ]
+  return names[id - 1] || ''
+}
+
 function renderEnemyPile() {
   const pile = document.getElementById('enemy-pile')
   if (!pile) return
-  const colors = ['#EEEDFE', '#E6F1FB', '#EAF3DE', '#FAEEDA', '#FBEAF0', '#FAECE7']
+  const colors = ['#EEEDFE','#E6F1FB','#EAF3DE','#FAEEDA','#FBEAF0','#FAECE7']
   pile.innerHTML = enemyPile.map(p => `
     <div class="pog-e${p.flipped ? ' flipped' : ''}" id="ep${p.id}"
       style="background:${p.flipped ? '#ddd' : colors[p.id % colors.length]}">
       ${p.id + 1}
-    </div>
-  `).join('')
+    </div>`).join('')
 }
 
 function renderAttack(result) {
@@ -229,20 +259,19 @@ function renderAttack(result) {
       }
     })
   }, 150)
-
-  const msg = result.isCrit
-    ? `★ CRITIQUE ! ${result.flipped} pog(s) retourné(s) !`
-    : `${result.flipped} pog(s) retourné(s)`
-  addLog(msg, result.isCrit ? 'crit' : 'flip')
+  addLog(
+    result.isCrit ? `★ CRITIQUE ! ${result.flipped} pog(s) !` : `${result.flipped} pog(s) retourné(s)`,
+    result.isCrit ? 'crit' : 'flip'
+  )
 }
 
 function updateWaveBar() {
-  const total = enemyPile.length
+  const total   = enemyPile.length
   const flipped = enemyPile.filter(p => p.flipped).length
-  const pct = total > 0 ? Math.round(flipped / total * 100) : 0
-  const bar = document.getElementById('wave-bar')
-  const pctEl = document.getElementById('wave-pct')
-  if (bar) bar.style.width = pct + '%'
+  const pct     = total > 0 ? Math.round(flipped / total * 100) : 0
+  const bar     = document.getElementById('wave-bar')
+  const pctEl   = document.getElementById('wave-pct')
+  if (bar)   bar.style.width  = pct + '%'
   if (pctEl) pctEl.textContent = pct + '%'
 }
 
@@ -250,7 +279,7 @@ function addLog(msg, cls) {
   const log = document.getElementById('log')
   if (!log) return
   const d = document.createElement('div')
-  d.className = cls || ''
+  d.className   = cls || ''
   d.textContent = msg
   log.insertBefore(d, log.firstChild)
   while (log.children.length > 20) log.removeChild(log.lastChild)
@@ -266,5 +295,4 @@ function calcIdleRate() {
   return Math.round(rate * 10) / 10
 }
 
-// ── Démarrage ──
 document.addEventListener('DOMContentLoaded', init)
