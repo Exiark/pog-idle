@@ -7,7 +7,6 @@ import {
   gainKiniXP, gainAccountXP, calcInterval,
 } from './core/combat.js'
 import { WORLDS } from './data/worlds.js'
-import { POGS, RARITY } from './data/pogs.js'
 import { KINIS } from './data/kinis.js'
 
 import './ui/hud.js'
@@ -103,9 +102,7 @@ function endWave() {
   updateMission(S, 'waves', 1)
   updateMission(S, 'gold_earned', reward.gold)
   addLog(`Vague ${S.currentFloor} terminée ! +${reward.gold} or`, 'reward')
-
   if (isBossWave(S)) { handleBoss(); return }
-
   advanceFloor(S)
   saveState(S)
   updateUI()
@@ -124,9 +121,9 @@ function showBossPanel(world) {
   bossActive = true
   bossMaxHP  = world.boss.hp
   bossHP     = bossMaxHP
-  document.getElementById('boss-name').textContent       = world.boss.name
-  document.getElementById('boss-desc').textContent       = world.boss.desc
-  document.getElementById('boss-hp-text').textContent    = `${bossHP}/${bossMaxHP} PV`
+  document.getElementById('boss-name').textContent        = world.boss.name
+  document.getElementById('boss-desc').textContent        = world.boss.desc
+  document.getElementById('boss-hp-text').textContent     = `${bossHP}/${bossMaxHP} PV`
   document.getElementById('boss-hp-bar-fill').style.width = '100%'
   document.getElementById('boss-panel').classList.add('visible')
   document.getElementById('kini-ball')?.classList.add('boss-mode')
@@ -161,7 +158,7 @@ function handleBossDefeated() {
   setTimeout(() => { initPile(); startFighting() }, 1000)
 }
 
-// ── Rendu pile verticale ──
+// ── Pile de pogs vue de côté ──
 function renderPogStack() {
   const stack   = document.getElementById('pog-stack')
   const counter = document.getElementById('stack-counter')
@@ -173,49 +170,61 @@ function renderPogStack() {
   const remaining = enemyPile.filter(p => !p.flipped)
   const flipped   = enemyPile.filter(p => p.flipped)
   const colors    = ['#EEEDFE','#E6F1FB','#EAF3DE','#FAEEDA','#FBEAF0','#FAECE7']
-
-  // Kini label
   const k = KINIS[S.selectedKini] || KINIS[0]
   if (ball)  ball.textContent  = k.icon
   if (label) label.textContent = k.name
 
-  // Pile : affiche max 5 pogs, le reste en "?"
-  const visible = Math.min(remaining.length, 5)
-  stack.innerHTML = remaining.slice(0, visible).map((p, i) => {
-    const isTop = i === 0
-    const col   = colors[p.id % colors.length]
-    return `
-      <div class="pog-stack-item${isTop ? ' top' : ''}"
-        id="sp${p.id}"
-        style="background:${isTop ? col : '#D3D1C7'};
-               border-color:${isTop ? '#7F77DD' : '#B4B2A9'}">
-        ${isTop ? p.id + 1 : '?'}
-      </div>`
-  }).join('')
+  let html = ''
+  const maxVisible = 7
 
-  if (remaining.length > 5) {
-    stack.innerHTML += `
-      <div style="font-size:10px;color:var(--text-muted);margin-top:2px">
-        +${remaining.length - 5} sous la pile
+  if (remaining.length === 0) {
+    html = `<div style="font-size:12px;color:var(--text-muted);padding:12px">Pile vide !</div>`
+  } else {
+    // Pog du dessus — coloré et visible
+    const top    = remaining[0]
+    const topCol = colors[top.id % colors.length]
+    html += `
+      <div class="pog-top" id="ptop"
+        style="background:${topCol};color:#26215C">
+        Pog ${top.id + 1}
       </div>`
+
+    // Tranches des pogs suivants visibles
+    remaining.slice(1, maxVisible).forEach((p, i) => {
+      const w   = Math.max(60, 104 - i * 6)
+      const col = colors[p.id % colors.length]
+      html += `<div class="pog-slice visible" style="width:${w}px;background:${col}88"></div>`
+    })
+
+    // Tranches cachées
+    const hiddenCount = Math.max(0, remaining.length - maxVisible)
+    if (hiddenCount > 0) {
+      for (let i = 0; i < Math.min(hiddenCount, 3); i++) {
+        const w = Math.max(50, 68 - i * 6)
+        html += `<div class="pog-slice hidden-pog" style="width:${w}px">
+          ${i === 0 ? '+' + hiddenCount : ''}
+        </div>`
+      }
+    }
   }
 
+  stack.innerHTML = html
+
   if (counter) {
-    counter.textContent = `${remaining.length} restant${remaining.length > 1 ? 's' : ''}`
+    counter.textContent = remaining.length > 0
+      ? `${remaining.length} pog${remaining.length > 1 ? 's' : ''} restant${remaining.length > 1 ? 's' : ''}`
+      : 'Pile retournée !'
   }
 
   // Zone gagnés
   if (wonZone) {
-    const wonPogs = flipped.slice(-4)
-    const wonHtml = wonPogs.map(p => {
-      const col = colors[p.id % colors.length]
-      return `<div class="won-pog" style="background:${col};border-color:#7F77DD">${p.id + 1}</div>`
-    }).join('')
+    const recent = flipped.slice(-5)
     wonZone.innerHTML = `
-      <div id="pog-won-label" style="font-size:10px;color:var(--text-muted);margin-bottom:3px">
-        Gagnés (${flipped.length})
-      </div>
-      ${wonHtml}`
+      <div id="pog-won-label">Gagnés (${flipped.length})</div>
+      ${recent.map(p => {
+        const col = colors[p.id % colors.length]
+        return `<div class="won-pog" style="background:${col}">${p.id + 1}</div>`
+      }).join('')}`
   }
 }
 
@@ -224,7 +233,7 @@ function renderAttack(result) {
   const ball = document.getElementById('kini-ball')
   if (!ball) return
 
-  ball.classList.remove('throw', 'back', 'shake')
+  ball.classList.remove('throw', 'back')
   void ball.offsetWidth
   ball.classList.add('throw')
 
@@ -241,15 +250,13 @@ function renderAttack(result) {
     if (bossActive) updateBossHP(result.flipped)
 
     // Anime le pog du dessus
-    const topPog = enemyPile.filter(p => !p.flipped)[0]
-    if (topPog) {
-      const el = document.getElementById('sp' + topPog.id)
-      if (el) {
-        el.classList.add(result.isCrit ? 'crit-flip' : 'flipped')
-      }
+    const topEl = document.getElementById('ptop')
+    if (topEl) {
+      topEl.classList.add('hit')
+      setTimeout(() => renderPogStack(), 380)
+    } else {
+      renderPogStack()
     }
-
-    setTimeout(() => renderPogStack(), 350)
   }, 180)
 
   addLog(
@@ -266,8 +273,8 @@ function showCritLabel() {
   const label = document.createElement('div')
   label.className   = 'crit-label'
   label.textContent = '★ CRITIQUE !'
-  label.style.left  = Math.random() * 50 + 25 + '%'
-  label.style.top   = Math.random() * 30 + 20 + '%'
+  label.style.left  = Math.random() * 40 + 30 + '%'
+  label.style.top   = Math.random() * 30 + 10 + '%'
   arena.appendChild(label)
   setTimeout(() => label.remove(), 900)
 }
@@ -366,11 +373,11 @@ function updateUI() {
   document.getElementById('d-tokens').textContent = Math.floor(S.tokens)
   document.getElementById('wave-num').textContent = S.currentFloor
 
-  const wn = document.getElementById('world-name')
   const worldNames = [
     'La Rue des Pogs','Les Abysses Froides','La Forge Volcanique',
     'Les Ruines Stellaires','Le Cosmos Brisé','L\'Olympe des Pogs','Le Néant Céleste',
   ]
+  const wn = document.getElementById('world-name')
   if (wn) wn.textContent = `Monde ${S.activeWorld} — ${worldNames[S.activeWorld - 1] || ''}`
 
   window._state = S
