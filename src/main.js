@@ -138,8 +138,8 @@ function renderBilanPanel() {
   const panel = document.getElementById('bilan-panel')
   if (!panel) return
 
-  const flippedCount = enemyPile.filter(p => p.flipped).length
-  botPogs.forEach(p => { p.flipped = Math.random() > 0.4 })
+  const botFlipRate = 0.4 + Math.random() * 0.3
+  botPogs.forEach(p => { p.flipped = Math.random() < botFlipRate })
 
   currentScores = calculateScores(S, flippedCount, botPogs)
   const sc = currentScores

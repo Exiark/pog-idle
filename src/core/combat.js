@@ -33,12 +33,13 @@ export function generateBotPogs(state) {
   const world  = WORLDS[state.activeWorld - 1]
   const count  = Math.floor(Math.random() * (world.enemyCount.max - world.enemyCount.min + 1)) + world.enemyCount.min
   const resist = world.resistanceBase * (1 + state.currentFloor * 0.08)
+
   return Array.from({ length: count }, (_, i) => ({
     id:      i,
     flipped: false,
-    attack:  Math.round((1 + resist) * (1 + Math.random() * 0.3)),
-    defense: Math.round((0.8 + resist * 0.6) * (1 + Math.random() * 0.2)),
-    hp:      Math.round((3 + resist * 2) * (1 + Math.random() * 0.4)),
+    attack:  Math.round((2 + resist) * (1 + Math.random() * 0.3)),
+    defense: Math.round((1.5 + resist * 0.8) * (1 + Math.random() * 0.2)),
+    hp:      Math.round((5 + resist * 3) * (1 + Math.random() * 0.4)),
     maxHp:   0,
   })).map(p => ({ ...p, maxHp: p.hp }))
 }
@@ -53,22 +54,23 @@ export function calcFlips(state) {
   const kini    = KINIS[state.selectedKini] || KINIS[0]
   const world   = WORLDS[state.activeWorld - 1]
   const farming = state.activeWorld < state.currentWorld ? 0.6 : 1
-  let base   = kini.power
-  let resist = world.resistanceBase * (1 + state.currentFloor * 0.12)
+
+  let base   = kini.power * 0.4
+  let resist = world.resistanceBase * (1 + state.currentFloor * 0.2)
 
   getEquippedPogs(state).forEach(p => {
     if (!p?.effect) return
-    if (p.effect.startsWith('flips+'))  base   += parseFloat(p.effect.split('+')[1])
+    if (p.effect.startsWith('flips+'))  base   += parseFloat(p.effect.split('+')[1]) * 0.3
     if (p.effect.startsWith('resist-')) resist -= parseFloat(p.effect.split('-')[1])
-    if (p.effect === 'all+0.1')         base   *= 1.1
-    if (p.effect === 'all+0.3')         base   *= 1.3
-    if (p.effect === 'master')          base   *= 2
+    if (p.effect === 'all+0.1')         base   *= 1.05
+    if (p.effect === 'all+0.3')         base   *= 1.1
+    if (p.effect === 'master')          base   *= 1.3
   })
 
-  if (hasTalent(state, 't3')) resist *= 0.8
-  if ((KINIS[state.selectedKini] || KINIS[0]).bonusEffect === 'ignore_resist') resist = 0.1
+  if (hasTalent(state, 't3')) resist *= 0.85
+  if ((KINIS[state.selectedKini] || KINIS[0]).bonusEffect === 'ignore_resist') resist = 0.5
 
-  return Math.max(1, Math.floor((base / Math.max(0.1, resist)) * farming))
+  return Math.max(1, Math.floor((base / Math.max(0.5, resist)) * farming))
 }
 
 export function calcCrit(state) {
