@@ -432,3 +432,268 @@ button:active { transform: scale(0.97); }
   #arena { gap: 14px; padding: 14px 10px; }
   .pog-top, .pog-slice { width: 80px !important; }
 }
+
+/* ══════════════════════════════
+   ÉCRAN BILAN (Phase 2)
+   ══════════════════════════════ */
+#bilan-panel {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+#bilan-panel.visible { display: flex; }
+
+.bilan-header {
+  text-align: center;
+  padding: 8px 0 4px;
+}
+.bilan-title {
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: 3px;
+}
+.bilan-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Scores VS */
+.bilan-vs {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+.bilan-side {
+  flex: 1;
+  border-radius: 10px;
+  padding: 10px;
+}
+.bilan-side.player {
+  background: #EEEDFE;
+  border: 1px solid rgba(127,119,221,0.3);
+}
+.bilan-side.bot {
+  background: #FAECE7;
+  border: 1px solid rgba(216,90,48,0.3);
+}
+.bilan-side-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.bilan-count {
+  font-size: 24px;
+  font-weight: 500;
+  margin-bottom: 3px;
+}
+.bilan-side.player .bilan-count { color: var(--purple-dark); }
+.bilan-side.bot    .bilan-count { color: #993C1D; }
+.bilan-stats-row {
+  display: flex;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+.bilan-stats-row strong { color: var(--text); }
+.bilan-vs-sep {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+/* Indicateur d'avantage */
+.bilan-advantage {
+  font-size: 11px;
+  text-align: center;
+  padding: 7px 10px;
+  border-radius: 8px;
+}
+.bilan-advantage.player { background: #EAF3DE; color: #173404; }
+.bilan-advantage.bot    { background: #FAECE7; color: #4A1B0C; }
+.bilan-advantage.even   { background: var(--gray-bg); color: var(--text-muted); }
+
+/* Section label */
+.bilan-section {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 5px;
+}
+
+/* Grille pogs retournés */
+.bilan-pog-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.bilan-pog-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 7px;
+  border-radius: 9px;
+  border: 1.5px solid;
+  min-width: 56px;
+  cursor: default;
+}
+.bilan-pog-icon   { font-size: 18px; }
+.bilan-pog-name   { font-size: 8px; font-weight: 500; text-align: center; line-height: 1.3; max-width: 54px; }
+.bilan-pog-stats  { font-size: 8px; color: var(--text-muted); text-align: center; }
+.bilan-pog-rarity {
+  font-size: 8px; font-weight: 500;
+  padding: 1px 5px; border-radius: 6px;
+  margin-top: 1px;
+}
+
+/* Pogs bot cachés */
+.bilan-bot-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+.bilan-bot-pog {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: #D3D1C7;
+  border: 1.5px solid #B4B2A9;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: #888; font-weight: 500;
+}
+
+/* Bouton lancer */
+#launch-battle-btn {
+  width: 100%;
+  padding: 11px;
+  background: var(--purple);
+  border: none;
+  border-color: var(--purple-dark);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, transform 0.1s;
+}
+#launch-battle-btn:hover  { background: var(--purple-dark); }
+#launch-battle-btn:active { transform: scale(0.98); }
+
+/* ══════════════════════════════
+   ÉCRAN COMBAT (Phase 3) amélioré
+   ══════════════════════════════ */
+#battle-panel {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+#battle-panel.visible { display: flex; }
+
+.battle-header {
+  text-align: center;
+  padding: 6px 0;
+}
+.battle-title {
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+.battle-turn-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.battle-combatants {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+.battle-fighter {
+  flex: 1;
+  background: white;
+  border: 0.5px solid var(--gray-border);
+  border-radius: 12px;
+  padding: 10px;
+  text-align: center;
+}
+.battle-fighter.active-turn {
+  border-width: 1.5px;
+}
+.battle-fighter.player.active-turn { border-color: var(--purple); }
+.battle-fighter.bot.active-turn    { border-color: #D85A30; }
+.battle-fighter-label { font-size: 10px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px; }
+.battle-fighter-hp    { font-size: 18px; font-weight: 500; margin-bottom: 4px; }
+.battle-fighter.player .battle-fighter-hp { color: var(--purple-dark); }
+.battle-fighter.bot    .battle-fighter-hp { color: #993C1D; }
+.battle-hp-bar {
+  height: 8px; border-radius: 4px;
+  overflow: hidden; background: var(--gray-bg); margin: 4px 0;
+}
+.battle-hp-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease-out; }
+.battle-hp-fill.player { background: var(--purple); }
+.battle-hp-fill.bot    { background: #D85A30; }
+.battle-fighter-stats  { font-size: 10px; color: var(--text-muted); }
+
+.battle-vs-label {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 500; color: var(--text-muted);
+  padding: 0 4px;
+}
+
+/* Log de combat */
+#battle-log {
+  background: var(--gray-bg);
+  border-radius: 10px;
+  padding: 8px 10px;
+  max-height: 120px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.battle-log-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+  border-bottom: 0.5px solid var(--gray-border);
+}
+.battle-log-turn:last-child { border-bottom: none; }
+.battle-log-turn-num {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.battle-log-action {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.battle-log-action.player-atk {
+  background: #EEEDFE;
+  color: #26215C;
+}
+.battle-log-action.bot-atk {
+  background: #FAECE7;
+  color: #4A1B0C;
+}
+.battle-log-action.crit {
+  font-weight: 500;
+}

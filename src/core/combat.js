@@ -4,22 +4,19 @@ import { KINIS }  from '../data/kinis.js'
 import { hasTalent, getEquippedPogs } from './state.js'
 import { updateMission } from './economy.js'
 
-// ── Machine à états du combat ──
 export const PHASE = {
-  FLIPPING:    'flipping',    // Le kini retourne des pogs
-  CALCULATING: 'calculating', // Calcul des scores
-  BATTLING:    'battling',    // Combat pogs vs bot
-  RESULT:      'result',      // Victoire ou défaite
+  FLIPPING:    'flipping',
+  CALCULATING: 'calculating',
+  BATTLING:    'battling',
+  RESULT:      'result',
 }
 
-// ── Stats d'un pog pour le combat ──
-function pogCombatStats(pogId, level) {
-  const pog = POGS.find(p => p.id === pogId)
+const RARITY_MULT = { C: 1, R: 1.8, E: 3, L: 5, M: 9 }
+
+export function pogCombatStats(pogId) {
+  const pog  = POGS.find(p => p.id === pogId)
   if (!pog) return { attack: 1, defense: 1, hp: 5 }
-
-  const rarityBonus = { C: 1, R: 1.5, E: 2.5, L: 4, M: 7 }
-  const mult = rarityBonus[pog.rarity] || 1
-
+  const mult = RARITY_MULT[pog.rarity] || 1
   return {
     id:      pogId,
     name:    pog.name,
@@ -32,12 +29,10 @@ function pogCombatStats(pogId, level) {
   }
 }
 
-// ── Génère les pogs du bot pour une vague ──
 export function generateBotPogs(state) {
   const world  = WORLDS[state.activeWorld - 1]
   const count  = Math.floor(Math.random() * (world.enemyCount.max - world.enemyCount.min + 1)) + world.enemyCount.min
   const resist = world.resistanceBase * (1 + state.currentFloor * 0.08)
-
   return Array.from({ length: count }, (_, i) => ({
     id:      i,
     flipped: false,
@@ -48,19 +43,16 @@ export function generateBotPogs(state) {
   })).map(p => ({ ...p, maxHp: p.hp }))
 }
 
-// ── Génère la pile de pogs ennemis (visuel) ──
 export function generateEnemyPile(state) {
   const world = WORLDS[state.activeWorld - 1]
   const count = Math.floor(Math.random() * (world.enemyCount.max - world.enemyCount.min + 1)) + world.enemyCount.min
   return Array.from({ length: count }, (_, i) => ({ id: i, flipped: false }))
 }
 
-// ── Calcule le nombre de flips par attaque ──
 export function calcFlips(state) {
-  const kini   = KINIS[state.selectedKini] || KINIS[0]
-  const world  = WORLDS[state.activeWorld - 1]
+  const kini    = KINIS[state.selectedKini] || KINIS[0]
+  const world   = WORLDS[state.activeWorld - 1]
   const farming = state.activeWorld < state.currentWorld ? 0.6 : 1
-
   let base   = kini.power
   let resist = world.resistanceBase * (1 + state.currentFloor * 0.12)
 
@@ -74,12 +66,11 @@ export function calcFlips(state) {
   })
 
   if (hasTalent(state, 't3')) resist *= 0.8
-  if (kini.bonusEffect === 'ignore_resist') resist = 0.1
+  if ((KINIS[state.selectedKini] || KINIS[0]).bonusEffect === 'ignore_resist') resist = 0.1
 
   return Math.max(1, Math.floor((base / Math.max(0.1, resist)) * farming))
 }
 
-// ── Calcule la chance de critique ──
 export function calcCrit(state) {
   const kini = KINIS[state.selectedKini] || KINIS[0]
   let crit = kini.chance
@@ -90,7 +81,6 @@ export function calcCrit(state) {
   return Math.min(0.95, crit)
 }
 
-// ── Calcule la vitesse d'attaque ──
 export function calcSpeed(state) {
   const kini = KINIS[state.selectedKini] || KINIS[0]
   let speed = kini.speed
@@ -105,14 +95,13 @@ export function calcInterval(state) {
   return Math.max(300, Math.floor(1200 / calcSpeed(state)))
 }
 
-// ── Effectue une attaque de retournement ──
 export function doAttack(state, enemyPile) {
   const isCrit = Math.random() < calcCrit(state)
   let flips    = calcFlips(state)
   if (isCrit) flips = Math.floor(flips * 2)
 
   const kini = KINIS[state.selectedKini] || KINIS[0]
-  if (kini.bonusEffect === 'min_flips+3')    flips = Math.max(3, flips)
+  if (kini.bonusEffect === 'min_flips+3')                             flips = Math.max(3, flips)
   if (kini.bonusEffect === 'double_flip+0.2' && Math.random() < 0.2) flips *= 2
 
   const remaining = enemyPile.filter(p => !p.flipped)
@@ -122,119 +111,95 @@ export function doAttack(state, enemyPile) {
   state.totalFlips += toFlip.length
   updateMission(state, 'flips', toFlip.length)
 
-  return {
-    flipped: toFlip.length,
-    isCrit,
-    done: enemyPile.every(p => p.flipped),
-  }
+  return { flipped: toFlip.length, isCrit, done: enemyPile.every(p => p.flipped) }
 }
 
-// ── Phase de calcul : score joueur vs bot ──
-export function calculateScores(state, playerFlipped, botPogs) {
-  const kini         = KINIS[state.selectedKini] || KINIS[0]
-  const equippedPogs = getEquippedPogs(state)
-  const farming      = state.activeWorld < state.currentWorld ? 0.4 : 1
+// ── Calcule les scores à partir des pogs retournés ──
+export function calculateScores(state, flippedCount, botPogs) {
+  const kini    = KINIS[state.selectedKini] || KINIS[0]
+  const farming = state.activeWorld < state.currentWorld ? 0.4 : 1
 
-  // Score joueur = somme des stats de pogs retournés × bonus
-  let playerAttack  = 0
-  let playerDefense = 0
-  let playerHp      = 0
+  // Pogs retournés du joueur = pogs de sa collection (on prend les N premiers)
+  const collectionPogs = state.collection.slice(0, flippedCount)
+  const playerPogStats = collectionPogs.map(p => pogCombatStats(p.id))
 
-  playerFlipped.forEach(p => {
-    const eq = equippedPogs.find(e => e?.id === p.id)
-    if (eq) {
-      const stats = pogCombatStats(eq.id)
-      playerAttack  += stats.attack
-      playerDefense += stats.defense
-      playerHp      += stats.hp
-    }
-  })
+  let playerAttack  = playerPogStats.reduce((s, p) => s + p.attack,  0)
+  let playerDefense = playerPogStats.reduce((s, p) => s + p.defense, 0)
+  let playerHp      = playerPogStats.reduce((s, p) => s + p.hp,      0)
 
   // Bonus kini
   playerAttack  *= (1 + (kini.power - 10) * 0.02)
   playerDefense *= (1 + kini.accuracy * 0.5)
 
-  // Bonus pogs passifs équipés
-  equippedPogs.forEach(p => {
+  // Bonus pogs équipés (passifs)
+  getEquippedPogs(state).forEach(p => {
     if (!p?.effect) return
-    if (p.effect.startsWith('gold+'))  {}
-    if (p.effect === 'all+0.1')        { playerAttack *= 1.1; playerDefense *= 1.1 }
-    if (p.effect === 'all+0.3')        { playerAttack *= 1.3; playerDefense *= 1.3 }
-    if (p.effect === 'master')         { playerAttack *= 2;   playerDefense *= 2 }
+    if (p.effect === 'all+0.1') { playerAttack *= 1.1; playerDefense *= 1.1 }
+    if (p.effect === 'all+0.3') { playerAttack *= 1.3; playerDefense *= 1.3 }
+    if (p.effect === 'master')  { playerAttack *= 2;   playerDefense *= 2 }
   })
 
-  // Talents
   if (hasTalent(state, 't2')) playerAttack  *= 1.1
   if (hasTalent(state, 't7')) playerDefense *= 1.2
 
-  // Score bot = somme des stats de pogs retournés
+  // Bot
   const botFlipped  = botPogs.filter(p => p.flipped)
-  let botAttack  = botFlipped.reduce((s, p) => s + p.attack,  0)
-  let botDefense = botFlipped.reduce((s, p) => s + p.defense, 0)
-  let botHp      = botFlipped.reduce((s, p) => s + p.hp,      0)
+  const botAttack   = botFlipped.reduce((s, p) => s + p.attack,  0)
+  const botDefense  = botFlipped.reduce((s, p) => s + p.defense, 0)
+  const botHp       = botFlipped.reduce((s, p) => s + p.hp,      0)
 
   return {
     player: {
-      attack:  Math.round(playerAttack  * farming),
-      defense: Math.round(playerDefense * farming),
-      hp:      Math.round(Math.max(10, playerHp)),
-      count:   playerFlipped.length,
+      attack:   Math.max(1, Math.round(playerAttack  * farming)),
+      defense:  Math.max(1, Math.round(playerDefense * farming)),
+      hp:       Math.max(10, Math.round(playerHp)),
+      count:    flippedCount,
+      pogs:     playerPogStats,
     },
     bot: {
-      attack:  Math.round(botAttack),
-      defense: Math.round(botDefense),
-      hp:      Math.round(Math.max(10, botHp)),
-      count:   botFlipped.length,
+      attack:   Math.max(1, Math.round(botAttack)),
+      defense:  Math.max(1, Math.round(botDefense)),
+      hp:       Math.max(10, Math.round(botHp)),
+      count:    botFlipped.length,
     },
   }
 }
 
-// ── Simule le combat tour par tour ──
 export function simulateBattle(scores) {
-  let pHp = scores.player.hp
-  let bHp = scores.bot.hp
+  let pHp  = scores.player.hp
+  let bHp  = scores.bot.hp
   const log = []
   let turn  = 0
 
-  while (pHp > 0 && bHp > 0 && turn < 20) {
+  while (pHp > 0 && bHp > 0 && turn < 30) {
     turn++
-    const pDmg = Math.max(1, scores.player.attack - scores.bot.defense)
-    const bDmg = Math.max(1, scores.bot.attack - scores.player.defense)
-
+    const pDmg  = Math.max(1, scores.player.attack - Math.floor(scores.bot.defense * 0.5))
+    const bDmg  = Math.max(1, scores.bot.attack    - Math.floor(scores.player.defense * 0.5))
     const pCrit = Math.random() < 0.15
     const bCrit = Math.random() < 0.15
+    const fpDmg = pCrit ? Math.floor(pDmg * 2) : pDmg
+    const fbDmg = bCrit ? Math.floor(bDmg * 2) : bDmg
 
-    const finalPDmg = pCrit ? Math.floor(pDmg * 2) : pDmg
-    const finalBDmg = bCrit ? Math.floor(bDmg * 2) : bDmg
-
-    bHp -= finalPDmg
-    pHp -= finalBDmg
+    bHp -= fpDmg
+    pHp -= fbDmg
 
     log.push({
       turn,
-      playerDmg:  finalPDmg,
-      botDmg:     finalBDmg,
-      playerCrit: pCrit,
-      botCrit:    bCrit,
-      playerHp:   Math.max(0, pHp),
-      botHp:      Math.max(0, bHp),
+      playerDmg: fpDmg, botDmg: fbDmg,
+      playerCrit: pCrit, botCrit: bCrit,
+      playerHp: Math.max(0, pHp),
+      botHp:    Math.max(0, bHp),
     })
   }
 
-  return {
-    victory: pHp > 0,
-    turns:   log,
-    finalPlayerHp: Math.max(0, pHp),
-    finalBotHp:    Math.max(0, bHp),
-  }
+  return { victory: pHp > 0, turns: log }
 }
 
-// ── Calcule les récompenses de vague ──
 export function calcWaveReward(state) {
-  const world      = WORLDS[state.activeWorld - 1]
-  const farming    = state.activeWorld < state.currentWorld ? 0.4 : 1
-  const baseGold   = (15 + state.currentFloor * 5) * world.goldMultiplier
-  let goldMult     = farming
+  const world    = WORLDS[state.activeWorld - 1]
+  const farming  = state.activeWorld < state.currentWorld ? 0.4 : 1
+  const baseGold = (15 + state.currentFloor * 5) * world.goldMultiplier
+  let goldMult   = farming
 
   getEquippedPogs(state).forEach(p => {
     if (!p?.effect) return
@@ -244,10 +209,10 @@ export function calcWaveReward(state) {
   if (hasTalent(state, 't4')) goldMult += 0.15
 
   return {
-    gold:       Math.floor(baseGold * goldMult),
-    fragments:  Math.floor((2 + (hasTalent(state, 't6') ? 2 : 0)) * farming),
-    gems:       hasTalent(state, 't7') ? 1 : 0,
-    accountXP:  Math.floor((10 + state.currentFloor * 2) * farming),
+    gold:      Math.floor(baseGold * goldMult),
+    fragments: Math.floor((2 + (hasTalent(state, 't6') ? 2 : 0)) * farming),
+    gems:      hasTalent(state, 't7') ? 1 : 0,
+    accountXP: Math.floor((10 + state.currentFloor * 2) * farming),
   }
 }
 
@@ -290,7 +255,7 @@ export function gainAccountXP(state, amount) {
   const level  = state.accountLevel
   const needed = (level + 1) * 100
   if (state.accountXP >= needed && level < 5) {
-    state.accountXP  -= needed
+    state.accountXP   -= needed
     state.accountLevel++
     state.talentPoints++
     return true

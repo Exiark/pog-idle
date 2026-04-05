@@ -44,6 +44,7 @@
   <div id="wave-frise"></div>
   <div id="kini-card"></div>
 
+  <!-- Boss panel -->
   <div id="boss-panel">
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div>
@@ -57,18 +58,16 @@
     </div>
   </div>
 
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+  <!-- Monde + Vague -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
     <div id="world-name" style="font-size:13px;font-weight:500">Monde 1</div>
     <div style="font-size:12px;color:var(--text-muted)">Vague <span id="wave-num">1</span>/11</div>
   </div>
 
-  <!-- Phase label -->
-  <div id="phase-label" style="
-    font-size:11px;font-weight:500;color:var(--purple);
-    text-align:center;margin-bottom:6px;min-height:16px;
-  "></div>
+  <!-- Label de phase -->
+  <div id="phase-label" style="font-size:11px;font-weight:500;color:var(--purple);text-align:center;margin-bottom:6px;min-height:16px"></div>
 
-  <!-- Arène principale — pile + kini -->
+  <!-- Phase 1 : Arène retournement -->
   <div id="arena">
     <div id="kini-launcher">
       <div id="kini-ball">🥏</div>
@@ -85,35 +84,40 @@
     <div id="crit-container"></div>
   </div>
 
-  <!-- Panel combat tour par tour -->
+  <!-- Phase 2 : Bilan -->
+  <div id="bilan-panel"></div>
+
+  <!-- Phase 3 : Combat -->
   <div id="battle-panel">
-    <div class="battle-vs">
-      <div class="battle-side player">
-        <div class="battle-side-label">Vos pogs</div>
-        <div id="p-count" style="font-size:18px;font-weight:500">0</div>
+    <div class="battle-header">
+      <div class="battle-title" id="battle-title">Combat !</div>
+      <div class="battle-turn-label" id="battle-turn-label">Tour 1...</div>
+    </div>
+    <div class="battle-combatants">
+      <div class="battle-fighter player" id="battle-fighter-player">
+        <div class="battle-fighter-label">Vos pogs</div>
+        <div class="battle-fighter-hp" id="p-hp-val">100</div>
         <div class="battle-hp-bar"><div class="battle-hp-fill player" id="p-hp-bar" style="width:100%"></div></div>
-        <div class="battle-stat">ATK <strong id="p-atk">0</strong> · DEF <strong id="p-def">0</strong></div>
+        <div class="battle-fighter-stats">Atk <strong id="p-atk-val">0</strong> · Def <strong id="p-def-val">0</strong></div>
       </div>
-      <div style="font-size:18px;font-weight:500;color:var(--text-muted)">VS</div>
-      <div class="battle-side bot">
-        <div class="battle-side-label">Bot</div>
-        <div id="b-count" style="font-size:18px;font-weight:500">0</div>
+      <div class="battle-vs-label">VS</div>
+      <div class="battle-fighter bot" id="battle-fighter-bot">
+        <div class="battle-fighter-label">Bot</div>
+        <div class="battle-fighter-hp" id="b-hp-val">100</div>
         <div class="battle-hp-bar"><div class="battle-hp-fill bot" id="b-hp-bar" style="width:100%"></div></div>
-        <div class="battle-stat">ATK <strong id="b-atk">0</strong> · DEF <strong id="b-def">0</strong></div>
+        <div class="battle-fighter-stats">Atk <strong id="b-atk-val">0</strong> · Def <strong id="b-def-val">0</strong></div>
       </div>
     </div>
-    <div id="battle-log" style="
-      width:100%;max-height:80px;overflow-y:auto;
-      font-size:11px;color:var(--text-muted);
-    "></div>
+    <div id="battle-log"></div>
   </div>
 
-  <!-- Panel résultat -->
+  <!-- Phase 4 : Résultat -->
   <div id="result-panel">
     <div class="result-icon" id="result-icon">🏆</div>
     <div class="result-title" id="result-title">Victoire !</div>
     <div class="result-sub" id="result-sub"></div>
-    <button class="btn-primary" id="result-btn" onclick="onResultNext()">Continuer</button>
+    <div id="result-extra" style="display:none;width:100%"></div>
+    <button class="btn-primary" id="result-btn" style="margin-top:8px">Continuer</button>
   </div>
 
   <!-- Barre de progression -->
