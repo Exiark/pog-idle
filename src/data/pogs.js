@@ -1,365 +1,313 @@
-// ══════════════════════════════════════════════════════════════
-//  POG IDLE — src/data/pogs.js
-//  Chaque pog est un CHAMPION visible en combat
-//  emoji = avatar affiché dans l'arène
-//  role  = Attaque / Défense / Vitesse / Support / Critique
-// ══════════════════════════════════════════════════════════════
+export const RARITY = {
+  C: { label: 'Commun',     color: '#B4B2A9', bg: '#F1EFE8', text: '#2C2C2A' },
+  R: { label: 'Rare',       color: '#378ADD', bg: '#E6F1FB', text: '#042C53' },
+  E: { label: 'Épique',     color: '#7F77DD', bg: '#EEEDFE', text: '#26215C' },
+  L: { label: 'Légendaire', color: '#EF9F27', bg: '#FAEEDA', text: '#412402' },
+  M: { label: 'Mythique',   color: '#D4537E', bg: '#FBEAF0', text: '#4B1528' },
+}
 
-export const RARITY = { C: 'C', R: 'R', E: 'E', L: 'L', M: 'M' };
-export const RARITY_ORDER = ['C', 'R', 'E', 'L', 'M'];
+export const RARITY_ORDER = ['C', 'R', 'E', 'L', 'M']
 
-export const RARITY_NAMES = {
-  C: 'Commun', R: 'Rare', E: 'Épique', L: 'Légendaire', M: 'Mythique'
-};
+// Classe de champion
+export const CLASSES = {
+  ATK: { label: 'Attaquant', color: '#D85A30', icon: '⚔' },
+  DEF: { label: 'Défenseur', color: '#378ADD', icon: '🛡' },
+  SPT: { label: 'Support',   color: '#3B6D11', icon: '✦' },
+  TNK: { label: 'Tank',      color: '#534AB7', icon: '⬟' },
+}
 
-export const RARITY_MULTIPLIER = { C: 1, R: 1.4, E: 2, L: 3.2, M: 5 };
-
-// ─── BASE STATS PAR RARETÉ ───────────────────────────────────
-// hp  = points de vie du champion en combat
-// atk = dégâts de base par attaque
-// spd = vitesse d'attaque (1.0 = normal, 2.0 = double vitesse)
-// crit= chance de coup critique (0–1)
-// def = réduction de dégâts reçus (0–1)
-
+// Stats de base par rareté
 const BASE = {
-  C: { hp: 80,  atk: 12, spd: 1.0, crit: 0.05, def: 0.0  },
-  R: { hp: 120, atk: 18, spd: 1.1, crit: 0.10, def: 0.05 },
-  E: { hp: 180, atk: 28, spd: 1.2, crit: 0.15, def: 0.10 },
-  L: { hp: 280, atk: 45, spd: 1.4, crit: 0.20, def: 0.15 },
-  M: { hp: 450, atk: 75, spd: 1.6, crit: 0.30, def: 0.25 },
-};
-
-// ─── 30 POGS NORMAUX (gacha) ─────────────────────────────────
-export const POGS = [
-
-  // ── COMMUNS (8) ──────────────────────────────────────────
-  {
-    id: 'p01', name: 'Slugger',  rarity: 'C', emoji: '🥊',
-    role: 'Attaque',
-    effect: { type: 'gold+', value: 5 },
-    effectDesc: '+5 or par vague',
-    lore: 'Un puncheur de rue sans finesse, mais avec un cœur en or.',
-    ...BASE.C
-  },
-  {
-    id: 'p02', name: 'Bouclier', rarity: 'C', emoji: '🛡️',
-    role: 'Défense',
-    effect: { type: 'resist-', value: 10 },
-    effectDesc: '-10% dégâts reçus',
-    lore: 'Aussi solide que du béton armé.',
-    ...BASE.C, def: 0.1
-  },
-  {
-    id: 'p03', name: 'Rapido',   rarity: 'C', emoji: '💨',
-    role: 'Vitesse',
-    effect: { type: 'speed+', value: 0.1 },
-    effectDesc: '+10% vitesse équipe',
-    lore: 'Plus rapide que son ombre.',
-    ...BASE.C, spd: 1.3
-  },
-  {
-    id: 'p04', name: 'Punchito', rarity: 'C', emoji: '👊',
-    role: 'Attaque',
-    effect: { type: 'flips+', value: 1 },
-    effectDesc: '+1 flip par manche',
-    lore: 'Petit gabarit, grande hargne.',
-    ...BASE.C
-  },
-  {
-    id: 'p05', name: 'Tombeur',  rarity: 'C', emoji: '🪨',
-    role: 'Attaque',
-    effect: { type: 'gold+', value: 8 },
-    effectDesc: '+8 or par victoire',
-    lore: 'Lourd et inébranlable.',
-    ...BASE.C, atk: 15, hp: 60
-  },
-  {
-    id: 'p06', name: 'Filou',    rarity: 'C', emoji: '🃏',
-    role: 'Support',
-    effect: { type: 'idle+', value: 0.05 },
-    effectDesc: '+5% or idle',
-    lore: 'Toujours un tour dans sa manche.',
-    ...BASE.C
-  },
-  {
-    id: 'p07', name: 'Guérisseur', rarity: 'C', emoji: '💚',
-    role: 'Support',
-    effect: { type: 'idle+', value: 0.08 },
-    effectDesc: '+8% or idle',
-    lore: 'Garde ses alliés en forme.',
-    ...BASE.C, atk: 8, hp: 100
-  },
-  {
-    id: 'p08', name: 'Frappeur', rarity: 'C', emoji: '🤛',
-    role: 'Attaque',
-    effect: { type: 'flips+', value: 2 },
-    effectDesc: '+2 flips par manche',
-    lore: 'Direct et efficace.',
-    ...BASE.C
-  },
-
-  // ── RARES (8) ────────────────────────────────────────────
-  {
-    id: 'p09', name: 'Volt',     rarity: 'R', emoji: '⚡',
-    role: 'Vitesse',
-    effect: { type: 'speed+', value: 0.2 },
-    effectDesc: '+20% vitesse équipe',
-    lore: 'Se déplace à la vitesse de l\'éclair.',
-    ...BASE.R, spd: 1.6
-  },
-  {
-    id: 'p10', name: 'Flamme',   rarity: 'R', emoji: '🔥',
-    role: 'Attaque',
-    effect: { type: 'crit+', value: 0.08 },
-    effectDesc: '+8% chance critique',
-    lore: 'Sa colère brûle comme le feu.',
-    ...BASE.R, crit: 0.18
-  },
-  {
-    id: 'p11', name: 'Glacieur', rarity: 'R', emoji: '❄️',
-    role: 'Défense',
-    effect: { type: 'resist-', value: 15 },
-    effectDesc: '-15% dégâts reçus',
-    lore: 'Froid comme la glace, dur comme l\'acier.',
-    ...BASE.R, def: 0.15
-  },
-  {
-    id: 'p12', name: 'Cobra',    rarity: 'R', emoji: '🐍',
-    role: 'Critique',
-    effect: { type: 'crit+', value: 0.12 },
-    effectDesc: '+12% chance critique',
-    lore: 'Frappe vite et sans prévenir.',
-    ...BASE.R, crit: 0.22, atk: 22, hp: 90
-  },
-  {
-    id: 'p13', name: 'Titan',    rarity: 'R', emoji: '🗿',
-    role: 'Défense',
-    effect: { type: 'resist-', value: 20 },
-    effectDesc: '-20% dégâts reçus',
-    lore: 'Un mur vivant sur le terrain.',
-    ...BASE.R, def: 0.2, hp: 180, atk: 12
-  },
-  {
-    id: 'p14', name: 'Shadow',   rarity: 'R', emoji: '🌑',
-    role: 'Critique',
-    effect: { type: 'steal+', value: 5 },
-    effectDesc: 'Vole 5 or après KO',
-    lore: 'Invisible jusqu\'au dernier instant.',
-    ...BASE.R, crit: 0.20
-  },
-  {
-    id: 'p15', name: 'Arachno',  rarity: 'R', emoji: '🕷️',
-    role: 'Support',
-    effect: { type: 'chain+', value: 1 },
-    effectDesc: 'Attaque en chaîne +1',
-    lore: 'Tisse des pièges invisibles.',
-    ...BASE.R
-  },
-  {
-    id: 'p16', name: 'Tonnerre', rarity: 'R', emoji: '🌩️',
-    role: 'Attaque',
-    effect: { type: 'all+', value: 5 },
-    effectDesc: '+5% toutes stats',
-    lore: 'La puissance de l\'orage dans ses poings.',
-    ...BASE.R
-  },
-
-  // ── ÉPIQUES (7) ──────────────────────────────────────────
-  {
-    id: 'p17', name: 'Dragoon',  rarity: 'E', emoji: '🐲',
-    role: 'Attaque',
-    effect: { type: 'all+', value: 10 },
-    effectDesc: '+10% toutes stats équipe',
-    lore: 'La légende du dragon coule dans ses veines.',
-    ...BASE.E
-  },
-  {
-    id: 'p18', name: 'Phénix',   rarity: 'E', emoji: '🦅',
-    role: 'Support',
-    effect: { type: 'revive', value: 1 },
-    effectDesc: 'Ressuscite 1 allié une fois',
-    lore: 'Renaît de ses cendres, encore et encore.',
-    ...BASE.E, hp: 140, atk: 20
-  },
-  {
-    id: 'p19', name: 'Maître',   rarity: 'E', emoji: '🥋',
-    role: 'Critique',
-    effect: { type: 'crit+', value: 0.20 },
-    effectDesc: '+20% chance critique',
-    lore: 'Vingt ans de discipline. Une frappe parfaite.',
-    ...BASE.E, crit: 0.35, atk: 35, hp: 140
-  },
-  {
-    id: 'p20', name: 'Vortex',   rarity: 'E', emoji: '🌀',
-    role: 'Vitesse',
-    effect: { type: 'speed+', value: 0.3 },
-    effectDesc: '+30% vitesse équipe',
-    lore: 'La tornade en personne.',
-    ...BASE.E, spd: 1.7, atk: 22
-  },
-  {
-    id: 'p21', name: 'Guerrière',rarity: 'E', emoji: '⚔️',
-    role: 'Attaque',
-    effect: { type: 'flips+', value: 3 },
-    effectDesc: '+3 flips par manche',
-    lore: 'Née pour le combat, vit pour la victoire.',
-    ...BASE.E
-  },
-  {
-    id: 'p22', name: 'Sanctus',  rarity: 'E', emoji: '✨',
-    role: 'Support',
-    effect: { type: 'idle+', value: 0.25 },
-    effectDesc: '+25% or idle',
-    lore: 'Sa présence seule inspire l\'équipe.',
-    ...BASE.E, atk: 18, hp: 220
-  },
-  {
-    id: 'p23', name: 'Méca',     rarity: 'E', emoji: '🤖',
-    role: 'Défense',
-    effect: { type: 'protect', value: 1 },
-    effectDesc: 'Protège l\'allié le plus faible',
-    lore: 'L\'armure parfaite, froide et calculée.',
-    ...BASE.E, def: 0.2, hp: 260
-  },
-
-  // ── LÉGENDAIRES (5) ──────────────────────────────────────
-  {
-    id: 'p24', name: 'Ryü',      rarity: 'L', emoji: '🐉',
-    role: 'Attaque',
-    effect: { type: 'all+', value: 20 },
-    effectDesc: '+20% toutes stats équipe',
-    lore: 'Le dragon originel. Sa flamme ne s\'éteint jamais.',
-    ...BASE.L
-  },
-  {
-    id: 'p25', name: 'Athéna',   rarity: 'L', emoji: '🦉',
-    role: 'Support',
-    effect: { type: 'idle+', value: 0.5 },
-    effectDesc: '+50% or idle',
-    lore: 'Sagesse et stratégie. Elle voit tout.',
-    ...BASE.L, atk: 30, hp: 360
-  },
-  {
-    id: 'p26', name: 'Shogun',   rarity: 'L', emoji: '⛩️',
-    role: 'Défense',
-    effect: { type: 'reflect+', value: 20 },
-    effectDesc: 'Renvoie 20% des dégâts',
-    lore: 'Le seigneur de guerre. Impassible et redoutable.',
-    ...BASE.L, def: 0.25, hp: 400
-  },
-  {
-    id: 'p27', name: 'Lux',      rarity: 'L', emoji: '☀️',
-    role: 'Critique',
-    effect: { type: 'crit+', value: 0.25 },
-    effectDesc: '+25% chance critique',
-    lore: 'La lumière aveuglante de la perfection.',
-    ...BASE.L, crit: 0.45, atk: 60, hp: 200
-  },
-  {
-    id: 'p28', name: 'Spectre',  rarity: 'L', emoji: '👻',
-    role: 'Vitesse',
-    effect: { type: 'speed+', value: 0.4 },
-    effectDesc: '+40% vitesse équipe',
-    lore: 'Intouchable. Insaisissable. Légendaire.',
-    ...BASE.L, spd: 2.0, atk: 38
-  },
-
-  // ── MYTHIQUES (2) ────────────────────────────────────────
-  {
-    id: 'p29', name: 'Omega',    rarity: 'M', emoji: '🌌',
-    role: 'Maître',
-    effect: { type: 'master', value: 1 },
-    effectDesc: '+20% toutes stats + crit ×2',
-    lore: 'La fin et le commencement. Nul ne l\'a vu deux fois.',
-    ...BASE.M
-  },
-  {
-    id: 'p30', name: 'Nyx',      rarity: 'M', emoji: '🌑',
-    role: 'Maître',
-    effect: { type: 'master', value: 1 },
-    effectDesc: '+15% stats + vole HP à chaque attaque',
-    lore: 'La nuit éternelle. Ses ennemis disparaissent dans l\'ombre.',
-    ...BASE.M, spd: 1.8, crit: 0.4
-  },
-];
-
-// ─── 7 POGS BOSS UNIQUES (non-gacha, boss:true) ──────────────
-export const POGS_BOSS = [
-  {
-    id: 'bw1', name: 'Le Retourneur', rarity: 'L', emoji: '🎭',
-    role: 'Maître', boss: true,
-    effect: { type: 'all+', value: 15 },
-    effectDesc: '+15% toutes stats',
-    lore: 'Le grand maître de la Rue des Pogs.',
-    ...BASE.L, hp: 300, atk: 50
-  },
-  {
-    id: 'bw2', name: 'Kraken',  rarity: 'L', emoji: '🦑',
-    role: 'Défense', boss: true,
-    effect: { type: 'resist-', value: 30 },
-    effectDesc: '-30% dégâts reçus',
-    lore: 'Gardien des Abysses Froides.',
-    ...BASE.L, hp: 500, def: 0.3
-  },
-  {
-    id: 'bw3', name: 'Pyroflip', rarity: 'L', emoji: '🌋',
-    role: 'Attaque', boss: true,
-    effect: { type: 'crit+', value: 0.30 },
-    effectDesc: '+30% chance critique',
-    lore: 'Né du magma de la Forge Volcanique.',
-    ...BASE.L, hp: 800, atk: 80, crit: 0.50
-  },
-  {
-    id: 'bw4', name: 'Titan-Mech', rarity: 'M', emoji: '🤖',
-    role: 'Maître', boss: true,
-    effect: { type: 'all+', value: 20 },
-    effectDesc: '+20% toutes stats',
-    lore: 'L\'IA des Ruines Stellaires.',
-    ...BASE.M, hp: 1200
-  },
-  {
-    id: 'bw5', name: 'Singularité', rarity: 'M', emoji: '🕳️',
-    role: 'Maître', boss: true,
-    effect: { type: 'master', value: 1 },
-    effectDesc: 'Absorbe les pouvoirs ennemis',
-    lore: 'Le point de non-retour du Cosmos Brisé.',
-    ...BASE.M, hp: 1800, atk: 100
-  },
-  {
-    id: 'bw6', name: 'Zeus Pogadon', rarity: 'M', emoji: '⚡',
-    role: 'Attaque', boss: true,
-    effect: { type: 'all+', value: 25 },
-    effectDesc: '+25% toutes stats équipe',
-    lore: 'Dieu de l\'Olympe des Pogs.',
-    ...BASE.M, hp: 2500, atk: 120
-  },
-  {
-    id: 'bw7', name: 'L\'Infini', rarity: 'M', emoji: '♾️',
-    role: 'Maître', boss: true,
-    effect: { type: 'master', value: 1 },
-    effectDesc: 'Toutes les capacités en une',
-    lore: 'La fin de tout. Le début de rien.',
-    ...BASE.M, hp: 4000, atk: 150, crit: 0.5, spd: 2.0, def: 0.3
-  },
-];
-
-// ─── HELPERS ─────────────────────────────────────────────────
-export function getPogById(id) {
-  return [...POGS, ...POGS_BOSS].find(p => p.id === id) || null;
+  C: { hp: 30,  atk: 8,  def: 5,  spd: 1.0 },
+  R: { hp: 55,  atk: 14, def: 9,  spd: 1.1 },
+  E: { hp: 90,  atk: 22, def: 15, spd: 1.2 },
+  L: { hp: 140, atk: 35, def: 24, spd: 1.3 },
+  M: { hp: 220, atk: 55, def: 38, spd: 1.5 },
 }
 
-export function getAllPogs() {
-  return [...POGS, ...POGS_BOSS];
+// Multiplicateurs par classe
+const CLASS_MULT = {
+  ATK: { hp: 0.8,  atk: 1.5, def: 0.7,  spd: 1.2 },
+  DEF: { hp: 1.0,  atk: 0.8, def: 1.6,  spd: 0.9 },
+  SPT: { hp: 0.9,  atk: 1.0, def: 1.0,  spd: 1.3 },
+  TNK: { hp: 1.6,  atk: 0.7, def: 1.4,  spd: 0.7 },
 }
 
-/** Retourne les stats réelles d'un pog en tenant compte de la rareté */
-export function getChampionStats(pog) {
-  const mult = RARITY_MULTIPLIER[pog.rarity] || 1;
+function stats(rarity, cls) {
+  const b = BASE[rarity]
+  const m = CLASS_MULT[cls]
   return {
-    hp:   Math.round(pog.hp   * mult),
-    atk:  Math.round(pog.atk  * mult),
-    spd:  pog.spd,
-    crit: pog.crit,
-    def:  pog.def,
-  };
+    hp:  Math.round(b.hp  * m.hp),
+    atk: Math.round(b.atk * m.atk),
+    def: Math.round(b.def * m.def),
+    spd: Math.round(b.spd * m.spd * 10) / 10,
+  }
 }
+
+export const POGS = [
+  // ── COMMUNS ──
+  {
+    id: 'p01', name: 'Flint', rarity: 'C', cls: 'ATK',
+    icon: '🪨', passive: 'crit+0.05',
+    desc: '+5% chance de critique',
+    lore: 'Un disc de pierre taillé par les anciens.',
+    ...stats('C', 'ATK'),
+  },
+  {
+    id: 'p02', name: 'Solarus', rarity: 'C', cls: 'SPT',
+    icon: '☀', passive: 'gold+0.1',
+    desc: '+10% or gagné',
+    lore: 'Béni par la lumière du matin.',
+    ...stats('C', 'SPT'),
+  },
+  {
+    id: 'p03', name: 'Vortex', rarity: 'C', cls: 'ATK',
+    icon: '🌀', passive: 'spd+0.1',
+    desc: '+10% vitesse d\'attaque',
+    lore: 'Tourne si vite qu\'on le voit à peine.',
+    ...stats('C', 'ATK'),
+  },
+  {
+    id: 'p04', name: 'Aegis', rarity: 'C', cls: 'DEF',
+    icon: '🛡', passive: 'def+0.1',
+    desc: '+10% défense de l\'équipe',
+    lore: 'Protège ses alliés sans fléchir.',
+    ...stats('C', 'DEF'),
+  },
+  {
+    id: 'p05', name: 'Lucky', rarity: 'C', cls: 'SPT',
+    icon: '✦', passive: 'crit+0.05',
+    desc: '+5% critique, +5% loot',
+    lore: 'La chance lui sourit toujours.',
+    ...stats('C', 'SPT'),
+  },
+  // ── RARES ──
+  {
+    id: 'p06', name: 'Luna', rarity: 'R', cls: 'SPT',
+    icon: '◎', passive: 'idle+0.5',
+    desc: '+0.5 or/s passif',
+    lore: 'Veille sur le groupe même la nuit.',
+    ...stats('R', 'SPT'),
+  },
+  {
+    id: 'p07', name: 'Bolt', rarity: 'R', cls: 'ATK',
+    icon: '⚡', passive: 'atk+0.15',
+    desc: '+15% ATK',
+    lore: 'Frappe comme la foudre.',
+    ...stats('R', 'ATK'),
+  },
+  {
+    id: 'p08', name: 'Cyclone', rarity: 'R', cls: 'ATK',
+    icon: '〇', passive: 'multi+0.1',
+    desc: '10% de frapper 2 ennemis',
+    lore: 'Son souffle balaye tout sur son passage.',
+    ...stats('R', 'ATK'),
+  },
+  {
+    id: 'p09', name: 'Saphyr', rarity: 'R', cls: 'DEF',
+    icon: '◇', passive: 'gold+0.25',
+    desc: '+25% or gagné',
+    lore: 'Sa brillance attire les richesses.',
+    ...stats('R', 'DEF'),
+  },
+  {
+    id: 'p10', name: 'Ember', rarity: 'R', cls: 'ATK',
+    icon: '△', passive: 'crit+0.15',
+    desc: '+15% critique',
+    lore: 'Une flamme qui ne s\'éteint jamais.',
+    ...stats('R', 'ATK'),
+  },
+  {
+    id: 'p11', name: 'Specter', rarity: 'R', cls: 'SPT',
+    icon: '◈', passive: 'steal+0.1',
+    desc: '10% de voler HP ennemi',
+    lore: 'Passe à travers les défenses.',
+    ...stats('R', 'SPT'),
+  },
+  // ── ÉPIQUES ──
+  {
+    id: 'p12', name: 'Prism', rarity: 'E', cls: 'SPT',
+    icon: '◉', passive: 'all+0.1',
+    desc: '+10% toutes stats équipe',
+    lore: 'Amplifie la force de tous ses alliés.',
+    ...stats('E', 'SPT'),
+  },
+  {
+    id: 'p13', name: 'Titan', rarity: 'E', cls: 'TNK',
+    icon: '⬟', passive: 'hp+0.2',
+    desc: '+20% HP équipe',
+    lore: 'Une montagne de muscles et d\'acier.',
+    ...stats('E', 'TNK'),
+  },
+  {
+    id: 'p14', name: 'Ignis', rarity: 'E', cls: 'ATK',
+    icon: '❖', passive: 'atk+0.2',
+    desc: '+20% ATK, brûle les ennemis',
+    lore: 'Le feu est son langage.',
+    ...stats('E', 'ATK'),
+  },
+  {
+    id: 'p15', name: 'Zephyr', rarity: 'E', cls: 'ATK',
+    icon: '◯', passive: 'spd+0.2',
+    desc: '+20% vitesse équipe',
+    lore: 'Plus rapide que le vent.',
+    ...stats('E', 'ATK'),
+  },
+  {
+    id: 'p16', name: 'Mirror', rarity: 'E', cls: 'DEF',
+    icon: '⟐', passive: 'reflect+0.15',
+    desc: '15% de réfléchir les dégâts',
+    lore: 'Ce qu\'il reçoit, il le renvoie.',
+    ...stats('E', 'DEF'),
+  },
+  {
+    id: 'p17', name: 'Anchor', rarity: 'E', cls: 'TNK',
+    icon: '⚓', passive: 'def+0.25',
+    desc: '+25% DEF équipe',
+    lore: 'Rien ne le fait bouger.',
+    ...stats('E', 'TNK'),
+  },
+  {
+    id: 'p18', name: 'Phantom', rarity: 'E', cls: 'SPT',
+    icon: '☆', passive: 'idle+2',
+    desc: '+2 or/s passif',
+    lore: 'Génère des ressources même absent.',
+    ...stats('E', 'SPT'),
+  },
+  // ── LÉGENDAIRES ──
+  {
+    id: 'p19', name: 'Godflip', rarity: 'L', cls: 'ATK',
+    icon: '✸', passive: 'atk+0.35',
+    desc: '+35% ATK, critique garanti 1x/combat',
+    lore: 'Le retournement parfait.',
+    ...stats('L', 'ATK'),
+  },
+  {
+    id: 'p20', name: 'Nova', rarity: 'L', cls: 'SPT',
+    icon: '✤', passive: 'gold+1',
+    desc: 'Or ×2 après victoire',
+    lore: 'Une explosion de richesse.',
+    ...stats('L', 'SPT'),
+  },
+  {
+    id: 'p21', name: 'Chainsaw', rarity: 'L', cls: 'ATK',
+    icon: '⬡', passive: 'chain+0.3',
+    desc: '30% de frapper encore',
+    lore: 'Ne s\'arrête jamais.',
+    ...stats('L', 'ATK'),
+  },
+  {
+    id: 'p22', name: 'Draco', rarity: 'L', cls: 'ATK',
+    icon: '◆', passive: 'crit+0.4',
+    desc: '+40% crit, dégâts crit ×3',
+    lore: 'La larme d\'un dragon légendaire.',
+    ...stats('L', 'ATK'),
+  },
+  {
+    id: 'p23', name: 'Guardian', rarity: 'L', cls: 'DEF',
+    icon: '⊕', passive: 'protect',
+    desc: 'Protège 2 alliés des KO',
+    lore: 'Mourrait pour ses compagnons.',
+    ...stats('L', 'DEF'),
+  },
+  {
+    id: 'p24', name: 'Hourglass', rarity: 'L', cls: 'SPT',
+    icon: '⧖', passive: 'spd+0.4',
+    desc: '+40% vitesse, idle ×2',
+    lore: 'Maître du temps.',
+    ...stats('L', 'SPT'),
+  },
+  // ── MYTHIQUES ──
+  {
+    id: 'p25', name: 'Omega', rarity: 'M', cls: 'ATK',
+    icon: 'Ω', passive: 'atk+0.5',
+    desc: '+50% ATK, ignore DEF ennemie',
+    lore: 'La fin de toutes choses.',
+    ...stats('M', 'ATK'),
+  },
+  {
+    id: 'p26', name: 'Singularity', rarity: 'M', cls: 'SPT',
+    icon: '⊗', passive: 'all+0.3',
+    desc: '+30% toutes stats, synergies ×2',
+    lore: 'Un point de non-retour.',
+    ...stats('M', 'SPT'),
+  },
+  {
+    id: 'p27', name: 'Eclipse', rarity: 'M', cls: 'ATK',
+    icon: '◍', passive: 'steal+0.5',
+    desc: '50% vol HP + or bonus',
+    lore: 'Obscurcit tout sur son passage.',
+    ...stats('M', 'ATK'),
+  },
+  {
+    id: 'p28', name: 'Weaver', rarity: 'M', cls: 'SPT',
+    icon: '⊞', passive: 'chain+1',
+    desc: 'Attaques chaînées garanties',
+    lore: 'Tisse le destin de l\'équipe.',
+    ...stats('M', 'SPT'),
+  },
+  {
+    id: 'p29', name: 'Phoenix', rarity: 'M', cls: 'DEF',
+    icon: '✧', passive: 'revive',
+    desc: 'Revient à la vie 1x/combat',
+    lore: 'Impossible à tuer.',
+    ...stats('M', 'DEF'),
+  },
+  {
+    id: 'p30', name: 'Ancient', rarity: 'M', cls: 'TNK',
+    icon: '✺', passive: 'master',
+    desc: 'Double tous les gains',
+    lore: 'Le Grand Pog Ancien.',
+    ...stats('M', 'TNK'),
+  },
+  // ── BOSS UNIQUES ──
+  {
+    id: 'b01', name: 'Flipper Soul', rarity: 'L', cls: 'ATK',
+    icon: '🏆', passive: 'atk+0.3', boss: true,
+    desc: 'Boss W1 — +30% ATK',
+    lore: 'L\'âme du Grand Retourneur.',
+    ...stats('L', 'ATK'),
+  },
+  {
+    id: 'b02', name: 'Kraken Tear', rarity: 'L', cls: 'TNK',
+    icon: '🌊', passive: 'idle+5', boss: true,
+    desc: 'Boss W2 — +5 or/s',
+    lore: 'Une larme des abysses.',
+    ...stats('L', 'TNK'),
+  },
+  {
+    id: 'b03', name: 'Magma Heart', rarity: 'L', cls: 'ATK',
+    icon: '🌋', passive: 'crit+0.5', boss: true,
+    desc: 'Boss W3 — +50% crit',
+    lore: 'Forgé dans le magma.',
+    ...stats('L', 'ATK'),
+  },
+  {
+    id: 'b04', name: 'Titan Soul', rarity: 'M', cls: 'TNK',
+    icon: '⚙', passive: 'atk+0.4', boss: true,
+    desc: 'Boss W4 — +40% ATK',
+    lore: 'L\'âme du titan mécanique.',
+    ...stats('M', 'TNK'),
+  },
+  {
+    id: 'b05', name: 'Cosmos Shard', rarity: 'M', cls: 'SPT',
+    icon: '🌌', passive: 'all+0.2', boss: true,
+    desc: 'Boss W5 — +20% tout',
+    lore: 'Un fragment de cosmos.',
+    ...stats('M', 'SPT'),
+  },
+  {
+    id: 'b06', name: 'Olympus Scale', rarity: 'M', cls: 'DEF',
+    icon: '⚡', passive: 'gold+2', boss: true,
+    desc: 'Boss W6 — or ×3',
+    lore: 'Une écaille d\'Olympe.',
+    ...stats('M', 'DEF'),
+  },
+  {
+    id: 'b07', name: 'Void Shard', rarity: 'M', cls: 'ATK',
+    icon: '🌑', passive: 'master', boss: true,
+    desc: 'Boss W7 — maître absolu',
+    lore: 'Un éclat du néant.',
+    ...stats('M', 'ATK'),
+  },
+]

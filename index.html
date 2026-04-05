@@ -2,209 +2,113 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>POG IDLE</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pog Champions — Tour de Babel</title>
   <link rel="stylesheet" href="style.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════════════ HUD ═══ -->
+<div id="offline-notif" style="display:none">
+  <span id="offline-msg"></span>
+  <div style="display:flex;gap:6px">
+    <button onclick="collectOfflineUI(1)">Collecter</button>
+    <button class="btn-primary" onclick="collectOfflineUI(2)">×2 — 5 gemmes</button>
+  </div>
+</div>
+
 <header id="hud">
-  <div id="hud-left">
-    <div id="account-badge">
-      <span id="account-level-icon">⭐</span>
-      <span id="account-level-text">Niv. 1</span>
-    </div>
-    <div id="xp-bar-wrap"><div id="xp-bar-fill"></div></div>
+  <div class="res"><span class="res-dot gold">G</span><span id="d-gold">0</span> or</div>
+  <div class="res"><span class="res-dot gems">★</span><span id="d-gems">0</span> gemmes</div>
+  <div class="res"><span class="res-dot frags">F</span><span id="d-frags">0</span> frags</div>
+  <div class="res"><span class="res-dot tokens">T</span><span id="d-tokens">0</span> tokens</div>
+  <div id="acc-bar">
+    <span id="acc-lvl-badge">1</span>
+    <div id="acc-xp-bar"><div id="acc-xp-fill"></div></div>
   </div>
-  <div id="hud-currencies">
-    <div class="currency" id="hud-gold"><span class="cur-icon">🪙</span><span id="gold-display">250</span></div>
-    <div class="currency" id="hud-gems"><span class="cur-icon">💎</span><span id="gems-display">15</span></div>
-    <div class="currency" id="hud-frags"><span class="cur-icon">🔩</span><span id="frags-display">0</span></div>
-  </div>
-  <div id="idle-rate-badge"><span id="idle-rate">+0</span>/s</div>
+  <div id="idle-display">Idle: +0 or/s</div>
 </header>
 
-<!-- ═══════════════════════════════════════════════ TABS ═══ -->
 <nav id="tabs">
-  <button class="tab active" data-tab="combat">⚔️<span>Combat</span></button>
-  <button class="tab" data-tab="tower">🗼<span>Tour</span></button>
-  <button class="tab" data-tab="kinis">🥏<span>Kinis</span></button>
-  <button class="tab" data-tab="collection">🎴<span>Pogs</span></button>
-  <button class="tab" data-tab="packs">🎁<span>Packs</span></button>
-  <button class="tab" data-tab="talents">⭐<span>Talents</span></button>
-  <button class="tab" data-tab="daily">📅<span>Journalier</span></button>
+  <button class="tab active" data-tab="combat"  onclick="setTab('combat')">⚔ Combat</button>
+  <button class="tab"        data-tab="tower"   onclick="setTab('tower')">🗼 Tour</button>
+  <button class="tab"        data-tab="kini"    onclick="setTab('kini')">🥏 Kinis</button>
+  <button class="tab"        data-tab="pogs"    onclick="setTab('pogs')">🎴 Champions</button>
+  <button class="tab"        data-tab="packs"   onclick="setTab('packs')">🎁 Packs</button>
+  <button class="tab"        data-tab="talents" onclick="setTab('talents')">⭐ Talents</button>
+  <button class="tab"        data-tab="daily"   onclick="setTab('daily')">📅 Journalier</button>
 </nav>
 
-<!-- ═══════════════════════════════════════════════════ MAIN ═══ -->
-<main id="main">
+<!-- COMBAT -->
+<div class="view" data-view="combat">
 
-  <!-- ──────────── TAB: COMBAT ──────────── -->
-  <section id="tab-combat" class="tab-panel active">
+  <!-- Frise vagues -->
+  <div id="wave-frise"></div>
 
-    <!-- Phase 0: Sélection de vague -->
-    <div id="phase-wave-select" class="combat-phase">
-      <div id="wave-world-banner">
-        <span id="wave-world-icon">🏙️</span>
-        <div id="wave-world-info">
-          <div id="wave-world-name">La Rue des Pogs</div>
-          <div id="wave-progress-row">
-            <div id="wave-dots"></div>
-            <span id="wave-label">Vague 1 / 10</span>
-          </div>
-        </div>
-      </div>
-
-      <div id="matchup-arena">
-        <!-- Equipe joueur -->
-        <div class="team-side" id="player-team-side">
-          <div class="team-label">TON ÉQUIPE</div>
-          <div class="team-grid" id="player-team-grid"></div>
-          <div class="team-power">
-            <span>⚔</span><span id="player-power">0</span>
-          </div>
-        </div>
-
-        <div id="vs-badge">VS</div>
-
-        <!-- Equipe ennemie -->
-        <div class="team-side" id="enemy-team-side">
-          <div class="team-label">ENNEMIS</div>
-          <div class="team-grid" id="enemy-team-grid"></div>
-          <div class="team-power">
-            <span>⚔</span><span id="enemy-power">0</span>
-          </div>
-        </div>
-      </div>
-
-      <div id="wave-rewards-preview">
-        <span class="reward-label">Récompenses</span>
-        <span class="reward-item">🪙 <span id="wave-gold-reward">100</span></span>
-        <span class="reward-item">🔩 <span id="wave-frag-reward">2</span></span>
-        <span class="reward-item">✨ <span id="wave-xp-reward">20</span> XP</span>
-      </div>
-
-      <button id="btn-fight" class="btn-primary btn-big">
-        <span>⚔</span> COMBAT
-      </button>
-    </div>
-
-    <!-- Phase 1: Combat animé -->
-    <div id="phase-battle" class="combat-phase hidden">
-      <div id="battle-header">
-        <div id="battle-round-badge">Manche <span id="battle-round">1</span>/<span id="battle-max-round">15</span></div>
-        <div id="battle-speed-btn" onclick="window.toggleBattleSpeed()">⚡ ×1</div>
-      </div>
-
-      <div id="battle-scene">
-        <!-- Décor monde -->
-        <div id="battle-bg">
-          <div id="battle-world-deco"></div>
-        </div>
-
-        <!-- Zone combat -->
-        <div id="battle-field">
-          <!-- Champions ennemis (haut) -->
-          <div class="battle-row" id="battle-enemies-row"></div>
-          <!-- Séparateur -->
-          <div id="battle-divider"></div>
-          <!-- Champions joueur (bas) -->
-          <div class="battle-row" id="battle-player-row"></div>
-        </div>
-
-        <!-- Log flottant -->
-        <div id="battle-log-feed"></div>
-      </div>
-
-      <div id="battle-bottom">
-        <div class="hp-bars-section">
-          <div class="hp-bar-row">
-            <span class="hp-bar-label">🤖 Bot</span>
-            <div class="hp-bar-track"><div class="hp-bar-fill enemy-fill" id="enemy-hp-bar"></div></div>
-            <span class="hp-bar-val" id="enemy-hp-val">100%</span>
-          </div>
-          <div class="hp-bar-row">
-            <span class="hp-bar-label">🎮 Toi</span>
-            <div class="hp-bar-track"><div class="hp-bar-fill player-fill" id="player-hp-bar"></div></div>
-            <span class="hp-bar-val" id="player-hp-val">100%</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Phase 2: Résultat -->
-    <div id="phase-result" class="combat-phase hidden">
-      <div id="result-decorations">
-        <div class="result-dragon left">🐉</div>
-        <div class="result-dragon right">🐉</div>
-      </div>
-      <div id="result-banner">
-        <div id="result-title">VICTOIRE !</div>
-        <div id="result-subtitle">Vague 1 terminée</div>
-      </div>
-      <div id="result-rewards">
-        <div class="result-reward-item"><span class="rr-icon">🪙</span><span class="rr-val" id="rr-gold">+0</span></div>
-        <div class="result-reward-item"><span class="rr-icon">🔩</span><span class="rr-val" id="rr-frags">+0</span></div>
-        <div class="result-reward-item"><span class="rr-icon">✨</span><span class="rr-val" id="rr-xp">+0 XP</span></div>
-      </div>
-      <div id="result-combat-log"></div>
-      <div id="result-actions">
-        <button id="btn-retry" class="btn-secondary" onclick="window.retryWave()">↺ Réessayer</button>
-        <button id="btn-next" class="btn-primary" onclick="window.nextWave()">Suivant ➜</button>
-      </div>
-    </div>
-
-  </section>
-
-  <!-- ──────────── TAB: TOUR ──────────── -->
-  <section id="tab-tower" class="tab-panel hidden">
-    <div id="tower-header">
-      <h2>Tour de Babel</h2>
-      <p>Progressez à travers 7 mondes</p>
-    </div>
-    <div id="worlds-list"></div>
-  </section>
-
-  <!-- ──────────── TAB: KINIS ──────────── -->
-  <section id="tab-kinis" class="tab-panel hidden">
-    <div id="kini-panel-wrap"></div>
-  </section>
-
-  <!-- ──────────── TAB: COLLECTION ──────────── -->
-  <section id="tab-collection" class="tab-panel hidden">
-    <div id="collection-header">
-      <div id="collection-stats-row"></div>
-      <div id="equip-slots-row"></div>
-    </div>
-    <div id="pogs-grid"></div>
-  </section>
-
-  <!-- ──────────── TAB: PACKS ──────────── -->
-  <section id="tab-packs" class="tab-panel hidden">
-    <div id="pack-opening-wrap"></div>
-  </section>
-
-  <!-- ──────────── TAB: TALENTS ──────────── -->
-  <section id="tab-talents" class="tab-panel hidden">
-    <div id="talent-tree-wrap"></div>
-  </section>
-
-  <!-- ──────────── TAB: JOURNALIER ──────────── -->
-  <section id="tab-daily" class="tab-panel hidden">
-    <div id="daily-panel-wrap"></div>
-  </section>
-
-</main>
-
-<!-- ════════════════════════════ MODAL CHAMPION ════════════════════════════ -->
-<div id="champion-modal" class="modal hidden">
-  <div class="modal-backdrop" onclick="window.closeChampionModal()"></div>
-  <div class="modal-card">
-    <button class="modal-close" onclick="window.closeChampionModal()">✕</button>
-    <div id="modal-content"></div>
+  <!-- Monde + Vague -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div id="world-name" style="font-size:13px;font-weight:500">Monde 1</div>
+    <div style="font-size:12px;color:var(--text-muted)">Vague <span id="wave-num">1</span>/11</div>
   </div>
+
+  <div id="phase-label"></div>
+
+  <!-- Phase 1 : Sélection -->
+  <div id="selection-panel"></div>
+
+  <!-- Phase 2 : Combat -->
+  <div id="combat-panel" style="display:none"></div>
+
+  <!-- Phase 3 : Résultat -->
+  <div id="result-panel" style="display:none"></div>
+
+</div>
+
+<!-- TOUR -->
+<div class="view" data-view="tower" style="display:none">
+  <div id="tower-container"></div>
+</div>
+
+<!-- KINIS -->
+<div class="view" data-view="kini" style="display:none">
+  <div id="kini-list"></div>
+  <div id="kini-upgrade"></div>
+</div>
+
+<!-- CHAMPIONS / POGS -->
+<div class="view" data-view="pogs" style="display:none">
+  <div id="pog-collection"></div>
+  <div id="album-stats"></div>
+</div>
+
+<!-- PACKS -->
+<div class="view" data-view="packs" style="display:none">
+  <div id="pity-display"></div>
+  <div id="pack-buttons"></div>
+  <div id="drop-rates"></div>
+  <div id="pack-modal" style="display:none">
+    <div id="pack-modal-box">
+      <div id="pack-stage"></div>
+      <div id="pack-disc"></div>
+      <div id="pack-reveal"></div>
+      <button id="pack-close" style="display:none" onclick="closePackModal()">Collecter !</button>
+    </div>
+  </div>
+</div>
+
+<!-- TALENTS -->
+<div class="view" data-view="talents" style="display:none">
+  <div id="talent-points-display"></div>
+  <div id="talent-grid"></div>
+</div>
+
+<!-- JOURNALIER -->
+<div class="view" data-view="daily" style="display:none">
+  <div id="daily-rewards"></div>
+  <div id="daily-btn-wrap" style="margin:8px 0">
+    <button onclick="claimDailyUI()">Réclamer</button>
+    <span id="daily-status" style="font-size:12px;color:var(--text-muted);margin-left:8px"></span>
+  </div>
+  <div id="missions-list"></div>
 </div>
 
 <script type="module" src="src/main.js"></script>
