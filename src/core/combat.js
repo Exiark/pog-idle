@@ -1,282 +1,265 @@
-import { WORLDS } from '../data/worlds.js'
-import { POGS }   from '../data/pogs.js'
-import { KINIS }  from '../data/kinis.js'
-import { hasTalent, getEquippedPogs } from './state.js'
-import { updateMission } from './economy.js'
+// ══════════════════════════════════════════════════════════════
+//  POG IDLE — src/core/combat.js
+//  Système de combat 6v6 Champions
+//  Chaque pog équipé = un combattant visible dans l'arène
+// ══════════════════════════════════════════════════════════════
 
-export const PHASE = {
-  FLIPPING:    'flipping',
-  CALCULATING: 'calculating',
-  BATTLING:    'battling',
-  RESULT:      'result',
+import { getPogById, POGS, POGS_BOSS, getChampionStats } from '../data/pogs.js';
+import { WORLDS }   from '../data/worlds.js';
+import { KINIS }    from '../data/kinis.js';
+
+// ─── GÉNÉRATION ÉQUIPE ENNEMIE ────────────────────────────────
+/**
+ * Génère une équipe de 6 champions ennemis pour une vague donnée.
+ * La difficulté scale avec le monde et la vague.
+ */
+export function generateEnemyTeam(world, floor) {
+  const isBoss = floor >= 11;
+
+  if (isBoss) {
+    // Boss = pog boss + 5 sbires épiques/légendaires
+    const bossData = POGS_BOSS[world - 1];
+    const minions  = _pickRandomPogs(['E', 'L'], 5);
+    const boss     = { ...bossData, ...getChampionStats(bossData), isBoss: true };
+    const team     = [boss, ...minions.map(p => ({ ...p, ...getChampionStats(p) }))];
+    return _scaleTeam(team, world, floor);
+  }
+
+  // Vague normale : mix de raretés selon progression
+  let rarityPool = ['C', 'C', 'C', 'R', 'R', 'C'];
+  if (world >= 2) rarityPool = ['C', 'R', 'R', 'R', 'E', 'R'];
+  if (world >= 3) rarityPool = ['R', 'R', 'E', 'E', 'R', 'R'];
+  if (world >= 4) rarityPool = ['R', 'E', 'E', 'E', 'L', 'E'];
+  if (world >= 5) rarityPool = ['E', 'E', 'L', 'E', 'E', 'E'];
+  if (world >= 6) rarityPool = ['E', 'L', 'L', 'E', 'L', 'E'];
+  if (world >= 7) rarityPool = ['L', 'L', 'M', 'L', 'L', 'L'];
+
+  const pogs = rarityPool.map(r => {
+    const pool = POGS.filter(p => p.rarity === r);
+    const p    = pool[Math.floor(Math.random() * pool.length)];
+    return { ...p, ...getChampionStats(p) };
+  });
+
+  return _scaleTeam(pogs, world, floor);
 }
 
-const RARITY_MULT = { C: 1, R: 1.8, E: 3, L: 5, M: 9 }
+function _pickRandomPogs(rarities, count) {
+  const pool = POGS.filter(p => rarities.includes(p.rarity));
+  const result = [];
+  for (let i = 0; i < count; i++) {
+    result.push(pool[Math.floor(Math.random() * pool.length)]);
+  }
+  return result;
+}
 
-export function pogCombatStats(pogId) {
-  const pog  = POGS.find(p => p.id === pogId)
-  if (!pog) return { attack: 1, defense: 1, hp: 5 }
-  const mult = RARITY_MULT[pog.rarity] || 1
+function _scaleTeam(team, world, floor) {
+  // Scaling : HP et ATK augmentent avec la progression
+  const worldMult = 1 + (world - 1) * 0.6;
+  const floorMult = 1 + (floor - 1) * 0.08;
+  const total     = worldMult * floorMult;
+  return team.map(p => ({
+    ...p,
+    hp:  Math.round(p.hp  * total),
+    atk: Math.round(p.atk * total),
+  }));
+}
+
+// ─── GÉNÉRATION ÉQUIPE JOUEUR ─────────────────────────────────
+/**
+ * Construit l'équipe joueur depuis les pogs équipés.
+ * Les slots vides sont remplis par des pogs communs de base.
+ */
+export function buildPlayerTeam(equippedPogs, kini) {
+  const fallbackPool = POGS.filter(p => p.rarity === 'C');
+  const kiniBonus    = _getKiniBonus(kini);
+
+  return equippedPogs.map((slot, i) => {
+    let pog;
+    if (slot && slot.id) {
+      pog = getPogById(slot.id) || fallbackPool[i % fallbackPool.length];
+    } else {
+      pog = fallbackPool[i % fallbackPool.length];
+    }
+    const stats = getChampionStats(pog);
+    // Appliquer bonus kini
+    return {
+      ...pog,
+      hp:   Math.round(stats.hp   * kiniBonus.hp),
+      atk:  Math.round(stats.atk  * kiniBonus.atk),
+      spd:  stats.spd  * kiniBonus.spd,
+      crit: Math.min(stats.crit + kiniBonus.crit, 0.95),
+      def:  Math.min(stats.def  + kiniBonus.def,  0.75),
+    };
+  });
+}
+
+function _getKiniBonus(kini) {
+  const base = { hp: 1, atk: 1, spd: 1, crit: 0, def: 0 };
+  if (!kini) return base;
   return {
-    id:      pogId,
-    name:    pog.name,
-    icon:    pog.icon,
-    rarity:  pog.rarity,
-    attack:  Math.round(2 * mult),
-    defense: Math.round(1.5 * mult),
-    hp:      Math.round(5 * mult),
-    effect:  pog.effect,
-  }
+    hp:   1,
+    atk:  kini.power  ? 1 + (kini.power - 10) / 30 : 1,
+    spd:  kini.speed  || 1,
+    crit: kini.chance || 0,
+    def:  0,
+  };
 }
 
-export function generateBotPogs(state) {
-  const world  = WORLDS[state.activeWorld - 1]
-  const count  = Math.floor(Math.random() * (world.enemyCount.max - world.enemyCount.min + 1)) + world.enemyCount.min
-  const resist = world.resistanceBase * (1 + state.currentFloor * 0.08)
+// ─── SIMULATION COMBAT ────────────────────────────────────────
+/**
+ * Simule l'intégralité du combat à l'avance.
+ * Retourne un tableau de "rounds" : chaque round = une liste d'actions.
+ *
+ * @param {Array} playerTeam  - pogs du joueur avec stats
+ * @param {Array} enemyTeam   - pogs ennemis avec stats
+ * @param {Object} talentBonuses - bonus talents actifs
+ * @returns {{ rounds: Array, winner: 'player'|'enemy', log: Array }}
+ */
+export function simulateBattle(playerTeam, enemyTeam, talentBonuses = {}) {
+  // Copie profonde pour simulation (on ne modifie pas les originaux)
+  const pTeam = playerTeam.map((p, i) => ({
+    ...p,
+    currentHp: p.hp,
+    maxHp:     p.hp,
+    index:     i,
+    side:      'player',
+    alive:     true,
+  }));
+  const eTeam = enemyTeam.map((p, i) => ({
+    ...p,
+    currentHp: p.hp,
+    maxHp:     p.hp,
+    index:     i,
+    side:      'enemy',
+    alive:     true,
+  }));
 
-  return Array.from({ length: count }, (_, i) => ({
-    id:      i,
-    flipped: false,
-    attack:  Math.round((2 + resist) * (1 + Math.random() * 0.3)),
-    defense: Math.round((1.5 + resist * 0.8) * (1 + Math.random() * 0.2)),
-    hp:      Math.round((5 + resist * 3) * (1 + Math.random() * 0.4)),
-    maxHp:   0,
-  })).map(p => ({ ...p, maxHp: p.hp }))
-}
+  const critMult = 1 + (talentBonuses.critBonus || 0);
 
-export function generateEnemyPile(state) {
-  const world = WORLDS[state.activeWorld - 1]
-  const count = Math.floor(Math.random() * (world.enemyCount.max - world.enemyCount.min + 1)) + world.enemyCount.min
-  return Array.from({ length: count }, (_, i) => ({ id: i, flipped: false }))
-}
+  const rounds = [];
+  const MAX_ROUNDS = 30;
 
-export function calcFlips(state) {
-  const kini    = KINIS[state.selectedKini] || KINIS[0]
-  const world   = WORLDS[state.activeWorld - 1]
-  const farming = state.activeWorld < state.currentWorld ? 0.6 : 1
+  for (let r = 0; r < MAX_ROUNDS; r++) {
+    const round = { number: r + 1, actions: [] };
 
-  let base   = kini.power * 0.4
-  let resist = world.resistanceBase * (1 + state.currentFloor * 0.2)
+    // Ordre d'attaque : alterné (joueur, ennemi, joueur, ...)
+    // Chaque champion vivant attaque une fois par round
+    const aliveP = pTeam.filter(c => c.alive);
+    const aliveE = eTeam.filter(c => c.alive);
+    if (!aliveP.length || !aliveE.length) break;
 
-  getEquippedPogs(state).forEach(p => {
-    if (!p?.effect) return
-    if (p.effect.startsWith('flips+'))  base   += parseFloat(p.effect.split('+')[1]) * 0.3
-    if (p.effect.startsWith('resist-')) resist -= parseFloat(p.effect.split('-')[1])
-    if (p.effect === 'all+0.1')         base   *= 1.05
-    if (p.effect === 'all+0.3')         base   *= 1.1
-    if (p.effect === 'master')          base   *= 1.3
-  })
+    // Les champions joueurs attaquent
+    for (const attacker of aliveP) {
+      const targets = eTeam.filter(c => c.alive);
+      if (!targets.length) break;
+      const target = _pickTarget(targets);
+      const action = _resolveAttack(attacker, target, critMult);
+      round.actions.push(action);
+    }
 
-  if (hasTalent(state, 't3')) resist *= 0.85
-  if ((KINIS[state.selectedKini] || KINIS[0]).bonusEffect === 'ignore_resist') resist = 0.5
+    // Les champions ennemis ripostent
+    for (const attacker of aliveE) {
+      if (!attacker.alive) continue;
+      const targets = pTeam.filter(c => c.alive);
+      if (!targets.length) break;
+      const target = _pickTarget(targets);
+      const action = _resolveAttack(attacker, target, 1);
+      round.actions.push(action);
+    }
 
-  return Math.max(1, Math.floor((base / Math.max(0.5, resist)) * farming))
-}
+    rounds.push(round);
 
-export function calcCrit(state) {
-  const kini = KINIS[state.selectedKini] || KINIS[0]
-  let crit = kini.chance
-  if (hasTalent(state, 't2')) crit += 0.1
-  getEquippedPogs(state).forEach(p => {
-    if (p?.effect?.startsWith('crit+')) crit += parseFloat(p.effect.split('+')[1])
-  })
-  return Math.min(0.95, crit)
-}
-
-export function calcSpeed(state) {
-  const kini = KINIS[state.selectedKini] || KINIS[0]
-  let speed = kini.speed
-  if (hasTalent(state, 't1')) speed *= 1.1
-  getEquippedPogs(state).forEach(p => {
-    if (p?.effect?.startsWith('speed+')) speed += parseFloat(p.effect.split('+')[1])
-  })
-  return Math.min(4.0, speed)
-}
-
-export function calcInterval(state) {
-  return Math.max(300, Math.floor(1200 / calcSpeed(state)))
-}
-
-export function doAttack(state, enemyPile) {
-  const isCrit = Math.random() < calcCrit(state)
-  let flips    = calcFlips(state)
-  if (isCrit) flips = Math.floor(flips * 2)
-
-  const kini = KINIS[state.selectedKini] || KINIS[0]
-  if (kini.bonusEffect === 'min_flips+3')                             flips = Math.max(3, flips)
-  if (kini.bonusEffect === 'double_flip+0.2' && Math.random() < 0.2) flips *= 2
-
-  const remaining = enemyPile.filter(p => !p.flipped)
-  const toFlip    = remaining.slice(0, Math.min(flips, remaining.length))
-  toFlip.forEach(p => { p.flipped = true })
-
-  state.totalFlips += toFlip.length
-  updateMission(state, 'flips', toFlip.length)
-
-  return { flipped: toFlip.length, isCrit, done: enemyPile.every(p => p.flipped) }
-}
-
-// ── Calcule les scores à partir des pogs retournés ──
-export function calculateScores(state, flippedCount, botPogs) {
-  const kini    = KINIS[state.selectedKini] || KINIS[0]
-  const farming = state.activeWorld < state.currentWorld ? 0.4 : 1
-
-  // Stats de base par pog retourné — calculées depuis la pile
-  // (pas besoin d'avoir des pogs en collection)
-  const baseStatPerPog = { attack: 2, defense: 1.5, hp: 5 }
-
-  // Bonus selon les pogs équipés (passifs)
-  let atkMult = 1
-  let defMult = 1
-  getEquippedPogs(state).forEach(p => {
-    if (!p?.effect) return
-    if (p.effect === 'all+0.1') { atkMult *= 1.1; defMult *= 1.1 }
-    if (p.effect === 'all+0.3') { atkMult *= 1.3; defMult *= 1.3 }
-    if (p.effect === 'master')  { atkMult *= 2;   defMult *= 2 }
-    if (p.effect.startsWith('flips+')) atkMult *= 1.05
-  })
-
-  // Bonus kini
-  const kiniAtkBonus = 1 + (kini.power - 8) * 0.05
-  const kiniDefBonus = 1 + kini.accuracy * 0.3
-
-  // Stats totales joueur
-  const playerAttack  = Math.max(1, Math.round(
-    flippedCount * baseStatPerPog.attack * kiniAtkBonus * atkMult * farming
-  ))
-  const playerDefense = Math.max(1, Math.round(
-    flippedCount * baseStatPerPog.defense * kiniDefBonus * defMult * farming
-  ))
-  const playerHp      = Math.max(10, Math.round(
-    flippedCount * baseStatPerPog.hp * farming
-  ))
-
-  // Talents
-  const finalAtk = hasTalent(state, 't2') ? Math.round(playerAttack  * 1.1) : playerAttack
-  const finalDef = hasTalent(state, 't7') ? Math.round(playerDefense * 1.2) : playerDefense
-
-  // Pogs équipés en collection → cartes visuelles pour le bilan
-  const equippedPogStats = getEquippedPogs(state).slice(0, flippedCount).map(p => {
-    return pogCombatStats(p.id)
-  })
-
-  // Bot
-  const botFlipped  = botPogs.filter(p => p.flipped)
-  const botAttack   = Math.max(1, botFlipped.reduce((s, p) => s + p.attack,  0))
-  const botDefense  = Math.max(1, botFlipped.reduce((s, p) => s + p.defense, 0))
-  const botHp       = Math.max(10, botFlipped.reduce((s, p) => s + p.hp,     0))
-
-  return {
-    player: {
-      attack:  finalAtk,
-      defense: finalDef,
-      hp:      playerHp,
-      count:   flippedCount,
-      pogs:    equippedPogStats,
-    },
-    bot: {
-      attack:  botAttack,
-      defense: botDefense,
-      hp:      botHp,
-      count:   botFlipped.length,
-    },
-  }
-}
-
-export function simulateBattle(scores) {
-  let pHp  = scores.player.hp
-  let bHp  = scores.bot.hp
-  const log = []
-  let turn  = 0
-
-  while (pHp > 0 && bHp > 0 && turn < 30) {
-    turn++
-    const pDmg  = Math.max(1, scores.player.attack - Math.floor(scores.bot.defense * 0.5))
-    const bDmg  = Math.max(1, scores.bot.attack    - Math.floor(scores.player.defense * 0.5))
-    const pCrit = Math.random() < 0.15
-    const bCrit = Math.random() < 0.15
-    const fpDmg = pCrit ? Math.floor(pDmg * 2) : pDmg
-    const fbDmg = bCrit ? Math.floor(bDmg * 2) : bDmg
-
-    bHp -= fpDmg
-    pHp -= fbDmg
-
-    log.push({
-      turn,
-      playerDmg: fpDmg, botDmg: fbDmg,
-      playerCrit: pCrit, botCrit: bCrit,
-      playerHp: Math.max(0, pHp),
-      botHp:    Math.max(0, bHp),
-    })
+    // Vérifier fin de combat
+    if (!pTeam.some(c => c.alive) || !eTeam.some(c => c.alive)) break;
   }
 
-  return { victory: pHp > 0, turns: log }
-}
+  const playerAlive = pTeam.some(c => c.alive);
+  const enemyAlive  = eTeam.some(c => c.alive);
 
-export function calcWaveReward(state) {
-  const world    = WORLDS[state.activeWorld - 1]
-  const farming  = state.activeWorld < state.currentWorld ? 0.4 : 1
-  const baseGold = (15 + state.currentFloor * 5) * world.goldMultiplier
-  let goldMult   = farming
+  let winner;
+  if (playerAlive && !enemyAlive) winner = 'player';
+  else if (!playerAlive && enemyAlive) winner = 'enemy';
+  else winner = _computeHPadvantage(pTeam, eTeam); // timeout → compare HP restants
 
-  getEquippedPogs(state).forEach(p => {
-    if (!p?.effect) return
-    if (p.effect.startsWith('gold+')) goldMult += parseFloat(p.effect.split('+')[1])
-    if (p.effect === 'master')        goldMult *= 2
-  })
-  if (hasTalent(state, 't4')) goldMult += 0.15
+  // Log textuel condensé pour l'écran de résultat
+  const log = _buildSummaryLog(rounds, playerTeam, enemyTeam);
 
   return {
-    gold:      Math.floor(baseGold * goldMult),
-    fragments: Math.floor((2 + (hasTalent(state, 't6') ? 2 : 0)) * farming),
-    gems:      hasTalent(state, 't7') ? 1 : 0,
-    accountXP: Math.floor((10 + state.currentFloor * 2) * farming),
-  }
+    rounds,
+    winner,
+    log,
+    finalPlayerHP: pTeam.map(c => c.currentHp),
+    finalEnemyHP:  eTeam.map(c => c.currentHp),
+    pTeam,
+    eTeam,
+  };
 }
 
-export function advanceFloor(state) {
-  if (state.activeWorld === state.currentWorld) {
-    state.currentFloor++
-    if (state.currentFloor > 11) state.currentFloor = 11
-  }
+function _pickTarget(team) {
+  // Cible le champion avec le moins de HP (stratégie focus)
+  return team.reduce((a, b) => a.currentHp < b.currentHp ? a : b);
 }
 
-export function isBossWave(state) {
-  return state.currentFloor === 11 && state.activeWorld === state.currentWorld
+function _resolveAttack(attacker, target, critMult) {
+  const isCrit = Math.random() < attacker.crit;
+  let dmg = Math.round(attacker.atk * (isCrit ? 2 * critMult : 1));
+  // Réduction par défense de la cible
+  dmg = Math.max(1, Math.round(dmg * (1 - target.def)));
+  target.currentHp = Math.max(0, target.currentHp - dmg);
+  if (target.currentHp === 0) target.alive = false;
+
+  return {
+    attackerSide:  attacker.side,
+    attackerIndex: attacker.index,
+    attackerName:  attacker.name,
+    attackerEmoji: attacker.emoji,
+    targetSide:    target.side,
+    targetIndex:   target.index,
+    targetName:    target.name,
+    dmg,
+    isCrit,
+    isKO:          target.currentHp === 0,
+    targetHpLeft:  target.currentHp,
+    targetMaxHp:   target.maxHp,
+  };
 }
 
-export function defeatBoss(state, worldId) {
-  if (state.bossesDefeated.includes(`w${worldId}`)) return null
-  const world = WORLDS[worldId - 1]
-  state.bossesDefeated.push(`w${worldId}`)
-
-  if (!state.worldPogs.includes(world.boss.reward.pog)) {
-    state.collection.push({ id: world.boss.reward.pog, rarity: 'L' })
-    state.worldPogs.push(world.boss.reward.pog)
-  }
-  if (!state.worldKinis.includes(world.boss.reward.kini)) {
-    state.worldKinis.push(world.boss.reward.kini)
-  }
-
-  const nextWorld = worldId + 1
-  if (nextWorld <= 7 && !state.unlockedWorlds.includes(nextWorld)) {
-    state.unlockedWorlds.push(nextWorld)
-    state.currentWorld = nextWorld
-    state.currentFloor = 1
-  }
-
-  return { pog: world.boss.reward.pog, kini: world.boss.reward.kini, nextWorld }
+function _computeHPadvantage(pTeam, eTeam) {
+  const pHP = pTeam.reduce((s, c) => s + c.currentHp, 0);
+  const eHP = eTeam.reduce((s, c) => s + c.currentHp, 0);
+  return pHP >= eHP ? 'player' : 'enemy';
 }
 
-export function gainAccountXP(state, amount) {
-  state.accountXP += amount
-  const level  = state.accountLevel
-  const needed = (level + 1) * 100
-  if (state.accountXP >= needed && level < 5) {
-    state.accountXP   -= needed
-    state.accountLevel++
-    state.talentPoints++
-    return true
+function _buildSummaryLog(rounds, playerTeam, enemyTeam) {
+  const lines = [];
+  let playerKOs = 0;
+  let enemyKOs  = 0;
+  let playerCrits = 0;
+
+  for (const round of rounds) {
+    for (const a of round.actions) {
+      if (a.isKO)   { a.attackerSide === 'player' ? enemyKOs++ : playerKOs++; }
+      if (a.isCrit && a.attackerSide === 'player') playerCrits++;
+    }
   }
-  return false
+
+  lines.push(`⚔ ${rounds.length} manches disputées`);
+  lines.push(`💥 Tu as éliminé ${enemyKOs} ennemi(s)`);
+  if (playerKOs > 0) lines.push(`💀 Tu as perdu ${playerKOs} champion(s)`);
+  if (playerCrits > 0) lines.push(`⭐ ${playerCrits} coup(s) critique(s) !`);
+
+  return lines;
+}
+
+// ─── CALCUL POWER (affichage écran de sélection) ──────────────
+export function calcTeamPower(team) {
+  return team.reduce((sum, p) => {
+    if (!p) return sum;
+    const stats = getChampionStats(p);
+    return sum + stats.hp / 5 + stats.atk * 3 + stats.crit * 100 + stats.spd * 20;
+  }, 0);
+}
+
+export function calcEnemyPower(enemyTeam) {
+  return enemyTeam.reduce((sum, p) => sum + p.hp / 5 + p.atk * 3, 0);
 }
