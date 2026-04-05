@@ -79,8 +79,8 @@ function checkOfflineReward() {
 // ══════════════════════════════
 
 function startNewWave() {
-  enemyPile    = generateEnemyPile(S)
-  botPogs      = generateBotPogs(S)
+  enemyPile     = generateEnemyPile(S)
+  botPogs       = generateBotPogs(S)
   currentScores = null
   setPhase(PHASE.FLIPPING)
   renderPogStack()
@@ -90,8 +90,7 @@ function startNewWave() {
 function setPhase(phase) {
   currentPhase = phase
 
-  // Cache tout
-  document.getElementById('arena').style.display        = 'none'
+  document.getElementById('arena').style.display = 'none'
   document.getElementById('bilan-panel').classList.remove('visible')
   document.getElementById('battle-panel').classList.remove('visible')
   document.getElementById('result-panel').classList.remove('visible')
@@ -138,13 +137,13 @@ function renderBilanPanel() {
   const panel = document.getElementById('bilan-panel')
   if (!panel) return
 
-  const botFlipRate = 0.4 + Math.random() * 0.3
+  const flippedCount = enemyPile.filter(p => p.flipped).length
+  const botFlipRate  = 0.4 + Math.random() * 0.3
   botPogs.forEach(p => { p.flipped = Math.random() < botFlipRate })
 
   currentScores = calculateScores(S, flippedCount, botPogs)
   const sc = currentScores
 
-  // Indicateur d'avantage
   const playerPower = sc.player.attack + sc.player.defense
   const botPower    = sc.bot.attack    + sc.bot.defense
   let advantageClass = 'even'
@@ -157,9 +156,8 @@ function renderBilanPanel() {
     advantageText  = 'Le bot est plus fort — retournez plus de pogs !'
   }
 
-  // Pogs retournés du joueur
-  const playerPogCards = sc.player.pogs.map(p => {
-    const ri = RARITY[p.rarity]
+  const playerPogCards = (sc.player.pogs || []).map(p => {
+    const ri = RARITY[p.rarity] || RARITY['C']
     return `
       <div class="bilan-pog-card" style="background:${ri.bg};border-color:${ri.color};color:${ri.text}">
         <div class="bilan-pog-icon">${p.icon}</div>
@@ -169,7 +167,6 @@ function renderBilanPanel() {
       </div>`
   }).join('')
 
-  // Pogs bot cachés
   const botPogCircles = botPogs.filter(p => p.flipped).map(() =>
     `<div class="bilan-bot-pog">?</div>`
   ).join('')
@@ -232,22 +229,34 @@ window.launchBattle = function() {
 }
 
 function renderBattlePanel(scores) {
-  document.getElementById('battle-title').textContent = 'Combat !'
-  document.getElementById('battle-turn-label').textContent = 'Tour 1 en cours...'
-  document.getElementById('p-hp-val').textContent    = scores.player.hp
-  document.getElementById('b-hp-val').textContent    = scores.bot.hp
-  document.getElementById('p-hp-bar').style.width   = '100%'
-  document.getElementById('b-hp-bar').style.width   = '100%'
-  document.getElementById('p-atk-val').textContent  = scores.player.attack
-  document.getElementById('p-def-val').textContent  = scores.player.defense
-  document.getElementById('b-atk-val').textContent  = scores.bot.attack
-  document.getElementById('b-def-val').textContent  = scores.bot.defense
-  document.getElementById('battle-log').innerHTML   = ''
+  const titleEl = document.getElementById('battle-title')
+  const turnEl  = document.getElementById('battle-turn-label')
+  const pHpEl   = document.getElementById('p-hp-val')
+  const bHpEl   = document.getElementById('b-hp-val')
+  const pBar    = document.getElementById('p-hp-bar')
+  const bBar    = document.getElementById('b-hp-bar')
+  const pAtk    = document.getElementById('p-atk-val')
+  const pDef    = document.getElementById('p-def-val')
+  const bAtk    = document.getElementById('b-atk-val')
+  const bDef    = document.getElementById('b-def-val')
+  const logEl   = document.getElementById('battle-log')
+
+  if (titleEl) titleEl.textContent = 'Combat !'
+  if (turnEl)  turnEl.textContent  = 'Tour 1 en cours...'
+  if (pHpEl)   pHpEl.textContent   = scores.player.hp
+  if (bHpEl)   bHpEl.textContent   = scores.bot.hp
+  if (pBar)    pBar.style.width    = '100%'
+  if (bBar)    bBar.style.width    = '100%'
+  if (pAtk)    pAtk.textContent    = scores.player.attack
+  if (pDef)    pDef.textContent    = scores.player.defense
+  if (bAtk)    bAtk.textContent    = scores.bot.attack
+  if (bDef)    bDef.textContent    = scores.bot.defense
+  if (logEl)   logEl.innerHTML     = ''
 }
 
 function animateBattle(result, scores) {
-  const pMaxHp   = scores.player.hp
-  const bMaxHp   = scores.bot.hp
+  const pMaxHp    = scores.player.hp
+  const bMaxHp    = scores.bot.hp
   const battleLog = document.getElementById('battle-log')
   let turn = 0
 
@@ -258,31 +267,32 @@ function animateBattle(result, scores) {
       return
     }
 
-    const t = result.turns[turn]
+    const t    = result.turns[turn]
+    const pBar = document.getElementById('p-hp-bar')
+    const bBar = document.getElementById('b-hp-bar')
+    const pHp  = document.getElementById('p-hp-val')
+    const bHp  = document.getElementById('b-hp-val')
+    const turnEl = document.getElementById('battle-turn-label')
 
-    // Mise à jour barres HP
-    document.getElementById('p-hp-bar').style.width = Math.round(t.playerHp / pMaxHp * 100) + '%'
-    document.getElementById('b-hp-bar').style.width = Math.round(t.botHp    / bMaxHp * 100) + '%'
-    document.getElementById('p-hp-val').textContent = Math.max(0, t.playerHp)
-    document.getElementById('b-hp-val').textContent = Math.max(0, t.botHp)
-    document.getElementById('battle-turn-label').textContent = `Tour ${t.turn} / ${result.turns.length}`
+    if (pBar) pBar.style.width = Math.round(t.playerHp / pMaxHp * 100) + '%'
+    if (bBar) bBar.style.width = Math.round(t.botHp    / bMaxHp * 100) + '%'
+    if (pHp)  pHp.textContent  = Math.max(0, t.playerHp)
+    if (bHp)  bHp.textContent  = Math.max(0, t.botHp)
+    if (turnEl) turnEl.textContent = `Tour ${t.turn} / ${result.turns.length}`
 
-    // Indicateur tour actif
-    document.getElementById('battle-fighter-player').classList.add('active-turn')
-    document.getElementById('battle-fighter-bot').classList.add('active-turn')
-
-    // Log du tour
-    const turnDiv = document.createElement('div')
-    turnDiv.className = 'battle-log-turn'
-    turnDiv.innerHTML = `
-      <div class="battle-log-turn-num">Tour ${t.turn}</div>
-      <div class="battle-log-action player-atk${t.playerCrit ? ' crit' : ''}">
-        ⚔ Vous infligez ${t.playerDmg} dégâts${t.playerCrit ? ' — CRITIQUE !' : ''}
-      </div>
-      <div class="battle-log-action bot-atk${t.botCrit ? ' crit' : ''}">
-        🤖 Bot inflige ${t.botDmg} dégâts${t.botCrit ? ' — CRITIQUE !' : ''}
-      </div>`
-    battleLog.insertBefore(turnDiv, battleLog.firstChild)
+    if (battleLog) {
+      const turnDiv = document.createElement('div')
+      turnDiv.className = 'battle-log-turn'
+      turnDiv.innerHTML = `
+        <div class="battle-log-turn-num">Tour ${t.turn}</div>
+        <div class="battle-log-action player-atk${t.playerCrit ? ' crit' : ''}">
+          ⚔ Vous infligez ${t.playerDmg} dégâts${t.playerCrit ? ' — CRITIQUE !' : ''}
+        </div>
+        <div class="battle-log-action bot-atk${t.botCrit ? ' crit' : ''}">
+          🤖 Bot inflige ${t.botDmg} dégâts${t.botCrit ? ' — CRITIQUE !' : ''}
+        </div>`
+      battleLog.insertBefore(turnDiv, battleLog.firstChild)
+    }
 
     turn++
   }, 450)
@@ -299,8 +309,9 @@ function showResult(result, scores) {
   const extra = document.getElementById('result-extra')
 
   if (result.victory) {
-    icon.textContent  = '🏆'
-    title.textContent = 'Victoire !'
+    if (icon)  icon.textContent  = '🏆'
+    if (title) title.textContent = 'Victoire !'
+    if (sub)   sub.textContent   = ''
 
     const reward = calcWaveReward(S)
     applyReward(S, reward)
@@ -311,30 +322,36 @@ function showResult(result, scores) {
     if (extra) {
       extra.style.display = 'block'
       extra.innerHTML = `
-        <div style="background:#EAF3DE;border-radius:8px;padding:8px 12px;font-size:12px;color:#173404;text-align:center">
+        <div style="background:#EAF3DE;border-radius:8px;padding:8px 12px;
+          font-size:12px;color:#173404;text-align:center;width:100%">
           +${reward.gold} or · +${reward.fragments} fragments · +${reward.accountXP} XP
         </div>`
     }
 
-    btn.textContent = isBossWave(S) ? 'Affronter le boss !' : 'Vague suivante →'
-    btn.onclick     = isBossWave(S) ? handleBossVictory : onVictoryNext
+    if (btn) {
+      btn.textContent = isBossWave(S) ? 'Affronter le boss !' : 'Vague suivante →'
+      btn.onclick     = isBossWave(S) ? handleBossVictory : onVictoryNext
+    }
     addLog(`Victoire ! +${reward.gold} or`, 'reward')
 
   } else {
-    icon.textContent  = '💀'
-    title.textContent = 'Défaite...'
-    sub.textContent   = 'Retournez plus de pogs ou améliorez votre équipe !'
+    if (icon)  icon.textContent  = '💀'
+    if (title) title.textContent = 'Défaite...'
+    if (sub)   sub.textContent   = 'Retournez plus de pogs ou améliorez votre équipe !'
 
     if (extra) {
       extra.style.display = 'block'
       extra.innerHTML = `
-        <div style="background:#FAECE7;border-radius:8px;padding:8px 12px;font-size:12px;color:#4A1B0C;text-align:center">
+        <div style="background:#FAECE7;border-radius:8px;padding:8px 12px;
+          font-size:12px;color:#4A1B0C;text-align:center;width:100%">
           Conseil : équipez des pogs épiques ou légendaires dans vos slots
         </div>`
     }
 
-    btn.textContent = 'Réessayer'
-    btn.onclick     = onDefeatRetry
+    if (btn) {
+      btn.textContent = 'Réessayer'
+      btn.onclick     = onDefeatRetry
+    }
     addLog('Défaite — réessayez !', 'miss')
   }
 
@@ -357,30 +374,48 @@ function handleBoss() {
   const world = WORLDS[S.activeWorld - 1]
   bossMaxHP   = world.boss.hp
   bossHP      = bossMaxHP
-  document.getElementById('boss-name').textContent        = world.boss.name
-  document.getElementById('boss-desc').textContent        = world.boss.desc
-  document.getElementById('boss-hp-text').textContent     = `${bossHP}/${bossMaxHP} PV`
-  document.getElementById('boss-hp-bar-fill').style.width = '100%'
-  document.getElementById('boss-panel').classList.add('visible')
-  document.getElementById('kini-ball')?.classList.add('boss-mode')
+
+  const nameEl  = document.getElementById('boss-name')
+  const descEl  = document.getElementById('boss-desc')
+  const hpText  = document.getElementById('boss-hp-text')
+  const hpBar   = document.getElementById('boss-hp-bar-fill')
+  const panel   = document.getElementById('boss-panel')
+  const ball    = document.getElementById('kini-ball')
+
+  if (nameEl)  nameEl.textContent     = world.boss.name
+  if (descEl)  descEl.textContent     = world.boss.desc
+  if (hpText)  hpText.textContent     = `${bossHP}/${bossMaxHP} PV`
+  if (hpBar)   hpBar.style.width      = '100%'
+  if (panel)   panel.classList.add('visible')
+  if (ball)    ball.classList.add('boss-mode')
+
   addLog(`BOSS : ${world.boss.name} apparaît !`, 'boss')
 }
 
 function updateBossHP(flipped) {
-  const dmg = flipped * 3
-  bossHP = Math.max(0, bossHP - dmg)
-  const pct = Math.round(bossHP / bossMaxHP * 100)
-  document.getElementById('boss-hp-bar-fill').style.width = pct + '%'
-  document.getElementById('boss-hp-text').textContent     = `${bossHP}/${bossMaxHP} PV`
-  const panel = document.getElementById('boss-panel')
-  panel.classList.remove('shake'); void panel.offsetWidth; panel.classList.add('shake')
-  setTimeout(() => panel.classList.remove('shake'), 400)
+  const dmg  = flipped * 3
+  bossHP     = Math.max(0, bossHP - dmg)
+  const pct  = Math.round(bossHP / bossMaxHP * 100)
+  const hpBar  = document.getElementById('boss-hp-bar-fill')
+  const hpText = document.getElementById('boss-hp-text')
+  const panel  = document.getElementById('boss-panel')
+
+  if (hpBar)  hpBar.style.width  = pct + '%'
+  if (hpText) hpText.textContent = `${bossHP}/${bossMaxHP} PV`
+  if (panel) {
+    panel.classList.remove('shake')
+    void panel.offsetWidth
+    panel.classList.add('shake')
+    setTimeout(() => panel.classList.remove('shake'), 400)
+  }
 }
 
 function hideBossPanel() {
   bossActive = false
-  document.getElementById('boss-panel').classList.remove('visible', 'shake')
-  document.getElementById('kini-ball')?.classList.remove('boss-mode')
+  const panel = document.getElementById('boss-panel')
+  const ball  = document.getElementById('kini-ball')
+  if (panel) panel.classList.remove('visible', 'shake')
+  if (ball)  ball.classList.remove('boss-mode')
 }
 
 function handleBossVictory() {
@@ -419,7 +454,7 @@ function renderPogStack() {
     const topCol = colors[top.id % colors.length]
     html += `<div class="pog-top" id="ptop" style="background:${topCol};color:#26215C">Pog ${top.id + 1}</div>`
 
-    remaining.slice(1, maxVisible).forEach((p) => {
+    remaining.slice(1, maxVisible).forEach(p => {
       const col = colors[p.id % colors.length]
       html += `<div class="pog-slice visible" style="background:${col}99"></div>`
     })
@@ -453,18 +488,23 @@ function renderPogStack() {
 function renderAttack(result) {
   const ball = document.getElementById('kini-ball')
   if (!ball) return
+
   ball.classList.remove('throw', 'back')
   void ball.offsetWidth
   ball.classList.add('throw')
+
   setTimeout(() => {
     ball.classList.remove('throw')
     ball.classList.add('back')
+
     if (result.isCrit) {
       ball.classList.add('shake')
       setTimeout(() => ball.classList.remove('shake'), 300)
       showCritLabel()
     }
+
     if (bossActive) updateBossHP(result.flipped)
+
     const topEl = document.getElementById('ptop')
     if (topEl) {
       topEl.classList.add('hit')
@@ -569,18 +609,24 @@ document.addEventListener('worldChanged', () => {
 
 // ── UI globale ──
 function updateUI() {
-  document.getElementById('d-gold').textContent   = Math.floor(S.gold)
-  document.getElementById('d-gems').textContent   = Math.floor(S.gems)
-  document.getElementById('d-frags').textContent  = Math.floor(S.fragments)
-  document.getElementById('d-tokens').textContent = Math.floor(S.tokens)
-  document.getElementById('wave-num').textContent = S.currentFloor
+  const goldEl   = document.getElementById('d-gold')
+  const gemsEl   = document.getElementById('d-gems')
+  const fragsEl  = document.getElementById('d-frags')
+  const tokensEl = document.getElementById('d-tokens')
+  const waveEl   = document.getElementById('wave-num')
+  const wnEl     = document.getElementById('world-name')
+
+  if (goldEl)   goldEl.textContent   = Math.floor(S.gold)
+  if (gemsEl)   gemsEl.textContent   = Math.floor(S.gems)
+  if (fragsEl)  fragsEl.textContent  = Math.floor(S.fragments)
+  if (tokensEl) tokensEl.textContent = Math.floor(S.tokens)
+  if (waveEl)   waveEl.textContent   = S.currentFloor
 
   const worldNames = [
     'La Rue des Pogs','Les Abysses Froides','La Forge Volcanique',
     'Les Ruines Stellaires','Le Cosmos Brisé','L\'Olympe des Pogs','Le Néant Céleste',
   ]
-  const wn = document.getElementById('world-name')
-  if (wn) wn.textContent = `Monde ${S.activeWorld} — ${worldNames[S.activeWorld - 1] || ''}`
+  if (wnEl) wnEl.textContent = `Monde ${S.activeWorld} — ${worldNames[S.activeWorld - 1] || ''}`
 
   window._state = S
   if (window.renderHUD)        window.renderHUD(S)
