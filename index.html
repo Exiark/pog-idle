@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pog Champions — Tour de Babel</title>
+  <title>Pog Idle — Tour de Babel</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -32,7 +32,7 @@
   <button class="tab active" data-tab="combat"  onclick="setTab('combat')">⚔ Combat</button>
   <button class="tab"        data-tab="tower"   onclick="setTab('tower')">🗼 Tour</button>
   <button class="tab"        data-tab="kini"    onclick="setTab('kini')">🥏 Kinis</button>
-  <button class="tab"        data-tab="pogs"    onclick="setTab('pogs')">🎴 Champions</button>
+  <button class="tab"        data-tab="pogs"    onclick="setTab('pogs')">🎴 Pogs</button>
   <button class="tab"        data-tab="packs"   onclick="setTab('packs')">🎁 Packs</button>
   <button class="tab"        data-tab="talents" onclick="setTab('talents')">⭐ Talents</button>
   <button class="tab"        data-tab="daily"   onclick="setTab('daily')">📅 Journalier</button>
@@ -41,25 +41,100 @@
 <!-- COMBAT -->
 <div class="view" data-view="combat">
 
-  <!-- Frise vagues -->
   <div id="wave-frise"></div>
+  <div id="kini-card"></div>
+
+  <!-- Boss panel -->
+  <div id="boss-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div id="boss-name">Boss</div>
+        <div id="boss-desc"></div>
+      </div>
+      <div style="text-align:right;min-width:120px">
+        <div id="boss-hp-bar-track"><div id="boss-hp-bar-fill" style="width:100%"></div></div>
+        <div id="boss-hp-text">100/100 PV</div>
+      </div>
+    </div>
+  </div>
 
   <!-- Monde + Vague -->
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
     <div id="world-name" style="font-size:13px;font-weight:500">Monde 1</div>
     <div style="font-size:12px;color:var(--text-muted)">Vague <span id="wave-num">1</span>/11</div>
   </div>
 
-  <div id="phase-label"></div>
+  <!-- Label de phase -->
+  <div id="phase-label" style="font-size:11px;font-weight:500;color:var(--purple);text-align:center;margin-bottom:6px;min-height:16px"></div>
 
-  <!-- Phase 1 : Sélection -->
-  <div id="selection-panel"></div>
+  <!-- Phase 1 : Arène retournement -->
+  <div id="arena">
+    <div id="kini-launcher">
+      <div id="kini-ball">🥏</div>
+      <div id="kini-arrow">↓</div>
+      <div id="kini-label">Kini</div>
+    </div>
+    <div id="pog-stack-wrap">
+      <div id="pog-stack"></div>
+      <div id="stack-counter"></div>
+    </div>
+    <div id="pog-won-zone">
+      <div id="pog-won-label">Gagnés (0)</div>
+    </div>
+    <div id="crit-container"></div>
+  </div>
 
-  <!-- Phase 2 : Combat -->
-  <div id="combat-panel" style="display:none"></div>
+  <!-- Phase 2 : Bilan -->
+  <div id="bilan-panel"></div>
 
-  <!-- Phase 3 : Résultat -->
-  <div id="result-panel" style="display:none"></div>
+  <!-- Phase 3 : Combat -->
+  <div id="battle-panel">
+    <div class="battle-header">
+      <div class="battle-title" id="battle-title">Combat !</div>
+      <div class="battle-turn-label" id="battle-turn-label">Tour 1...</div>
+    </div>
+    <div class="battle-combatants">
+      <div class="battle-fighter player" id="battle-fighter-player">
+        <div class="battle-fighter-label">Vos pogs</div>
+        <div class="battle-fighter-hp" id="p-hp-val">100</div>
+        <div class="battle-hp-bar"><div class="battle-hp-fill player" id="p-hp-bar" style="width:100%"></div></div>
+        <div class="battle-fighter-stats">Atk <strong id="p-atk-val">0</strong> · Def <strong id="p-def-val">0</strong></div>
+      </div>
+      <div class="battle-vs-label">VS</div>
+      <div class="battle-fighter bot" id="battle-fighter-bot">
+        <div class="battle-fighter-label">Bot</div>
+        <div class="battle-fighter-hp" id="b-hp-val">100</div>
+        <div class="battle-hp-bar"><div class="battle-hp-fill bot" id="b-hp-bar" style="width:100%"></div></div>
+        <div class="battle-fighter-stats">Atk <strong id="b-atk-val">0</strong> · Def <strong id="b-def-val">0</strong></div>
+      </div>
+    </div>
+    <div id="battle-log"></div>
+  </div>
+
+  <!-- Phase 4 : Résultat -->
+  <div id="result-panel">
+    <div class="result-icon" id="result-icon">🏆</div>
+    <div class="result-title" id="result-title">Victoire !</div>
+    <div class="result-sub" id="result-sub"></div>
+    <div id="result-extra" style="display:none;width:100%"></div>
+    <button class="btn-primary" id="result-btn" style="margin-top:8px">Continuer</button>
+  </div>
+
+  <!-- Barre de progression -->
+  <div id="wave-progress"><div id="wave-bar"></div></div>
+  <div id="wave-pct">0%</div>
+
+  <!-- Log -->
+  <div id="log"></div>
+
+  <!-- Équipe -->
+  <div style="background:white;border:0.5px solid var(--gray-border);border-radius:12px;padding:10px 12px;margin-top:8px">
+    <div style="font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">
+      Équipe de pogs
+    </div>
+    <div id="team-slots"></div>
+    <div id="team-bonus"></div>
+  </div>
 
 </div>
 
@@ -74,7 +149,7 @@
   <div id="kini-upgrade"></div>
 </div>
 
-<!-- CHAMPIONS / POGS -->
+<!-- POGS -->
 <div class="view" data-view="pogs" style="display:none">
   <div id="pog-collection"></div>
   <div id="album-stats"></div>

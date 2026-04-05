@@ -2,16 +2,17 @@ import { loadState, saveState, calcOfflineGold } from './core/state.js'
 import { collectOffline, claimDaily, updateMission, applyReward } from './core/economy.js'
 import { openPack, toggleEquip } from './core/gacha.js'
 import {
-  buildPlayerTeam, buildEnemyTeam, simulateCombat,
-  calcTeamBonuses, calcWaveReward, advanceFloor,
-  isBossWave, defeatBoss, gainAccountXP, calcInterval,
-  PHASE,
+  generateEnemyPile, generateBotPogs, doAttack,
+  calcWaveReward, advanceFloor, isBossWave, defeatBoss,
+  gainAccountXP, calcInterval, calculateScores, simulateBattle,
+  pogCombatStats, PHASE,
 } from './core/combat.js'
 import { WORLDS } from './data/worlds.js'
-import { POGS, RARITY, CLASSES } from './data/pogs.js'
+import { POGS, RARITY } from './data/pogs.js'
 import { KINIS } from './data/kinis.js'
 
 import './ui/hud.js'
+import './ui/arena.js'
 import './ui/kiniPanel.js'
 import './ui/collection.js'
 import './ui/packOpening.js'
@@ -25,30 +26,33 @@ window._state    = S
 window.saveState = saveState
 
 // ── État de combat ──
-let currentPhase   = PHASE.SELECTION
-let playerTeam     = []
-let enemyTeam      = []
-let combatResult   = null
-let combatBonuses  = {}
-let combatInterval = null
-let currentRound   = 0
-let combatLog      = []
+let enemyPile     = []
+let botPogs       = []
+let fightInterval = null
+let currentPhase  = PHASE.FLIPPING
+let currentScores = null
+let bossActive    = false
+let bossHP        = 0
+let bossMaxHP     = 0
 
 // ── Init ──
 function init() {
   checkOfflineReward()
-  setPhase(PHASE.SELECTION)
+  startNewWave()
   updateUI()
   setTab('combat')
 
   setInterval(() => saveState(S), 15000)
   setInterval(() => {
-    const bonuses = calcTeamBonuses(S)
-    const rate    = bonuses.idle || 0
+    let rate = 0
+    S.equippedPogs.forEach(p => {
+      if (!p?.effect) return
+      if (p.effect.startsWith('idle+')) rate += parseFloat(p.effect.split('+')[1])
+      if (p.effect === 'master') rate *= 2
+    })
     if (rate > 0) {
-      S.gold += rate
-      const el = document.getElementById('d-gold')
-      if (el) el.textContent = Math.floor(S.gold)
+      S.gold += Math.round(rate * 10) / 10
+      document.getElementById('d-gold').textContent = Math.floor(S.gold)
     }
   }, 1000)
 }
@@ -74,376 +78,484 @@ function checkOfflineReward() {
 // MACHINE À ÉTATS
 // ══════════════════════════════
 
+function startNewWave() {
+  enemyPile     = generateEnemyPile(S)
+  botPogs       = generateBotPogs(S)
+  currentScores = null
+  setPhase(PHASE.FLIPPING)
+  renderPogStack()
+  updateWaveBar()
+}
+
 function setPhase(phase) {
   currentPhase = phase
 
-  const selPanel    = document.getElementById('selection-panel')
-  const combatPanel = document.getElementById('combat-panel')
-  const resultPanel = document.getElementById('result-panel')
-  const phaseLbl    = document.getElementById('phase-label')
+  document.getElementById('arena').style.display = 'none'
+  document.getElementById('bilan-panel').classList.remove('visible')
+  document.getElementById('battle-panel').classList.remove('visible')
+  document.getElementById('result-panel').classList.remove('visible')
 
-  if (selPanel)    selPanel.style.display    = 'none'
-  if (combatPanel) combatPanel.style.display = 'none'
-  if (resultPanel) resultPanel.style.display = 'none'
+  const label = document.getElementById('phase-label')
 
-  if (phase === PHASE.SELECTION) {
-    if (selPanel) selPanel.style.display = 'block'
-    if (phaseLbl) phaseLbl.textContent   = ''
-    renderSelectionScreen()
+  if (phase === PHASE.FLIPPING) {
+    document.getElementById('arena').style.display = 'flex'
+    if (label) label.textContent = 'Retournez le maximum de pogs !'
+    clearInterval(fightInterval)
+    fightInterval = setInterval(tickFlipping, calcInterval(S))
 
-  } else if (phase === PHASE.COMBAT) {
-    if (combatPanel) combatPanel.style.display = 'block'
-    if (phaseLbl)    phaseLbl.textContent      = 'Combat en cours !'
-    startCombatAnimation()
+  } else if (phase === PHASE.CALCULATING) {
+    if (label) label.textContent = ''
+    clearInterval(fightInterval)
+    renderBilanPanel()
+    document.getElementById('bilan-panel').classList.add('visible')
+
+  } else if (phase === PHASE.BATTLING) {
+    if (label) label.textContent = 'Combat en cours !'
+    document.getElementById('battle-panel').classList.add('visible')
 
   } else if (phase === PHASE.RESULT) {
-    if (resultPanel) resultPanel.style.display = 'flex'
-    if (phaseLbl)    phaseLbl.textContent      = ''
-    renderResultScreen()
+    if (label) label.textContent = ''
+    document.getElementById('result-panel').classList.add('visible')
   }
 }
 
-// ══════════════════════════════
-// PHASE 1 : SÉLECTION
-// ══════════════════════════════
-
-function renderSelectionScreen() {
-  const panel = document.getElementById('selection-panel')
-  if (!panel) return
-
-  playerTeam    = buildPlayerTeam(S)
-  enemyTeam     = buildEnemyTeam(S)
-  combatBonuses = calcTeamBonuses(S)
-
-  const worldNames = [
-    'La Rue des Pogs','Les Abysses Froides','La Forge Volcanique',
-    'Les Ruines Stellaires','Le Cosmos Brisé','L\'Olympe des Pogs','Le Néant Céleste',
-  ]
-  const world = WORLDS[S.activeWorld - 1]
-  const isBoss = isBossWave(S)
-
-  panel.innerHTML = `
-    <div class="sel-world-banner" style="background:${world.colors.primary}22;border-color:${world.colors.primary}">
-      <div class="sel-world-name">${worldNames[S.activeWorld - 1]}</div>
-      <div class="sel-world-sub">
-        ${isBoss ? '💀 BOSS — ' + world.boss.name : `Vague ${S.currentFloor} / 11`}
-      </div>
-    </div>
-
-    <div class="sel-teams">
-
-      <!-- Ton équipe -->
-      <div class="sel-team-block">
-        <div class="sel-team-label">Ton équipe</div>
-        <div class="sel-team-grid" id="player-team-grid">
-          ${renderTeamGrid(playerTeam, false)}
-        </div>
-        ${playerTeam.length === 0 ? `
-          <div class="sel-empty-team">
-            Équipe vide ! Va dans l'onglet 🎴 Pogs pour équiper des champions.
-          </div>` : ''}
-      </div>
-
-      <div class="sel-vs">VS</div>
-
-      <!-- Équipe ennemie -->
-      <div class="sel-team-block">
-        <div class="sel-team-label">Adversaire</div>
-        <div class="sel-team-grid">
-          ${renderTeamGrid(enemyTeam, true)}
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Bonus actifs -->
-    <div class="sel-bonuses">
-      ${renderBonusPills(combatBonuses)}
-    </div>
-
-    <!-- Bouton combat -->
-    <button
-      id="combat-btn"
-      class="sel-combat-btn${playerTeam.length === 0 ? ' disabled' : ''}"
-      onclick="startCombat()"
-      ${playerTeam.length === 0 ? 'disabled' : ''}>
-      ⚔ COMBAT !
-    </button>
-  `
-}
-
-function renderTeamGrid(team, isEnemy) {
-  if (team.length === 0) return ''
-  return team.map(p => {
-    const ri  = RARITY[p.rarity]
-    const cls = CLASSES[p.cls]
-    return `
-      <div class="champ-card${isEnemy ? ' enemy' : ''}"
-        style="background:${ri.bg};border-color:${ri.color}">
-        <div class="champ-icon" style="color:${ri.text}">${p.icon}</div>
-        <div class="champ-name" style="color:${ri.text}">${p.name}</div>
-        <div class="champ-class" style="background:${cls.color}22;color:${cls.color}">
-          ${cls.icon} ${cls.label}
-        </div>
-        <div class="champ-stats">
-          <span>❤ ${p.currentHp || p.hp}</span>
-          <span>⚔ ${p.currentAtk || p.atk}</span>
-          <span>🛡 ${p.currentDef || p.def}</span>
-        </div>
-      </div>`
-  }).join('')
-}
-
-function renderBonusPills(bonuses) {
-  const pills = []
-  if (bonuses.atk  > 0) pills.push(`<span class="bonus-pill atk">⚔ ATK +${Math.round(bonuses.atk * 100)}%</span>`)
-  if (bonuses.def  > 0) pills.push(`<span class="bonus-pill def">🛡 DEF +${Math.round(bonuses.def * 100)}%</span>`)
-  if (bonuses.crit > 0) pills.push(`<span class="bonus-pill crit">★ Crit ${Math.round(bonuses.crit * 100)}%</span>`)
-  if (bonuses.gold > 0) pills.push(`<span class="bonus-pill gold">G Or +${Math.round(bonuses.gold * 100)}%</span>`)
-  if (bonuses.idle > 0) pills.push(`<span class="bonus-pill idle">⏱ Idle +${bonuses.idle}/s</span>`)
-  return pills.length
-    ? `<div class="bonus-pills-wrap">${pills.join('')}</div>`
-    : '<div class="bonus-pills-wrap" style="color:var(--text-muted);font-size:11px">Équipez des pogs pour activer des bonus !</div>'
-}
-
-window.startCombat = function() {
-  if (playerTeam.length === 0) return
-  combatResult = simulateCombat(playerTeam, enemyTeam, combatBonuses)
-  combatLog    = combatResult.log
-  currentRound = 0
-  setPhase(PHASE.COMBAT)
-}
-
-// ══════════════════════════════
-// PHASE 2 : COMBAT ANIMÉ
-// ══════════════════════════════
-
-function startCombatAnimation() {
-  renderCombatPanel()
-  clearInterval(combatInterval)
-  combatInterval = setInterval(animateNextRound, 600)
-}
-
-function renderCombatPanel() {
-  const panel = document.getElementById('combat-panel')
-  if (!panel) return
-
-  panel.innerHTML = `
-    <div class="combat-arena">
-      <!-- Équipe joueur (gauche) -->
-      <div class="combat-side player-side" id="combat-player-side">
-        ${renderCombatSide(playerTeam, false)}
-      </div>
-
-      <!-- Centre -->
-      <div class="combat-center">
-        <div class="combat-round-label" id="combat-round">Round 1</div>
-        <div class="combat-vs-icon">⚔</div>
-      </div>
-
-      <!-- Équipe ennemie (droite) -->
-      <div class="combat-side enemy-side" id="combat-enemy-side">
-        ${renderCombatSide(enemyTeam, true)}
-      </div>
-    </div>
-
-    <!-- Log de combat -->
-    <div class="combat-log" id="combat-log"></div>
-  `
-}
-
-function renderCombatSide(team, isEnemy) {
-  return team.map(p => `
-    <div class="combat-fighter${isEnemy ? ' enemy' : ''}" id="cf_${p.id}">
-      <div class="cf-icon">${p.icon}</div>
-      <div class="cf-name">${p.name}</div>
-      <div class="cf-hp-bar">
-        <div class="cf-hp-fill${isEnemy ? ' enemy' : ''}" id="cfhp_${p.id}" style="width:100%"></div>
-      </div>
-      <div class="cf-hp-text" id="cfhpt_${p.id}">${p.currentHp}/${p.maxHp}</div>
-    </div>`
-  ).join('')
-}
-
-function animateNextRound() {
-  if (currentRound >= combatLog.length) {
-    clearInterval(combatInterval)
-    setTimeout(() => setPhase(PHASE.RESULT), 800)
+// ── Phase 1 : Retournement ──
+function tickFlipping() {
+  if (enemyPile.every(p => p.flipped)) {
+    clearInterval(fightInterval)
+    setTimeout(() => setPhase(PHASE.CALCULATING), 600)
     return
   }
-
-  const round = combatLog[currentRound]
-  const roundEl = document.getElementById('combat-round')
-  if (roundEl) roundEl.textContent = `Round ${round.round}`
-
-  const logEl = document.getElementById('combat-log')
-
-  round.actions.forEach(action => {
-    // Anime la barre HP de la cible
-    const hpBar  = document.getElementById('cfhp_' + action.targetId)
-    const hpText = document.getElementById('cfhpt_' + action.targetId)
-    if (hpBar) {
-      const pct = Math.round(action.targetHp / action.targetMaxHp * 100)
-      hpBar.style.width = pct + '%'
-    }
-    if (hpText) hpText.textContent = `${action.targetHp}/${action.targetMaxHp}`
-
-    // KO
-    if (action.targetDead) {
-      const fighter = document.getElementById('cf_' + action.targetId)
-      if (fighter) fighter.classList.add('ko')
-    }
-
-    // Log
-    if (logEl) {
-      const entry = document.createElement('div')
-      entry.className = `log-action ${action.attackerSide}${action.isCrit ? ' crit' : ''}`
-      entry.textContent = action.attackerSide === 'player'
-        ? `⚔ ${action.attackerName} inflige ${action.damage}${action.isCrit ? ' CRIT!' : ''} à ${action.targetName}${action.targetDead ? ' — KO!' : ''}`
-        : `🤖 ${action.attackerName} inflige ${action.damage}${action.isCrit ? ' CRIT!' : ''} à ${action.targetName}${action.targetDead ? ' — KO!' : ''}`
-      logEl.insertBefore(entry, logEl.firstChild)
-      while (logEl.children.length > 8) logEl.removeChild(logEl.lastChild)
-    }
-  })
-
-  currentRound++
+  const result = doAttack(S, enemyPile)
+  renderAttack(result)
+  updateWaveBar()
+  if (bossActive) updateBossHP(result.flipped)
 }
 
-// ══════════════════════════════
-// PHASE 3 : RÉSULTAT
-// ══════════════════════════════
-
-function renderResultScreen() {
-  if (!combatResult) return
-  const panel  = document.getElementById('result-panel')
+// ── Phase 2 : Bilan ──
+function renderBilanPanel() {
+  const panel = document.getElementById('bilan-panel')
   if (!panel) return
 
-  const victory = combatResult.victory
-  const reward  = calcWaveReward(S, combatBonuses)
+  const flippedCount = enemyPile.filter(p => p.flipped).length
+  const botFlipRate  = 0.4 + Math.random() * 0.3
+  botPogs.forEach(p => { p.flipped = Math.random() < botFlipRate })
 
-  if (victory) {
+  currentScores = calculateScores(S, flippedCount, botPogs)
+  const sc = currentScores
+
+  const playerPower = sc.player.attack + sc.player.defense
+  const botPower    = sc.bot.attack    + sc.bot.defense
+  let advantageClass = 'even'
+  let advantageText  = 'Forces équilibrées — tout peut arriver !'
+  if (playerPower > botPower * 1.2) {
+    advantageClass = 'player'
+    advantageText  = 'Vous avez l\'avantage — bonne chance !'
+  } else if (botPower > playerPower * 1.2) {
+    advantageClass = 'bot'
+    advantageText  = 'Le bot est plus fort — retournez plus de pogs !'
+  }
+
+  const playerPogCards = (sc.player.pogs || []).map(p => {
+    const ri = RARITY[p.rarity] || RARITY['C']
+    return `
+      <div class="bilan-pog-card" style="background:${ri.bg};border-color:${ri.color};color:${ri.text}">
+        <div class="bilan-pog-icon">${p.icon}</div>
+        <div class="bilan-pog-name">${p.name}</div>
+        <div class="bilan-pog-stats">Atk+${p.attack} Def+${p.defense}</div>
+        <div class="bilan-pog-rarity" style="background:${ri.bg};color:${ri.text}">${ri.label}</div>
+      </div>`
+  }).join('')
+
+  const botPogCircles = botPogs.filter(p => p.flipped).map(() =>
+    `<div class="bilan-bot-pog">?</div>`
+  ).join('')
+
+  panel.innerHTML = `
+    <div class="bilan-header">
+      <div class="bilan-title">Bilan du retournement</div>
+      <div class="bilan-sub">Vague ${S.currentFloor} · Monde ${S.activeWorld}</div>
+    </div>
+
+    <div class="bilan-vs">
+      <div class="bilan-side player">
+        <div class="bilan-side-label">Vos pogs retournés</div>
+        <div class="bilan-count">${sc.player.count}</div>
+        <div class="bilan-stats-row">
+          <span>Atk <strong>${sc.player.attack}</strong></span>
+          <span>Def <strong>${sc.player.defense}</strong></span>
+          <span>HP <strong>${sc.player.hp}</strong></span>
+        </div>
+      </div>
+      <div class="bilan-vs-sep">VS</div>
+      <div class="bilan-side bot">
+        <div class="bilan-side-label">Pogs du bot</div>
+        <div class="bilan-count">${sc.bot.count}</div>
+        <div class="bilan-stats-row">
+          <span>Atk <strong>${sc.bot.attack}</strong></span>
+          <span>Def <strong>${sc.bot.defense}</strong></span>
+          <span>HP <strong>${sc.bot.hp}</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bilan-advantage ${advantageClass}">${advantageText}</div>
+
+    <div class="bilan-section">Vos pogs (face visible)</div>
+    <div class="bilan-pog-grid">
+      ${playerPogCards || `<div style="font-size:12px;color:var(--text-muted);padding:8px">
+        Aucun pog retourné — équipez des pogs dans votre équipe !
+      </div>`}
+    </div>
+
+    <div style="height:0.5px;background:var(--gray-border);margin:4px 0"></div>
+
+    <div class="bilan-section">Pogs du bot (face cachée)</div>
+    <div class="bilan-bot-grid">
+      ${botPogCircles || `<div style="font-size:12px;color:var(--text-muted)">Aucun pog retourné</div>`}
+    </div>
+
+    <button id="launch-battle-btn" onclick="launchBattle()">⚔ Lancer le combat !</button>
+  `
+}
+
+// ── Phase 3 : Combat ──
+window.launchBattle = function() {
+  if (!currentScores) return
+  setPhase(PHASE.BATTLING)
+  renderBattlePanel(currentScores)
+  const result = simulateBattle(currentScores)
+  animateBattle(result, currentScores)
+}
+
+function renderBattlePanel(scores) {
+  const titleEl = document.getElementById('battle-title')
+  const turnEl  = document.getElementById('battle-turn-label')
+  const pHpEl   = document.getElementById('p-hp-val')
+  const bHpEl   = document.getElementById('b-hp-val')
+  const pBar    = document.getElementById('p-hp-bar')
+  const bBar    = document.getElementById('b-hp-bar')
+  const pAtk    = document.getElementById('p-atk-val')
+  const pDef    = document.getElementById('p-def-val')
+  const bAtk    = document.getElementById('b-atk-val')
+  const bDef    = document.getElementById('b-def-val')
+  const logEl   = document.getElementById('battle-log')
+
+  if (titleEl) titleEl.textContent = 'Combat !'
+  if (turnEl)  turnEl.textContent  = 'Tour 1 en cours...'
+  if (pHpEl)   pHpEl.textContent   = scores.player.hp
+  if (bHpEl)   bHpEl.textContent   = scores.bot.hp
+  if (pBar)    pBar.style.width    = '100%'
+  if (bBar)    bBar.style.width    = '100%'
+  if (pAtk)    pAtk.textContent    = scores.player.attack
+  if (pDef)    pDef.textContent    = scores.player.defense
+  if (bAtk)    bAtk.textContent    = scores.bot.attack
+  if (bDef)    bDef.textContent    = scores.bot.defense
+  if (logEl)   logEl.innerHTML     = ''
+}
+
+function animateBattle(result, scores) {
+  const pMaxHp    = scores.player.hp
+  const bMaxHp    = scores.bot.hp
+  const battleLog = document.getElementById('battle-log')
+  let turn = 0
+
+  const interval = setInterval(() => {
+    if (turn >= result.turns.length) {
+      clearInterval(interval)
+      setTimeout(() => showResult(result, scores), 700)
+      return
+    }
+
+    const t    = result.turns[turn]
+    const pBar = document.getElementById('p-hp-bar')
+    const bBar = document.getElementById('b-hp-bar')
+    const pHp  = document.getElementById('p-hp-val')
+    const bHp  = document.getElementById('b-hp-val')
+    const turnEl = document.getElementById('battle-turn-label')
+
+    if (pBar) pBar.style.width = Math.round(t.playerHp / pMaxHp * 100) + '%'
+    if (bBar) bBar.style.width = Math.round(t.botHp    / bMaxHp * 100) + '%'
+    if (pHp)  pHp.textContent  = Math.max(0, t.playerHp)
+    if (bHp)  bHp.textContent  = Math.max(0, t.botHp)
+    if (turnEl) turnEl.textContent = `Tour ${t.turn} / ${result.turns.length}`
+
+    if (battleLog) {
+      const turnDiv = document.createElement('div')
+      turnDiv.className = 'battle-log-turn'
+      turnDiv.innerHTML = `
+        <div class="battle-log-turn-num">Tour ${t.turn}</div>
+        <div class="battle-log-action player-atk${t.playerCrit ? ' crit' : ''}">
+          ⚔ Vous infligez ${t.playerDmg} dégâts${t.playerCrit ? ' — CRITIQUE !' : ''}
+        </div>
+        <div class="battle-log-action bot-atk${t.botCrit ? ' crit' : ''}">
+          🤖 Bot inflige ${t.botDmg} dégâts${t.botCrit ? ' — CRITIQUE !' : ''}
+        </div>`
+      battleLog.insertBefore(turnDiv, battleLog.firstChild)
+    }
+
+    turn++
+  }, 450)
+}
+
+// ── Phase 4 : Résultat ──
+function showResult(result, scores) {
+  setPhase(PHASE.RESULT)
+
+  const icon  = document.getElementById('result-icon')
+  const title = document.getElementById('result-title')
+  const sub   = document.getElementById('result-sub')
+  const btn   = document.getElementById('result-btn')
+  const extra = document.getElementById('result-extra')
+
+  if (result.victory) {
+    if (icon)  icon.textContent  = '🏆'
+    if (title) title.textContent = 'Victoire !'
+    if (sub)   sub.textContent   = ''
+
+    const reward = calcWaveReward(S)
     applyReward(S, reward)
     gainAccountXP(S, reward.accountXP)
     updateMission(S, 'waves', 1)
     updateMission(S, 'gold_earned', reward.gold)
+
+    if (extra) {
+      extra.style.display = 'block'
+      extra.innerHTML = `
+        <div style="background:#EAF3DE;border-radius:8px;padding:8px 12px;
+          font-size:12px;color:#173404;text-align:center;width:100%">
+          +${reward.gold} or · +${reward.fragments} fragments · +${reward.accountXP} XP
+        </div>`
+    }
+
+    if (btn) {
+      btn.textContent = isBossWave(S) ? 'Affronter le boss !' : 'Vague suivante →'
+      btn.onclick     = isBossWave(S) ? handleBossVictory : onVictoryNext
+    }
+    addLog(`Victoire ! +${reward.gold} or`, 'reward')
+
+  } else {
+    if (icon)  icon.textContent  = '💀'
+    if (title) title.textContent = 'Défaite...'
+    if (sub)   sub.textContent   = 'Retournez plus de pogs ou améliorez votre équipe !'
+
+    if (extra) {
+      extra.style.display = 'block'
+      extra.innerHTML = `
+        <div style="background:#FAECE7;border-radius:8px;padding:8px 12px;
+          font-size:12px;color:#4A1B0C;text-align:center;width:100%">
+          Conseil : équipez des pogs épiques ou légendaires dans vos slots
+        </div>`
+    }
+
+    if (btn) {
+      btn.textContent = 'Réessayer'
+      btn.onclick     = onDefeatRetry
+    }
+    addLog('Défaite — réessayez !', 'miss')
   }
-
-  const isBoss = isBossWave(S)
-
-  panel.innerHTML = `
-    <div class="result-icon">${victory ? '🏆' : '💀'}</div>
-    <div class="result-title">${victory ? 'VICTOIRE !' : 'DÉFAITE...'}</div>
-    <div class="result-sub">${victory
-      ? `Vague ${S.currentFloor} terminée en ${combatResult.rounds} rounds`
-      : 'Ton équipe n\'était pas assez forte'}</div>
-
-    ${victory ? `
-      <div class="result-rewards">
-        <div class="result-rewards-title">Récompenses</div>
-        <div class="result-rewards-grid">
-          <div class="result-reward-item">
-            <div class="reward-icon gold-icon">G</div>
-            <div class="reward-val">+${reward.gold}</div>
-            <div class="reward-label">or</div>
-          </div>
-          <div class="result-reward-item">
-            <div class="reward-icon frag-icon">F</div>
-            <div class="reward-val">+${reward.fragments}</div>
-            <div class="reward-label">fragments</div>
-          </div>
-          <div class="result-reward-item">
-            <div class="reward-icon xp-icon">XP</div>
-            <div class="reward-val">+${reward.accountXP}</div>
-            <div class="reward-label">XP compte</div>
-          </div>
-          ${reward.gems > 0 ? `
-          <div class="result-reward-item">
-            <div class="reward-icon gem-icon">★</div>
-            <div class="reward-val">+${reward.gems}</div>
-            <div class="reward-label">gemmes</div>
-          </div>` : ''}
-        </div>
-      </div>
-
-      <!-- Bonus passifs qui ont contribué -->
-      <div class="result-passives">
-        ${renderPassiveSummary()}
-      </div>
-    ` : `
-      <div class="result-advice">
-        <div class="result-advice-title">Conseils</div>
-        <div class="result-advice-text">
-          ${playerTeam.length < 3 ? '→ Équipe trop petite — équipez plus de champions' : ''}
-          ${playerTeam.length >= 3 && !playerTeam.some(p => ['E','L','M'].includes(p.rarity)) ? '→ Vos champions sont trop faibles — ouvrez des packs pour des épiques+' : ''}
-          ${playerTeam.length >= 3 ? '→ Essayez d\'équiper un Tank pour absorber les dégâts' : ''}
-        </div>
-      </div>
-    `}
-
-    <div class="result-actions">
-      ${victory && isBoss ? `
-        <button class="result-btn boss-btn" onclick="onBossVictory()">Affronter le boss !</button>
-      ` : victory ? `
-        <button class="result-btn primary-btn" onclick="onVictoryNext()">Vague suivante →</button>
-      ` : `
-        <button class="result-btn retry-btn" onclick="onRetry()">Réessayer</button>
-        <button class="result-btn secondary-btn" onclick="setTab('pogs')">Améliorer l'équipe 🎴</button>
-      `}
-    </div>
-  `
 
   saveState(S)
   updateUI()
 }
 
-function renderPassiveSummary() {
-  const actives = getEquippedPogs(S).filter(p => p?.passive).map(p => {
-    const pog = POGS.find(x => x.id === p.id)
-    if (!pog) return null
-    const ri = RARITY[pog.rarity]
-    return `<span class="passive-tag" style="background:${ri.bg};color:${ri.text};border-color:${ri.color}">
-      ${pog.icon} ${pog.name} — ${pog.desc}
-    </span>`
-  }).filter(Boolean)
-
-  if (!actives.length) return ''
-  return `
-    <div class="passives-label">Bonus passifs actifs</div>
-    <div class="passives-list">${actives.join('')}</div>`
-}
-
-// ── Actions résultat ──
-window.onVictoryNext = function() {
+function onVictoryNext() {
   advanceFloor(S)
   saveState(S)
   updateUI()
-  setPhase(PHASE.SELECTION)
+  startNewWave()
 }
 
-window.onRetry = function() {
-  setPhase(PHASE.SELECTION)
+function onDefeatRetry() { startNewWave() }
+
+// ── Boss ──
+function handleBoss() {
+  bossActive = true
+  const world = WORLDS[S.activeWorld - 1]
+  bossMaxHP   = world.boss.hp
+  bossHP      = bossMaxHP
+
+  const nameEl  = document.getElementById('boss-name')
+  const descEl  = document.getElementById('boss-desc')
+  const hpText  = document.getElementById('boss-hp-text')
+  const hpBar   = document.getElementById('boss-hp-bar-fill')
+  const panel   = document.getElementById('boss-panel')
+  const ball    = document.getElementById('kini-ball')
+
+  if (nameEl)  nameEl.textContent     = world.boss.name
+  if (descEl)  descEl.textContent     = world.boss.desc
+  if (hpText)  hpText.textContent     = `${bossHP}/${bossMaxHP} PV`
+  if (hpBar)   hpBar.style.width      = '100%'
+  if (panel)   panel.classList.add('visible')
+  if (ball)    ball.classList.add('boss-mode')
+
+  addLog(`BOSS : ${world.boss.name} apparaît !`, 'boss')
 }
 
-window.onBossVictory = function() {
+function updateBossHP(flipped) {
+  const dmg  = flipped * 3
+  bossHP     = Math.max(0, bossHP - dmg)
+  const pct  = Math.round(bossHP / bossMaxHP * 100)
+  const hpBar  = document.getElementById('boss-hp-bar-fill')
+  const hpText = document.getElementById('boss-hp-text')
+  const panel  = document.getElementById('boss-panel')
+
+  if (hpBar)  hpBar.style.width  = pct + '%'
+  if (hpText) hpText.textContent = `${bossHP}/${bossMaxHP} PV`
+  if (panel) {
+    panel.classList.remove('shake')
+    void panel.offsetWidth
+    panel.classList.add('shake')
+    setTimeout(() => panel.classList.remove('shake'), 400)
+  }
+}
+
+function hideBossPanel() {
+  bossActive = false
+  const panel = document.getElementById('boss-panel')
+  const ball  = document.getElementById('kini-ball')
+  if (panel) panel.classList.remove('visible', 'shake')
+  if (ball)  ball.classList.remove('boss-mode')
+}
+
+function handleBossVictory() {
+  hideBossPanel()
   const result = defeatBoss(S, S.activeWorld)
   if (result) addLog(`Boss vaincu ! Monde ${result.nextWorld} déverrouillé !`, 'reward')
   advanceFloor(S)
   saveState(S)
   updateUI()
-  setPhase(PHASE.SELECTION)
+  startNewWave()
 }
 
-// ── Actions ──
+// ── Rendu pile cylindrique ──
+function renderPogStack() {
+  const stack   = document.getElementById('pog-stack')
+  const counter = document.getElementById('stack-counter')
+  const wonZone = document.getElementById('pog-won-zone')
+  const ball    = document.getElementById('kini-ball')
+  const label   = document.getElementById('kini-label')
+  if (!stack) return
+
+  const remaining = enemyPile.filter(p => !p.flipped)
+  const flipped   = enemyPile.filter(p => p.flipped)
+  const colors    = ['#EEEDFE','#E6F1FB','#EAF3DE','#FAEEDA','#FBEAF0','#FAECE7']
+  const k = KINIS[S.selectedKini] || KINIS[0]
+  if (ball)  ball.textContent  = k.icon
+  if (label) label.textContent = k.name
+
+  let html = ''
+  const maxVisible = 8
+
+  if (remaining.length === 0) {
+    html = `<div style="font-size:12px;color:var(--text-muted);padding:16px">Pile vide !</div>`
+  } else {
+    const top    = remaining[0]
+    const topCol = colors[top.id % colors.length]
+    html += `<div class="pog-top" id="ptop" style="background:${topCol};color:#26215C">Pog ${top.id + 1}</div>`
+
+    remaining.slice(1, maxVisible).forEach(p => {
+      const col = colors[p.id % colors.length]
+      html += `<div class="pog-slice visible" style="background:${col}99"></div>`
+    })
+
+    const hidden = Math.max(0, remaining.length - maxVisible)
+    if (hidden > 0) {
+      html += `<div class="pog-slice hidden-pog">+ ${hidden}</div>`
+    }
+  }
+
+  stack.innerHTML = html
+
+  if (counter) {
+    counter.textContent = remaining.length > 0
+      ? `${remaining.length} pog${remaining.length > 1 ? 's' : ''} restant${remaining.length > 1 ? 's' : ''}`
+      : 'Pile retournée !'
+  }
+
+  if (wonZone) {
+    const recent = flipped.slice(-5)
+    wonZone.innerHTML = `
+      <div id="pog-won-label">Gagnés (${flipped.length})</div>
+      ${recent.map(p => {
+        const col = colors[p.id % colors.length]
+        return `<div class="won-pog" style="background:${col}">${p.id + 1}</div>`
+      }).join('')}`
+  }
+}
+
+// ── Rendu attaque ──
+function renderAttack(result) {
+  const ball = document.getElementById('kini-ball')
+  if (!ball) return
+
+  ball.classList.remove('throw', 'back')
+  void ball.offsetWidth
+  ball.classList.add('throw')
+
+  setTimeout(() => {
+    ball.classList.remove('throw')
+    ball.classList.add('back')
+
+    if (result.isCrit) {
+      ball.classList.add('shake')
+      setTimeout(() => ball.classList.remove('shake'), 300)
+      showCritLabel()
+    }
+
+    if (bossActive) updateBossHP(result.flipped)
+
+    const topEl = document.getElementById('ptop')
+    if (topEl) {
+      topEl.classList.add('hit')
+      setTimeout(() => renderPogStack(), 420)
+    } else {
+      renderPogStack()
+    }
+  }, 180)
+
+  addLog(
+    result.isCrit ? `★ CRITIQUE ! ${result.flipped} pog(s) !` : `${result.flipped} pog(s) retourné(s)`,
+    result.isCrit ? 'crit' : 'flip'
+  )
+}
+
+function showCritLabel() {
+  const arena = document.getElementById('arena')
+  if (!arena) return
+  const label = document.createElement('div')
+  label.className   = 'crit-label'
+  label.textContent = '★ CRITIQUE !'
+  label.style.left  = Math.random() * 40 + 30 + '%'
+  label.style.top   = Math.random() * 30 + 10 + '%'
+  arena.appendChild(label)
+  setTimeout(() => label.remove(), 900)
+}
+
+function updateWaveBar() {
+  const total   = enemyPile.length
+  const flipped = enemyPile.filter(p => p.flipped).length
+  const pct     = total > 0 ? Math.round(flipped / total * 100) : 0
+  const bar     = document.getElementById('wave-bar')
+  const pctEl   = document.getElementById('wave-pct')
+  if (bar)   bar.style.width   = pct + '%'
+  if (pctEl) pctEl.textContent = pct + '%'
+}
+
+function addLog(msg, cls) {
+  const log = document.getElementById('log')
+  if (!log) return
+  const d = document.createElement('div')
+  d.className = cls || ''; d.textContent = msg
+  log.insertBefore(d, log.firstChild)
+  while (log.children.length > 20) log.removeChild(log.lastChild)
+}
+
+// ── Actions window ──
 window.selectKini = function(index) {
   S.selectedKini = index
-  saveState(S); updateUI()
-  if (currentPhase === PHASE.SELECTION) renderSelectionScreen()
-}
-
-window.toggleEquipUI = function(pogId) {
-  const maxSlots = S.talentsUnlocked.includes('t9') ? 11 : 10
-  const result   = toggleEquip(S, pogId, maxSlots)
-  if (result.error) { addLog(result.error, 'miss'); return }
+  clearInterval(fightInterval)
+  if (currentPhase === PHASE.FLIPPING) fightInterval = setInterval(tickFlipping, calcInterval(S))
   saveState(S); updateUI()
 }
 
@@ -456,9 +568,16 @@ window.openPackUI = function(type) {
   if (window.setTab) window.setTab('packs')
 }
 
+window.toggleEquipUI = function(pogId) {
+  const maxSlots = S.talentsUnlocked.includes('t9') ? 11 : 10
+  const result   = toggleEquip(S, pogId, maxSlots)
+  if (result.error) { addLog(result.error, 'miss'); return }
+  saveState(S); updateUI()
+}
+
 window.claimDailyUI = function() {
   const reward = claimDaily(S)
-  if (!reward) { addLog('Déjà réclamé !', 'miss'); return }
+  if (!reward) { addLog('Déjà réclamé aujourd\'hui !', 'miss'); return }
   addLog('Récompense journalière réclamée !', 'reward')
   saveState(S); updateUI()
 }
@@ -468,8 +587,7 @@ window.collectOfflineUI = function(mult) {
   if (mult === 2) S.gems -= 5
   const earned = collectOffline(S, mult)
   addLog(`Gains offline : +${earned} or${mult === 2 ? ' (×2)' : ''}`, 'reward')
-  const el = document.getElementById('offline-notif')
-  if (el) el.style.display = 'none'
+  document.getElementById('offline-notif').style.display = 'none'
   saveState(S); updateUI()
 }
 
@@ -482,31 +600,37 @@ function setTab(tab) {
   updateUI()
 }
 
-function addLog(msg, cls) {
-  console.log(`[${cls || 'info'}] ${msg}`)
-}
-
-function getEquippedPogs(state) {
-  return state.equippedPogs.filter(Boolean)
-}
+document.addEventListener('worldChanged', () => {
+  clearInterval(fightInterval)
+  hideBossPanel()
+  startNewWave()
+  updateUI()
+})
 
 // ── UI globale ──
 function updateUI() {
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val }
-  set('d-gold',   Math.floor(S.gold))
-  set('d-gems',   Math.floor(S.gems))
-  set('d-frags',  Math.floor(S.fragments))
-  set('d-tokens', Math.floor(S.tokens))
-  set('wave-num', S.currentFloor)
+  const goldEl   = document.getElementById('d-gold')
+  const gemsEl   = document.getElementById('d-gems')
+  const fragsEl  = document.getElementById('d-frags')
+  const tokensEl = document.getElementById('d-tokens')
+  const waveEl   = document.getElementById('wave-num')
+  const wnEl     = document.getElementById('world-name')
+
+  if (goldEl)   goldEl.textContent   = Math.floor(S.gold)
+  if (gemsEl)   gemsEl.textContent   = Math.floor(S.gems)
+  if (fragsEl)  fragsEl.textContent  = Math.floor(S.fragments)
+  if (tokensEl) tokensEl.textContent = Math.floor(S.tokens)
+  if (waveEl)   waveEl.textContent   = S.currentFloor
 
   const worldNames = [
     'La Rue des Pogs','Les Abysses Froides','La Forge Volcanique',
     'Les Ruines Stellaires','Le Cosmos Brisé','L\'Olympe des Pogs','Le Néant Céleste',
   ]
-  set('world-name', `Monde ${S.activeWorld} — ${worldNames[S.activeWorld - 1] || ''}`)
+  if (wnEl) wnEl.textContent = `Monde ${S.activeWorld} — ${worldNames[S.activeWorld - 1] || ''}`
 
   window._state = S
   if (window.renderHUD)        window.renderHUD(S)
+  if (window.renderTeam)       window.renderTeam(S)
   if (window.renderKiniPanel)  window.renderKiniPanel(S)
   if (window.renderCollection) window.renderCollection(S)
   if (window.renderTalents)    window.renderTalents(S)
@@ -514,10 +638,5 @@ function updateUI() {
   if (window.renderTower)      window.renderTower(S)
   if (window.renderPacks)      window.renderPacks(S)
 }
-
-document.addEventListener('worldChanged', () => {
-  setPhase(PHASE.SELECTION)
-  updateUI()
-})
 
 document.addEventListener('DOMContentLoaded', init)

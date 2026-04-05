@@ -1,107 +1,188 @@
-// ══════════════════════════════════════════════════════════════
-//  POG IDLE — src/ui/packOpening.js
-// ══════════════════════════════════════════════════════════════
+import { RARITY, RARITY_ORDER } from '../data/pogs.js'
+import { PACK_CONFIG } from '../core/economy.js'
 
-import { PACK_CONFIG } from '../core/economy.js';
-import { openPack }   from '../core/gacha.js';
-import { RARITY_NAMES } from '../data/pogs.js';
+let animRunning = false
 
-let _S = null;
+export function renderPacks(state) {
+  const pityDiv   = document.getElementById('pity-display')
+  const packsDiv  = document.getElementById('pack-buttons')
+  const ratesDiv  = document.getElementById('drop-rates')
+  if (!packsDiv) return
 
-export function initPackOpening(S) {
-  _S = S;
-  renderPackPanel();
-}
-
-export function renderPackPanel() {
-  const wrap = document.getElementById('pack-opening-wrap');
-  if (!wrap) return;
-  const S = _S;
-
-  wrap.innerHTML = `<div class="section-title">🎁 Ouvrir des packs</div>`;
-
-  for (const cfg of Object.values(PACK_CONFIG)) {
-    const canBuy = cfg.cost.type === 'gold'
-      ? S.get('gold') >= cfg.cost.amount
-      : S.get('gems') >= cfg.cost.amount;
-
-    const rateStr = Object.entries(cfg.rates)
-      .map(([r, v]) => `<span class="rate-pill rate-${r.toLowerCase()}">${RARITY_NAMES[r]} ${v}%</span>`)
-      .join('');
-
-    const card = document.createElement('div');
-    card.className = 'pack-card';
-    card.innerHTML = `
-      <div class="pack-header">
-        <span class="pack-icon">${cfg.emoji}</span>
-        <div>
-          <div class="pack-name">${cfg.name}</div>
-          <div class="pack-desc">${cfg.desc}</div>
+  // ── Pity bars ──
+  if (pityDiv) {
+    pityDiv.innerHTML = `
+      <div class="card">
+        <div class="card-title">Pity system</div>
+        <div style="display:flex;gap:10px">
+          <div style="flex:1">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px">
+              Épique garanti
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${Math.round(state.pityE / 10 * 100)}%;background:var(--purple)"></div>
+            </div>
+            <div style="font-size:11px;margin-top:2px">${state.pityE}/10 pulls</div>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px">
+              Légendaire garanti
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${Math.round(state.pityL / 50 * 100)}%;background:#EF9F27"></div>
+            </div>
+            <div style="font-size:11px;margin-top:2px">${state.pityL}/50 pulls</div>
+          </div>
         </div>
-      </div>
-      <div class="pack-rates">${rateStr}</div>
-      <button class="pack-btn ${cfg.cost.type === 'gold' ? 'pack-btn-gold' : 'pack-btn-gem'}"
-        ${canBuy ? '' : 'disabled style="opacity:0.45;cursor:not-allowed"'}
-        onclick="window.buyPack('${cfg.id}')">
-        ${cfg.cost.type === 'gold' ? '🪙' : '💎'} ${cfg.cost.amount} · Ouvrir ${cfg.count} champion${cfg.count > 1 ? 's' : ''}
-      </button>
-    `;
-    wrap.appendChild(card);
+      </div>`
+  }
+
+  // ── Boutons de packs ──
+  packsDiv.innerHTML = `
+    <div class="card">
+      <div class="card-title">Ouvrir des packs</div>
+      ${Object.entries(PACK_CONFIG).map(([key, cfg]) => `
+        <div style="
+          display:flex;justify-content:space-between;align-items:center;
+          padding:10px;border:0.5px solid var(--gray-border);
+          border-radius:10px;margin-bottom:7px;cursor:pointer
+        " onclick="openPackUI('${key}')">
+          <div>
+            <div style="font-size:13px;font-weight:500">${cfg.name}</div>
+            <div style="font-size:11px;color:var(--text-muted)">
+              ${cfg.count} pogs · ${cfg.currency === 'gold' ? 'monnaie soft' : 'gemmes'}
+            </div>
+          </div>
+          <button class="btn-primary" style="font-size:12px" onclick="event.stopPropagation();openPackUI('${key}')">
+            ${cfg.cost} ${cfg.currency === 'gold' ? 'or' : '★'}
+          </button>
+        </div>`
+      ).join('')}
+    </div>`
+
+  // ── Taux de drop ──
+  if (ratesDiv) {
+    ratesDiv.innerHTML = `
+      <div class="card">
+        <div class="card-title">Taux de drop</div>
+        <table style="width:100%;font-size:11px;border-collapse:collapse">
+          <tr>
+            <td></td>
+            <td style="text-align:center;color:var(--text-muted)">Basique</td>
+            <td style="text-align:center;color:var(--text-muted)">Rare</td>
+            <td style="text-align:center;color:var(--text-muted)">Premium</td>
+          </tr>
+          ${RARITY_ORDER.map(r => {
+            const ri = RARITY[r]
+            return `
+              <tr>
+                <td style="padding:3px 0">
+                  <span class="badge" style="background:${ri.bg};color:${ri.text}">${ri.label}</span>
+                </td>
+                <td style="text-align:center;color:var(--text-muted)">${PACK_CONFIG.basic.weights[r]}%</td>
+                <td style="text-align:center;color:var(--text-muted)">${PACK_CONFIG.rare.weights[r]}%</td>
+                <td style="text-align:center;color:var(--text-muted)">${PACK_CONFIG.premium.weights[r]}%</td>
+              </tr>`
+          }).join('')}
+        </table>
+      </div>`
   }
 }
 
-window.buyPack = function(packId) {
-  const result = openPack(packId, _S);
-  if (!result) {
-    _showToast('Ressources insuffisantes !');
-    return;
-  }
-  if (window.renderHUD) window.renderHUD(_S);
-  _showPackReveal(result.pogs, () => {
-    renderPackPanel();
-    if (window.renderCollection) window.renderCollection(_S);
-  });
-};
+// ── Animation d'ouverture de pack ──
+export function playPackAnim(pogs) {
+  if (animRunning) return
+  animRunning = true
 
-function _showPackReveal(pogs, onClose) {
-  const overlay = document.createElement('div');
-  overlay.id = 'pack-result-overlay';
+  const modal   = document.getElementById('pack-modal')
+  const box     = document.getElementById('pack-modal-box')
+  const stage   = document.getElementById('pack-stage')
+  const disc    = document.getElementById('pack-disc')
+  const reveal  = document.getElementById('pack-reveal')
+  const closeBtn = document.getElementById('pack-close')
+  if (!modal) return
 
-  const rarityColors = {
-    C: 'var(--rarity-c)', R: 'var(--rarity-r)',
-    E: 'var(--rarity-e)', L: 'var(--rarity-l)', M: 'var(--rarity-m)'
-  };
+  // Trouve la meilleure rareté obtenue
+  const topRar = pogs.reduce((best, p) => {
+    return RARITY_ORDER.indexOf(p.rarity) > RARITY_ORDER.indexOf(best)
+      ? p.rarity : best
+  }, 'C')
+  const ri = RARITY[topRar]
 
-  const pogsHTML = pogs.map((p, i) => `
-    <div class="pack-pog-reveal${p.isNew ? ' new-badge' : ''}"
-      style="border-color:${rarityColors[p.rarity]};animation-delay:${i * 0.12}s;box-shadow:0 0 12px ${rarityColors[p.rarity]}55">
-      <div class="rp-emoji">${p.emoji}</div>
-      <div class="rp-name">${p.name}</div>
-      <div class="rr-val" style="font-size:10px;color:${rarityColors[p.rarity]}">${RARITY_NAMES[p.rarity]}</div>
-      ${p.isNew ? '<div class="rr-val" style="font-size:9px;color:var(--gold)">NOUVEAU ✦</div>' : ''}
-    </div>
-  `).join('');
+  // Reset
+  box.style.borderColor = 'var(--gray-border)'
+  disc.className        = ''
+  disc.style.background = 'var(--gray-bg)'
+  disc.style.borderColor = 'var(--gray-border)'
+  disc.textContent      = '?'
+  disc.style.display    = 'flex'
+  reveal.innerHTML      = ''
+  closeBtn.style.display = 'none'
+  stage.textContent     = 'Ouverture du pack...'
+  stage.style.color     = 'var(--text-muted)'
+  modal.style.display   = 'flex'
 
-  overlay.innerHTML = `
-    <div style="font-family:var(--font-title);font-size:22px;color:var(--gold);margin-bottom:4px">Champions obtenus !</div>
-    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">${pogs.length} champion${pogs.length>1?'s':''} rejoignent ta collection</div>
-    <div class="pack-reveal-grid">${pogsHTML}</div>
-    <button class="btn-primary" style="margin-top:16px;padding:14px 40px;width:auto;border-radius:var(--radius-md)"
-      onclick="this.closest('#pack-result-overlay').remove(); (${onClose.toString()})()">
-      Continuer ➜
-    </button>
-  `;
+  // Phase 1 — spin
+  setTimeout(() => {
+    disc.classList.add('spin')
+    stage.textContent = 'Le destin tourne...'
+  }, 100)
 
-  document.body.appendChild(overlay);
+  // Phase 2 — révélation couleur
+  setTimeout(() => {
+    disc.classList.remove('spin')
+    disc.classList.add('pop')
+    disc.style.background  = ri.bg
+    disc.style.borderColor = ri.color
+    disc.style.color       = ri.text
+    disc.textContent       = pogs.length > 1 ? '×' + pogs.length : '1'
+    box.style.borderColor  = ri.color
+    stage.textContent      = 'Résultat !'
+    stage.style.color      = ri.text
+  }, 1400)
+
+  // Phase 3 — reveal des pogs un par un
+  setTimeout(() => {
+    disc.style.display = 'none'
+    reveal.innerHTML   = pogs.map((_, i) => `
+      <div class="rev-item" id="ri${i}">
+        <div class="rev-disc" id="rd${i}">?</div>
+        <div class="rev-rarity" id="rr${i}"></div>
+        <div class="rev-name" id="rn${i}"></div>
+      </div>`).join('')
+
+    pogs.forEach((pog, i) => {
+      const r = RARITY[pog.rarity]
+      setTimeout(() => {
+        const rd = document.getElementById('rd' + i)
+        const rr = document.getElementById('rr' + i)
+        const rn = document.getElementById('rn' + i)
+        if (!rd) return
+        rd.style.background  = r.bg
+        rd.style.borderColor = r.color
+        rd.style.color       = r.text
+        rd.innerHTML         = `<span style="font-size:20px">${pog.icon}</span>`
+        rr.textContent       = r.label
+        rr.style.background  = r.bg
+        rr.style.color       = r.text
+        rn.textContent       = pog.name
+        document.getElementById('ri' + i).classList.add('show')
+      }, i * 280)
+    })
+
+    setTimeout(() => {
+      closeBtn.style.display = 'block'
+    }, pogs.length * 280 + 400)
+  }, 2100)
 }
 
-function _showToast(msg) {
-  const t = document.createElement('div');
-  t.style.cssText = `position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
-    background:var(--bg-dark);border:1px solid rgba(255,255,255,0.15);border-radius:20px;
-    padding:10px 20px;font-size:13px;font-weight:700;color:var(--coral);z-index:999;
-    animation:floatUp 2s ease-out forwards`;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2000);
+window.closePackModal = function () {
+  animRunning = false
+  const modal = document.getElementById('pack-modal')
+  if (modal) modal.style.display = 'none'
+  const disc = document.getElementById('pack-disc')
+  if (disc) disc.style.display = 'flex'
 }
+
+window.playPackAnim   = playPackAnim
+window.renderPacks    = renderPacks

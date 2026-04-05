@@ -1,20 +1,97 @@
-// ══════════════════════════════════════════════════════════════
-//  POG IDLE — src/data/talents.js
-// ══════════════════════════════════════════════════════════════
-
 export const TALENTS = [
-  // ── Rangée 1 ──────────────────────────────────────────────
-  { id: 't1', name: 'Vitesse+',     icon: '⚡', row: 1, desc: 'Vitesse équipe +10%',   requires: [] },
-  { id: 't2', name: 'Critique+',    icon: '⭐', row: 1, desc: 'Chance crit +10%',      requires: [] },
-  { id: 't3', name: 'Résistance+',  icon: '🛡️', row: 1, desc: 'Dégâts reçus -20%',    requires: [] },
+  // ── RANGÉE 1 — Offensif ──
+  {
+    id: 't1',
+    name: 'Frappe Rapide',
+    desc: '+10% vitesse de kini',
+    icon: '⚡',
+    cost: 1,
+    row: 1,
+    effect: 'kini_speed+0.1',
+    requires: null,
+  },
+  {
+    id: 't2',
+    name: 'Coup Précis',
+    desc: '+10% chance de critique',
+    icon: '🎯',
+    cost: 1,
+    row: 1,
+    effect: 'crit+0.1',
+    requires: null,
+  },
+  {
+    id: 't3',
+    name: 'Briseur',
+    desc: '-20% résistance ennemie',
+    icon: '⚔',
+    cost: 1,
+    row: 1,
+    effect: 'resist_red+0.2',
+    requires: null,
+  },
 
-  // ── Rangée 2 (nécessite rangée 1) ─────────────────────────
-  { id: 't4', name: 'Or+',          icon: '🪙', row: 2, desc: 'Or gagné +15%',         requires: ['t1','t2','t3'] },
-  { id: 't5', name: 'Idle+',        icon: '💤', row: 2, desc: 'Or idle +50%',          requires: ['t1','t2','t3'] },
-  { id: 't6', name: 'Fragments+',   icon: '🔩', row: 2, desc: '+2 fragments/vague',    requires: ['t1','t2','t3'] },
+  // ── RANGÉE 2 — Économie ──
+  {
+    id: 't4',
+    name: 'Économe',
+    desc: '+15% or gagné',
+    icon: '💰',
+    cost: 2,
+    row: 2,
+    effect: 'gold_mult+0.15',
+    requires: 't1',
+  },
+  {
+    id: 't5',
+    name: 'Veilleur',
+    desc: '+50% gains offline',
+    icon: '🌙',
+    cost: 2,
+    row: 2,
+    effect: 'idle_mult+0.5',
+    requires: 't2',
+  },
+  {
+    id: 't6',
+    name: 'Aimant',
+    desc: '+2 fragments par vague',
+    icon: '🧲',
+    cost: 2,
+    row: 2,
+    effect: 'frags_per_wave+2',
+    requires: 't3',
+  },
 
-  // ── Rangée 3 (nécessite rangée 2) ─────────────────────────
-  { id: 't7', name: 'Gemmes+',      icon: '💎', row: 3, desc: '+1 gemme/vague',        requires: ['t4','t5','t6'] },
-  { id: 't8', name: 'Synergies+',   icon: '🔗', row: 3, desc: 'Synergies équipe +20%', requires: ['t4','t5','t6'] },
-  { id: 't9', name: 'Slot+',        icon: '➕', row: 3, desc: '+1 slot équipement',    requires: ['t4','t5','t6'] },
-];
+  // ── RANGÉE 3 — Avancé ──
+  {
+    id: 't7',
+    name: 'Collectionneur',
+    desc: '+1 gemme par vague',
+    icon: '💎',
+    cost: 3,
+    row: 3,
+    effect: 'gems_per_wave+1',
+    requires: 't4',
+  },
+  {
+    id: 't8',
+    name: 'Synergiste',
+    desc: 'Synergies de pogs +20%',
+    icon: '🔗',
+    cost: 3,
+    row: 3,
+    effect: 'syn_mult+0.2',
+    requires: 't5',
+  },
+  {
+    id: 't9',
+    name: 'Maître des Pogs',
+    desc: '+1 slot d\'équipement',
+    icon: '🌟',
+    cost: 5,
+    row: 3,
+    effect: 'slot+1',
+    requires: 't6',
+  },
+]

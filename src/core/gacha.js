@@ -1,154 +1,161 @@
-// ══════════════════════════════════════════════════════════════
-//  POG IDLE — src/core/gacha.js
-//  Ouverture de packs, fusion, équipement de champions
-// ══════════════════════════════════════════════════════════════
+import { POGS, RARITY_ORDER } from '../data/pogs.js'
+import { PACK_CONFIG } from './economy.js'
+import { updateMission } from './economy.js'
 
-import { POGS }         from '../data/pogs.js';
-import { PACK_CONFIG, PITY_EPIC, PITY_LEGENDARY, FUSION_COST, FUSION_FRAGS, FUSION_RARITY } from './economy.js';
-
-// ─── TIRAGE D'UN PACK ────────────────────────────────────────
-/**
- * Ouvre un pack et retourne les pogs tirés.
- * Applique le système de pity.
- * @param {string} packId  - 'basic' | 'rare' | 'premium'
- * @param {GameState} S
- * @returns {{ pogs: Array<{id,rarity,isNew}>, cost: Object } | null }
- */
-export function openPack(packId, S) {
-  const cfg = PACK_CONFIG[packId];
-  if (!cfg) return null;
-
-  // Vérifier ressources
-  const cost = cfg.cost;
-  if (cost.type === 'gold' && S.get('gold') < cost.amount) return null;
-  if (cost.type === 'gems' && S.get('gems') < cost.amount) return null;
-
-  // Débiter
-  if (cost.type === 'gold') S.addGold(-cost.amount);
-  else                      S.addGems(-cost.amount);
-
-  // Tirer les pogs
-  const pulled = [];
-  for (let i = 0; i < cfg.count; i++) {
-    const rarity = _drawRarity(cfg.rates, S);
-    const pog    = _pickPog(rarity);
-    const isNew  = S.countPog(pog.id) === 0;
-    S.addToCollection(pog.id, rarity);
-    pulled.push({ ...pog, rarity, isNew });
-    S.data.totalPulls++;
-    S.updateMission('packs', 1 / cfg.count);
+// ── Tire une rareté selon les poids ──
+function rollRarity(weights) {
+  const total = Object.values(weights).reduce((a, b) => a + b, 0)
+  let r = Math.random() * total
+  for (const [key, val] of Object.entries(weights)) {
+    r -= val
+    if (r <= 0) return key
   }
-
-  S.save();
-  return { pogs: pulled, cost };
+  return 'C'
 }
 
-function _drawRarity(rates, S) {
-  let pity = S.get('pityL') || 0;
-  S.set('pityL', pity + 1);
-  S.set('pityE', (S.get('pityE') || 0) + 1);
+// ── Tire un pog aléatoire d'une rareté donnée (hors pogs boss) ──
+function rollPog(rarity) {
+  const pool = POGS.filter(p => p.rarity === rarity && !p.boss)
+  return pool[Math.floor(Math.random() * pool.length)]
+}
 
-  // Légendaire garanti
-  if (S.get('pityL') >= PITY_LEGENDARY) {
-    S.set('pityL', 0);
-    S.set('pityE', 0);
-    return 'L';
+// ── Ouvre un pack et retourne les pogs obtenus ──
+export function openPack(state, packType) {
+  const cfg = PACK_CONFIG[packType]
+  if (!cfg) return { error: 'Pack inconnu' }
+
+  // Vérifie la devise
+  if (cfg.currency === 'gold' && state.gold < cfg.cost) {
+    return { error: 'Pas assez d\'or' }
   }
-  // Épique garanti
-  if (S.get('pityE') >= PITY_EPIC) {
-    S.set('pityE', 0);
-    return 'E';
+  if (cfg.currency === 'gems' && state.gems < cfg.cost) {
+    return { error: 'Pas assez de gemmes' }
   }
 
-  // Tirage normal
-  const roll = Math.random() * 100;
-  let acc = 0;
-  for (const [r, chance] of Object.entries(rates)) {
-    acc += chance;
-    if (roll < acc) {
-      if (r === 'L' || r === 'M') { S.set('pityL', 0); S.set('pityE', 0); }
-      if (r === 'E')              { S.set('pityE', 0); }
-      return r;
+  // Débite
+  if (cfg.currency === 'gold') state.gold -= cfg.cost
+  else state.gems -= cfg.cost
+
+  const obtained = []
+  const fusionLogs = []
+
+  for (let i = 0; i < cfg.count; i++) {
+    state.pityE++
+    state.pityL++
+    state.totalPulls++
+
+    let rarity = rollRarity(cfg.weights)
+
+    // Pity épique : garanti tous les 10 pulls
+    if (state.pityE >= 10 && RARITY_ORDER.indexOf(rarity) < 2) {
+      rarity = 'E'
+      state.pityE = 0
+    }
+
+    // Pity légendaire : garanti tous les 50 pulls
+    if (state.pityL >= 50 && RARITY_ORDER.indexOf(rarity) < 3) {
+      rarity = 'L'
+      state.pityL = 0
+    }
+
+    // Reset pity si rareté haute obtenue naturellement
+    if (rarity === 'E') state.pityE = 0
+    if (rarity === 'L' || rarity === 'M') state.pityL = 0
+
+    const pog = rollPog(rarity)
+    if (!pog) continue
+
+    state.collection.push({ id: pog.id, rarity: pog.rarity })
+    obtained.push(pog)
+
+    // Vérifie fusion
+    const fusion = checkFusion(state, pog.id)
+    if (fusion) fusionLogs.push(fusion)
+  }
+
+  updateMission(state, 'packs', 1)
+
+  return { obtained, fusionLogs }
+}
+
+// ── Vérifie et applique une fusion (3 copies → upgrade) ──
+export function checkFusion(state, pogId) {
+  const copies = state.collection.filter(p => p.id === pogId).length
+  if (copies < 3) return null
+
+  // Retire les 3 copies
+  let removed = 0
+  state.collection = state.collection.filter(p => {
+    if (p.id === pogId && removed < 3) { removed++; return false }
+    return true
+  })
+
+  // Donne des fragments bonus
+  state.fragments += 10
+
+  // Tire un pog de rareté supérieure
+  const pog = POGS.find(x => x.id === pogId)
+  const currentRarIdx = RARITY_ORDER.indexOf(pog.rarity)
+  const nextRarity = RARITY_ORDER[Math.min(currentRarIdx + 1, RARITY_ORDER.length - 1)]
+  const fused = rollPog(nextRarity)
+
+  if (fused) {
+    state.collection.push({ id: fused.id, rarity: fused.rarity })
+    return {
+      from: pog,
+      to: fused,
+      message: `FUSION ! ${pog.name} ×3 → ${fused.name} (${nextRarity})`,
     }
   }
-  return 'C';
+
+  return null
 }
 
-function _pickPog(rarity) {
-  const pool = POGS.filter(p => p.rarity === rarity);
-  return pool[Math.floor(Math.random() * pool.length)];
+// ── Retourne les statistiques de la collection ──
+export function getCollectionStats(state) {
+  const total = POGS.filter(p => !p.boss).length
+  const unique = new Set(state.collection.map(p => p.id)).size
+  const byRarity = {}
+  RARITY_ORDER.forEach(r => {
+    const have = new Set(
+      state.collection.filter(p => {
+        const pg = POGS.find(x => x.id === p.id)
+        return pg && pg.rarity === r && !pg.boss
+      }).map(p => p.id)
+    ).size
+    const tot = POGS.filter(p => p.rarity === r && !p.boss).length
+    byRarity[r] = { have, total: tot }
+  })
+  return { unique, total, byRarity }
 }
 
-// ─── FUSION ──────────────────────────────────────────────────
-/**
- * Fusionne 3 copies d'un pog en un de rareté supérieure.
- * @returns {{ result: pog, newRarity: string } | null}
- */
-export function checkFusion(pogId, S) {
-  const count = S.countPog(pogId);
-  if (count < FUSION_COST) return null;
-
-  // Trouver la rareté actuelle
-  const existing = S.get('collection').find(p => p.id === pogId);
-  if (!existing) return null;
-
-  const newRarity = FUSION_RARITY[existing.rarity];
-  if (!newRarity || newRarity === existing.rarity) return null;
-
-  // Retirer 3 exemplaires
-  let removed = 0;
-  S.data.collection = S.get('collection').filter(p => {
-    if (p.id === pogId && removed < FUSION_COST) { removed++; return false; }
-    return true;
-  });
-
-  // Ajouter le nouveau
-  S.addToCollection(pogId, newRarity);
-  S.addFragments(FUSION_FRAGS);
-
-  const pog = POGS.find(p => p.id === pogId);
-  return { result: { ...pog, rarity: newRarity }, newRarity };
+// ── Retourne les copies d'un pog dans la collection ──
+export function getPogCopies(state, pogId) {
+  return state.collection.filter(p => p.id === pogId).length
 }
 
-// ─── ÉQUIPEMENT ──────────────────────────────────────────────
-/**
- * Bascule l'équipement d'un pog dans un slot.
- * Si le slot est spécifié, l'équipe là. Sinon cherche le premier slot libre.
- */
-export function toggleEquip(pogId, rarity, slot, S) {
-  const equipped = S.getEquippedTeam();
+// ── Équipe ou déséquipe un pog ──
+export function toggleEquip(state, pogId, maxSlots = 10) {
+  const equippedIndex = state.equippedPogs.findIndex(e => e && e.id === pogId)
 
-  // Déjà dans ce slot → déséquiper
-  if (slot !== undefined && equipped[slot] && equipped[slot].id === pogId) {
-    S.unequipPog(slot);
-    S.save();
-    return { action: 'unequip', slot };
+  if (equippedIndex >= 0) {
+    // Déséquipe
+    state.equippedPogs[equippedIndex] = null
+    return { action: 'unequipped' }
   }
 
-  // Équiper dans le slot donné ou le premier slot libre
-  const targetSlot = slot !== undefined ? slot : equipped.findIndex(s => !s);
-  if (targetSlot === -1) {
-    // Tous les slots sont pleins → remplacer le slot 0
-    S.equipPog(0, pogId, rarity);
-    S.save();
-    return { action: 'equip', slot: 0 };
+  // Vérifie si le joueur possède ce pog
+  const owned = state.collection.some(p => p.id === pogId)
+  if (!owned) return { error: 'Pog non possédé' }
+
+  // Cherche un slot libre
+  const emptySlot = state.equippedPogs.findIndex(e => !e)
+  const equipped = state.equippedPogs.filter(Boolean).length
+  if (emptySlot < 0 || equipped >= maxSlots) {
+    return { error: 'Équipe pleine' }
   }
 
-  S.equipPog(targetSlot, pogId, rarity);
-  S.save();
-  return { action: 'equip', slot: targetSlot };
-}
-
-// ─── STATS COLLECTION ─────────────────────────────────────────
-export function getCollectionStats(S) {
-  const coll = S.get('collection');
-  const unique = new Set(coll.map(p => p.id));
-  const byRarity = { C: 0, R: 0, E: 0, L: 0, M: 0 };
-  for (const p of coll) if (byRarity[p.rarity] !== undefined) byRarity[p.rarity]++;
-  return {
-    total:     coll.length,
-    unique:    unique.size,
-    totalPogs: 30, // nombre de pogs normaux en gacha
-    byRarity,
-  };
+  const pog = POGS.find(x => x.id === pogId)
+  state.equippedPogs[emptySlot] = { id: pogId, rarity: pog.rarity, effect: pog.effect }
+  return { action: 'equipped', slot: emptySlot }
 }

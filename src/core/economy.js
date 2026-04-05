@@ -1,113 +1,154 @@
-// ══════════════════════════════════════════════════════════════
-//  POG IDLE — src/core/economy.js
-//  Récompenses, missions, packs, gemmes
-// ══════════════════════════════════════════════════════════════
+// ── Missions journalières par défaut ──
+export const MISSIONS_DEFAULT = [
+  {
+    id: 'm1',
+    name: 'Flipper 20 pogs',
+    type: 'flips',
+    target: 20,
+    progress: 0,
+    done: false,
+    reward: { gold: 50 },
+  },
+  {
+    id: 'm2',
+    name: 'Ouvrir 1 pack',
+    type: 'packs',
+    target: 1,
+    progress: 0,
+    done: false,
+    reward: { gems: 5 },
+  },
+  {
+    id: 'm3',
+    name: 'Terminer 3 vagues',
+    type: 'waves',
+    target: 3,
+    progress: 0,
+    done: false,
+    reward: { tokens: 2 },
+  },
+  {
+    id: 'm4',
+    name: 'Gagner 500 or',
+    type: 'gold_earned',
+    target: 500,
+    progress: 0,
+    done: false,
+    reward: { fragments: 10 },
+  },
+]
 
-// ─── RÉCOMPENSES PAR VAGUE ───────────────────────────────────
-// gold   = or gagné à la victoire
-// frags  = fragments
-// xp     = XP compte
-// farming (monde non-frontier) → ×0.4
+// ── Récompenses de connexion journalière (cycle de 7 jours) ──
+export const DAILY_REWARDS = [
+  { day: 1, gold: 100 },
+  { day: 2, gold: 200 },
+  { day: 3, gems: 5 },
+  { day: 4, gold: 300, fragments: 5 },
+  { day: 5, gems: 10 },
+  { day: 6, gold: 400 },
+  { day: 7, gold: 500, gems: 15, fragments: 10 },
+]
 
-export function getWaveRewards(world, floor) {
-  const isBoss   = floor >= 11;
-  const baseGold = Math.floor(50 * Math.pow(1.35, (world - 1))) * (isBoss ? 5 : 1);
-  const baseFrags = (isBoss ? 15 : 2) + (world - 1) * (isBoss ? 5 : 1);
-  const baseXP   = (isBoss ? 100 : 20) + (world - 1) * 10;
-
-  return {
-    gold:  Math.round(baseGold  * (floor / 10)),
-    frags: Math.round(baseFrags),
-    xp:    Math.round(baseXP),
-  };
-}
-
-export function getFarmingRewards(world, floor) {
-  const r = getWaveRewards(world, floor);
-  return {
-    gold:  Math.round(r.gold  * 0.4),
-    frags: Math.round(r.frags * 0.4),
-    xp:    Math.round(r.xp   * 0.4),
-  };
-}
-
-// ─── IDLE RATE ───────────────────────────────────────────────
-// or par seconde en idle, basé sur le monde débloqué + talents
-export function calcIdleRate(currentWorld, talentsUnlocked) {
-  const base    = 0.1 * Math.pow(1.5, currentWorld - 1);
-  const bonus   = talentsUnlocked.includes('t5') ? 0.5 : 0;
-  return Math.round((base * (1 + bonus)) * 100) / 100;
-}
-
-// ─── PACKS ───────────────────────────────────────────────────
+// ── Configuration des packs gacha ──
 export const PACK_CONFIG = {
   basic: {
-    id:    'basic',
-    name:  'Pack Commun',
-    emoji: '📦',
-    desc:  '3 Champions — idéal pour débuter',
-    cost:  { type: 'gold', amount: 100 },
+    name: 'Pack Basique',
     count: 3,
-    rates: { C: 60, R: 28, E: 9, L: 2, M: 1 },
+    currency: 'gold',
+    cost: 100,
+    weights: { C: 60, R: 28, E: 9, L: 2, M: 1 },
   },
   rare: {
-    id:    'rare',
-    name:  'Pack Rare',
-    emoji: '🎁',
-    desc:  '3 Champions — meilleures chances de raretés',
-    cost:  { type: 'gold', amount: 300 },
+    name: 'Pack Rare',
     count: 3,
-    rates: { C: 30, R: 42, E: 19, L: 7, M: 2 },
+    currency: 'gold',
+    cost: 300,
+    weights: { C: 30, R: 42, E: 19, L: 7, M: 2 },
   },
   premium: {
-    id:    'premium',
-    name:  'Pack Premium',
-    emoji: '💎',
-    desc:  '5 Champions — le meilleur ratio qualité/coût',
-    cost:  { type: 'gems', amount: 20 },
+    name: 'Pack Premium',
     count: 5,
-    rates: { C: 15, R: 33, E: 30, L: 17, M: 5 },
+    currency: 'gems',
+    cost: 20,
+    weights: { C: 15, R: 33, E: 30, L: 17, M: 5 },
   },
-};
+}
 
-// Pity : épique garanti /10 pulls, légendaire garanti /50 pulls
-export const PITY_EPIC      = 10;
-export const PITY_LEGENDARY = 50;
-
-// ─── BOUTIQUE GEMMES (Stripe) ─────────────────────────────────
+// ── Boutique de gemmes (Stripe) ──
 export const GEM_PACKS = [
-  { id: 'g1', gems: 60,   price: 0.99,  bonus: '',      emoji: '💎' },
-  { id: 'g2', gems: 160,  price: 1.99,  bonus: '+15%',  emoji: '💎💎' },
-  { id: 'g3', gems: 340,  price: 3.99,  bonus: '+20%',  emoji: '💎💎💎' },
-  { id: 'g4', gems: 900,  price: 9.99,  bonus: '+50%',  emoji: '🌟' },
-  { id: 'g5', gems: 2000, price: 19.99, bonus: '+100%', emoji: '🏆' },
-];
+  { id: 'gems_80',   gems: 80,   price: 0.99,  label: 'Starter',  bonus: null },
+  { id: 'gems_500',  gems: 500,  price: 4.99,  label: 'Aventurier', bonus: '+50 bonus' },
+  { id: 'gems_1200', gems: 1200, price: 9.99,  label: 'Héros',    bonus: '+200 bonus' },
+  { id: 'gems_2800', gems: 2800, price: 19.99, label: 'Légende',  bonus: '+800 bonus' },
+]
 
-// ─── RÉCOMPENSES JOURNALIÈRES (cycle 7 jours) ─────────────────
-export const DAILY_REWARDS = [
-  { day: 1, icon: '🪙', reward: { gold: 100 },   label: '100 Or' },
-  { day: 2, icon: '🔩', reward: { frags: 10 },   label: '10 Fragments' },
-  { day: 3, icon: '🪙', reward: { gold: 250 },   label: '250 Or' },
-  { day: 4, icon: '💎', reward: { gems: 5 },     label: '5 Gemmes' },
-  { day: 5, icon: '🔩', reward: { frags: 25 },   label: '25 Fragments' },
-  { day: 6, icon: '🪙', reward: { gold: 500 },   label: '500 Or' },
-  { day: 7, icon: '🎁', reward: { gems: 15, gold: 500 }, label: '15 Gemmes + 500 Or' },
-];
+// ── Utilitaires économiques ──
 
-// ─── MISSIONS ────────────────────────────────────────────────
-export const MISSIONS_DEFAULT = [
-  { id: 'm1', type: 'flips',      target: 20,  reward: { tokens: 10, gold: 50 },  icon: '🥏', name: 'Flipper 20 fois' },
-  { id: 'm2', type: 'packs',      target: 1,   reward: { tokens: 15, gems: 2 },   icon: '🎁', name: 'Ouvrir 1 pack' },
-  { id: 'm3', type: 'waves',      target: 3,   reward: { tokens: 20, gold: 150 }, icon: '⚔️', name: 'Gagner 3 vagues' },
-  { id: 'm4', type: 'gold_earned',target: 500, reward: { tokens: 10, frags: 5 },  icon: '🪙', name: 'Gagner 500 or' },
-];
+// Applique une récompense à l'état
+export function applyReward(state, reward) {
+  if (reward.gold)      state.gold      += reward.gold
+  if (reward.gems)      state.gems      += reward.gems
+  if (reward.fragments) state.fragments += reward.fragments
+  if (reward.tokens)    state.tokens    += reward.tokens
+  return state
+}
 
-// ─── FUSION ──────────────────────────────────────────────────
-// 3 copies d'un même pog → 1 pog rareté supérieure + 10 fragments
-export const FUSION_COST   = 3;
-export const FUSION_FRAGS  = 10;
-export const FUSION_RARITY = { C: 'R', R: 'E', E: 'L', L: 'M', M: 'M' };
+// Met à jour la progression d'une mission
+export function updateMission(state, type, amount) {
+  const logs = []
+  state.missions.forEach(m => {
+    if (m.done || m.type !== type) return
+    m.progress = Math.min(m.target, m.progress + amount)
+    if (m.progress >= m.target) {
+      m.done = true
+      applyReward(state, m.reward)
+      logs.push(`Mission accomplie : ${m.name}`)
+    }
+  })
+  return logs
+}
 
-// ─── IDLE OFFLINE ─────────────────────────────────────────────
-export const OFFLINE_MAX_HOURS = 8;
-export const OFFLINE_DOUBLE_COST_GEMS = 5;
+// Réclame la récompense journalière
+export function claimDaily(state) {
+  if (state.dailyClaimed) return null
+  const day = state.dailyDay % 7
+  const reward = DAILY_REWARDS[day]
+  applyReward(state, reward)
+  state.dailyClaimed = true
+  state.dailyDay++
+  return reward
+}
+
+// Calcule le multiplicateur d'or selon les pogs équipés et talents
+export function calcGoldMult(state, hasTalentFn) {
+  let mult = 1
+  if (hasTalentFn(state, 't4')) mult += 0.15
+  state.equippedPogs.forEach(p => {
+    if (!p) return
+    if (p.effect?.startsWith('gold+')) mult += parseFloat(p.effect.split('+')[1])
+    if (p.effect === 'master') mult *= 2
+  })
+  return mult
+}
+
+// Calcule les gains offline et met à jour lastSeen
+export function collectOffline(state, multiplier = 1) {
+  const rate = calcIdleRateRaw(state)
+  if (rate <= 0) return 0
+  const elapsed = (Date.now() - state.lastSeen) / 1000
+  const capped = Math.min(elapsed, 8 * 3600)
+  const earned = Math.floor(rate * capped * multiplier)
+  state.gold += earned
+  state.lastSeen = Date.now()
+  return earned
+}
+
+function calcIdleRateRaw(state) {
+  let rate = 0
+  state.equippedPogs.forEach(p => {
+    if (!p) return
+    if (p.effect?.startsWith('idle+')) rate += parseFloat(p.effect.split('+')[1])
+    if (p.effect === 'master') rate *= 2
+  })
+  return rate
+}
