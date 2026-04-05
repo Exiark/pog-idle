@@ -121,48 +121,64 @@ export function calculateScores(state, flippedCount, botPogs) {
   const kini    = KINIS[state.selectedKini] || KINIS[0]
   const farming = state.activeWorld < state.currentWorld ? 0.4 : 1
 
-  // Pogs retournés du joueur = pogs de sa collection (on prend les N premiers)
-  const collectionPogs = state.collection.slice(0, flippedCount)
-  const playerPogStats = collectionPogs.map(p => pogCombatStats(p.id))
+  // Stats de base par pog retourné — calculées depuis la pile
+  // (pas besoin d'avoir des pogs en collection)
+  const baseStatPerPog = { attack: 2, defense: 1.5, hp: 5 }
 
-  let playerAttack  = playerPogStats.reduce((s, p) => s + p.attack,  0)
-  let playerDefense = playerPogStats.reduce((s, p) => s + p.defense, 0)
-  let playerHp      = playerPogStats.reduce((s, p) => s + p.hp,      0)
-
-  // Bonus kini
-  playerAttack  *= (1 + (kini.power - 10) * 0.02)
-  playerDefense *= (1 + kini.accuracy * 0.5)
-
-  // Bonus pogs équipés (passifs)
+  // Bonus selon les pogs équipés (passifs)
+  let atkMult = 1
+  let defMult = 1
   getEquippedPogs(state).forEach(p => {
     if (!p?.effect) return
-    if (p.effect === 'all+0.1') { playerAttack *= 1.1; playerDefense *= 1.1 }
-    if (p.effect === 'all+0.3') { playerAttack *= 1.3; playerDefense *= 1.3 }
-    if (p.effect === 'master')  { playerAttack *= 2;   playerDefense *= 2 }
+    if (p.effect === 'all+0.1') { atkMult *= 1.1; defMult *= 1.1 }
+    if (p.effect === 'all+0.3') { atkMult *= 1.3; defMult *= 1.3 }
+    if (p.effect === 'master')  { atkMult *= 2;   defMult *= 2 }
+    if (p.effect.startsWith('flips+')) atkMult *= 1.05
   })
 
-  if (hasTalent(state, 't2')) playerAttack  *= 1.1
-  if (hasTalent(state, 't7')) playerDefense *= 1.2
+  // Bonus kini
+  const kiniAtkBonus = 1 + (kini.power - 8) * 0.05
+  const kiniDefBonus = 1 + kini.accuracy * 0.3
+
+  // Stats totales joueur
+  const playerAttack  = Math.max(1, Math.round(
+    flippedCount * baseStatPerPog.attack * kiniAtkBonus * atkMult * farming
+  ))
+  const playerDefense = Math.max(1, Math.round(
+    flippedCount * baseStatPerPog.defense * kiniDefBonus * defMult * farming
+  ))
+  const playerHp      = Math.max(10, Math.round(
+    flippedCount * baseStatPerPog.hp * farming
+  ))
+
+  // Talents
+  const finalAtk = hasTalent(state, 't2') ? Math.round(playerAttack  * 1.1) : playerAttack
+  const finalDef = hasTalent(state, 't7') ? Math.round(playerDefense * 1.2) : playerDefense
+
+  // Pogs équipés en collection → cartes visuelles pour le bilan
+  const equippedPogStats = getEquippedPogs(state).slice(0, flippedCount).map(p => {
+    return pogCombatStats(p.id)
+  })
 
   // Bot
   const botFlipped  = botPogs.filter(p => p.flipped)
-  const botAttack   = botFlipped.reduce((s, p) => s + p.attack,  0)
-  const botDefense  = botFlipped.reduce((s, p) => s + p.defense, 0)
-  const botHp       = botFlipped.reduce((s, p) => s + p.hp,      0)
+  const botAttack   = Math.max(1, botFlipped.reduce((s, p) => s + p.attack,  0))
+  const botDefense  = Math.max(1, botFlipped.reduce((s, p) => s + p.defense, 0))
+  const botHp       = Math.max(10, botFlipped.reduce((s, p) => s + p.hp,     0))
 
   return {
     player: {
-      attack:   Math.max(1, Math.round(playerAttack  * farming)),
-      defense:  Math.max(1, Math.round(playerDefense * farming)),
-      hp:       Math.max(10, Math.round(playerHp)),
-      count:    flippedCount,
-      pogs:     playerPogStats,
+      attack:  finalAtk,
+      defense: finalDef,
+      hp:      playerHp,
+      count:   flippedCount,
+      pogs:    equippedPogStats,
     },
     bot: {
-      attack:   Math.max(1, Math.round(botAttack)),
-      defense:  Math.max(1, Math.round(botDefense)),
-      hp:       Math.max(10, Math.round(botHp)),
-      count:    botFlipped.length,
+      attack:  botAttack,
+      defense: botDefense,
+      hp:      botHp,
+      count:   botFlipped.length,
     },
   }
 }
