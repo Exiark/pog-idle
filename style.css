@@ -273,9 +273,9 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 #team-slots { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0; }
 
 .team-slot {
-  width: 60px; height: 70px; border-radius: 8px;
+  width: 66px; height: 80px; border-radius: 8px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 3px; cursor: pointer; transition: opacity 0.15s;
+  gap: 1px; cursor: pointer; transition: opacity 0.15s, transform 0.1s;
 }
 .team-slot.empty {
   border: 1px dashed var(--gray-border);
@@ -283,29 +283,40 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 .team-slot.empty:hover { background: var(--panel-bg2); }
 .team-slot.filled { border: 1.5px solid; }
-.team-slot.filled:hover { opacity: 0.8; }
-.team-slot-icon { font-size: 20px; }
-.team-slot-name { font-size: 9px; font-weight: 700; text-align: center; line-height: 1.2; max-width: 56px; }
-.team-slot-role { font-size: 8px; text-align: center; opacity: 0.7; }
+.team-slot.filled:hover { opacity: 0.8; transform: scale(1.03); }
+.ts-class-icon { font-size: 10px; line-height: 1; }
+.ts-icon       { font-size: 20px; margin: 1px 0; }
+.ts-subclass   { font-size: 7px; text-align: center; opacity: 0.85; }
+.ts-name       { font-size: 7px; font-weight: 700; text-align: center; line-height: 1.2; max-width: 62px; }
 
 /* ══════════════════════════════
    COLLECTION DE SURVIVANTS
    ══════════════════════════════ */
 .survivor-grid {
   display: flex; flex-wrap: wrap; gap: 6px;
-  max-height: 260px; overflow-y: auto;
+  max-height: 300px; overflow-y: auto;
 }
 .survivor-card {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 7px 6px; border-radius: 10px; border: 1.5px solid transparent;
-  min-width: 60px; cursor: pointer; position: relative;
-  transition: opacity 0.15s;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 6px 5px 5px; border-radius: 10px; border: 1.5px solid;
+  width: 66px; cursor: pointer; position: relative;
+  transition: opacity 0.15s, transform 0.1s;
 }
-.survivor-card:hover { opacity: 0.85; }
+.survivor-card:hover  { opacity: 0.85; transform: scale(1.03); }
 .survivor-card.in-team { border-width: 2px; }
-.survivor-card-icon   { font-size: 20px; }
-.survivor-card-name   { font-size: 9px; font-weight: 700; text-align: center; line-height: 1.2; max-width: 58px; }
-.survivor-card-role   { font-size: 8px; text-align: center; opacity: 0.8; }
+
+/* Layout interne de la carte */
+.sc-top {
+  display: flex; justify-content: space-between; align-items: center;
+  width: 100%; margin-bottom: 1px;
+}
+.sc-rarity    { font-size: 7px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.sc-class     { font-size: 11px; line-height: 1; }
+.sc-icon      { font-size: 22px; margin: 2px 0; }
+.sc-class-global { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.sc-subclass  { font-size: 8px; opacity: 0.85; }
+.sc-name      { font-size: 8px; font-weight: 700; text-align: center; line-height: 1.2; margin-top: 2px; max-width: 62px; }
+
 .survivor-card-copies {
   position: absolute; top: -3px; right: -3px;
   width: 14px; height: 14px; border-radius: 50%;

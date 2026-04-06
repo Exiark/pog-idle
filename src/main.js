@@ -349,6 +349,8 @@ function updateUI() {
   if (window.renderTower)      window.renderTower(S)
   if (window.renderPacks)      window.renderPacks(S)
   if (window.renderHub)        window.renderHub(S)
+  // Re-rend le précombat si on est en phase IDLE (ex: après ajout d'un survivant à l'équipe)
+  if (currentPhase === PHASE.IDLE && window.renderPreCombat) window.renderPreCombat(S)
 }
 
 document.addEventListener('DOMContentLoaded', init)

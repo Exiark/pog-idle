@@ -275,12 +275,28 @@ export const SURVIVORS = [
 ]
 
 export const RARITY = {
-  D: { label: 'Débutant', color: '#B4B2A9', bg: '#F1EFE8', text: '#2C2C2A' },
-  E: { label: 'Expert',   color: '#378ADD', bg: '#E6F1FB', text: '#042C53' },
-  L: { label: 'Légende',  color: '#EF9F27', bg: '#FAEEDA', text: '#412402' },
+  D: { label: 'Débutant', color: '#8A8880', bg: '#2A2820', text: '#C8C4BC' },
+  E: { label: 'Expert',   color: '#378ADD', bg: '#0E2035', text: '#7AC0F5' },
+  L: { label: 'Légende',  color: '#EF9F27', bg: '#2A1A05', text: '#F0C060' },
 }
 
 export const RARITY_ORDER = ['D', 'E', 'L']
+
+// ── Méta des rôles (icône de classe + catégorie globale) ──
+export const ROLE_META = {
+  'Bouclier':   { globalClass: 'Tank',      classIcon: '🛡', classColor: '#4A8FE0' },
+  'Blindé':     { globalClass: 'Tank',      classIcon: '🛡', classColor: '#4A8FE0' },
+  'Berserk':    { globalClass: 'Mêlée',     classIcon: '⚔',  classColor: '#E05A4A' },
+  'Lame':       { globalClass: 'Mêlée',     classIcon: '⚔',  classColor: '#E05A4A' },
+  'Tireur':     { globalClass: 'Distance',  classIcon: '🎯', classColor: '#E0C44A' },
+  'Artificier': { globalClass: 'Distance',  classIcon: '🎯', classColor: '#E0C44A' },
+  'Médic':      { globalClass: 'Médecin',   classIcon: '❤',  classColor: '#5AE05A' },
+  'Biologiste': { globalClass: 'Médecin',   classIcon: '❤',  classColor: '#5AE05A' },
+  'Ingénieur':  { globalClass: 'Soutien',   classIcon: '⚡', classColor: '#C8A0FF' },
+  'Tacticien':  { globalClass: 'Soutien',   classIcon: '⚡', classColor: '#C8A0FF' },
+  'Ombre':      { globalClass: 'Assassin',  classIcon: '🗡', classColor: '#A0C8FF' },
+  'Pistard':    { globalClass: 'Assassin',  classIcon: '🗡', classColor: '#A0C8FF' },
+}
 
 // ── Helpers ──
 export function getSurvivorById(id) {

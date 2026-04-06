@@ -1,5 +1,5 @@
 // ── SHELTER SURVIVOR — Collection de survivants ──
-import { SURVIVORS, RARITY, RARITY_ORDER } from '../data/survivors.js'
+import { SURVIVORS, RARITY, RARITY_ORDER, ROLE_META } from '../data/survivors.js'
 import { getCollectionStats } from '../core/gacha.js'
 
 export function renderCollection(state) {
@@ -65,21 +65,39 @@ export function renderCollection(state) {
 function survivorCard(id, copies, state) {
   const sv = SURVIVORS.find(x => x.id === id)
   if (!sv) return ''
-  const r        = RARITY[sv.rarity] || RARITY['D']
-  const inTeam   = state.team.some(e => e && e.id === id)
-  const isBoss   = sv.boss
+  const r      = RARITY[sv.rarity] || RARITY['D']
+  const meta   = ROLE_META[sv.role] || {}
+  const inTeam = state.team.some(e => e && e.id === id)
+  const isBoss = sv.boss
 
   return `
     <div class="survivor-card ${inTeam ? 'in-team' : ''}"
-      style="background:${r.bg};border-color:${inTeam ? r.color : 'transparent'};color:${r.text}"
+      style="background:${r.bg};border-color:${inTeam ? r.color : r.color + '44'}"
       onclick="${isBoss ? '' : `window.toggleTeamUI('${id}')`}"
-      title="${sv.name} — ${sv.role} (${r.label})\n${sv.desc}${copies > 1 ? `\n${copies} copies` : ''}">
-      <div class="survivor-card-icon">${sv.icon}</div>
-      <div class="survivor-card-name">${sv.name}</div>
-      <div class="survivor-card-role" style="color:${r.color}">${sv.role}</div>
+      title="${sv.name} — ${sv.role}\n${sv.desc}${copies > 1 ? `\n×${copies} copies` : ''}">
+
+      <!-- Rareté + classe globale -->
+      <div class="sc-top">
+        <span class="sc-rarity" style="color:${r.color}">${r.label}</span>
+        <span class="sc-class" style="color:${meta.classColor || r.color}" title="${meta.globalClass || ''}">
+          ${meta.classIcon || ''}
+        </span>
+      </div>
+
+      <!-- Icône principale -->
+      <div class="sc-icon">${sv.icon}</div>
+
+      <!-- Classe globale + sous-classe -->
+      <div class="sc-class-global" style="color:${meta.classColor || r.color}">${meta.globalClass || ''}</div>
+      <div class="sc-subclass" style="color:${r.color}">${sv.role}</div>
+
+      <!-- Nom -->
+      <div class="sc-name" style="color:${r.text}">${sv.name}</div>
+
+      <!-- Badges flottants -->
       ${copies > 1 ? `<div class="survivor-card-copies">${copies}</div>` : ''}
-      ${inTeam ? `<div class="survivor-card-check">✓</div>` : ''}
-      ${isBoss ? `<div class="survivor-card-boss">BOSS</div>` : ''}
+      ${inTeam      ? `<div class="survivor-card-check">✓</div>` : ''}
+      ${isBoss      ? `<div class="survivor-card-boss">BOSS</div>` : ''}
     </div>`
 }
 

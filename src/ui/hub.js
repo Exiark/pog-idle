@@ -1,5 +1,5 @@
 // ── SHELTER SURVIVOR — Hub (camp de base) ──
-import { SURVIVORS, RARITY } from '../data/survivors.js'
+import { SURVIVORS, RARITY, ROLE_META } from '../data/survivors.js'
 import { ZONES } from '../data/zones.js'
 
 export function renderHub(state) {
@@ -37,17 +37,19 @@ export function renderTeam(state) {
   slotsDiv.innerHTML = Array.from({ length: 6 }, (_, i) => {
     const s = state.team[i]
     if (!s) return `<div class="team-slot empty" onclick="window.setTab('survivors')" title="Ajouter un survivant">+</div>`
-    const sv = SURVIVORS.find(x => x.id === s.id)
+    const sv   = SURVIVORS.find(x => x.id === s.id)
     if (!sv) return ''
-    const r = RARITY[sv.rarity] || RARITY['D']
+    const r    = RARITY[sv.rarity] || RARITY['D']
+    const meta = ROLE_META[sv.role] || {}
     return `
       <div class="team-slot filled"
-        style="background:${r.bg};border-color:${r.color};color:${r.text}"
+        style="background:${r.bg};border-color:${r.color}"
         onclick="window.toggleTeamUI('${s.id}')"
         title="${sv.name} — ${sv.role}\n${sv.desc}">
-        <div class="team-slot-icon">${sv.icon}</div>
-        <div class="team-slot-name">${sv.name}</div>
-        <div class="team-slot-role">${sv.role}</div>
+        <div class="ts-class-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>
+        <div class="ts-icon">${sv.icon}</div>
+        <div class="ts-subclass" style="color:${r.color}">${sv.role}</div>
+        <div class="ts-name" style="color:${r.text}">${sv.name}</div>
       </div>`
   }).join('')
 

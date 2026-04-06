@@ -1,5 +1,5 @@
 // ── SHELTER SURVIVOR — Arène de combat ──
-import { SURVIVORS, RARITY } from '../data/survivors.js'
+import { SURVIVORS, RARITY, ROLE_META } from '../data/survivors.js'
 import { ZONES } from '../data/zones.js'
 
 // ── Rendu de l'écran de sélection d'équipe (avant combat) ──
@@ -25,12 +25,15 @@ export function renderPreCombat(state) {
         ${Array.from({ length: 6 }, (_, i) => {
           const s = state.team[i]
           if (!s) return `<div class="precombat-slot empty">?</div>`
-          const sv = SURVIVORS.find(x => x.id === s.id)
+          const sv   = SURVIVORS.find(x => x.id === s.id)
           if (!sv) return ''
-          const r = RARITY[sv.rarity] || RARITY['D']
+          const r    = RARITY[sv.rarity] || RARITY['D']
+          const meta = ROLE_META[sv.role] || {}
           return `<div class="precombat-slot filled" style="background:${r.bg};border-color:${r.color}">
+            <div class="ts-class-icon" style="color:${meta.classColor || r.color};font-size:10px">${meta.classIcon || ''}</div>
             <div style="font-size:20px">${sv.icon}</div>
-            <div style="font-size:9px;font-weight:500;color:${r.text}">${sv.name}</div>
+            <div style="font-size:8px;color:${r.color}">${sv.role}</div>
+            <div style="font-size:8px;font-weight:700;color:${r.text}">${sv.name}</div>
           </div>`
         }).join('')}
       </div>
