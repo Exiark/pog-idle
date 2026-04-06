@@ -79,9 +79,6 @@ function survivorCard(id, copies, state) {
       <!-- Rareté -->
       <div class="sc-rarity" style="color:${r.color}">${r.label}</div>
 
-      <!-- Icône du survivant -->
-      <div class="sc-icon">${sv.icon}</div>
-
       <!-- Icône de sur-classe + sous-classe dessous -->
       <div class="sc-class-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>
       <div class="sc-subclass" style="color:${r.color}">${sv.role}</div>
