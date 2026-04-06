@@ -76,22 +76,17 @@ function survivorCard(id, copies, state) {
       onclick="${isBoss ? '' : `window.toggleTeamUI('${id}')`}"
       title="${sv.name} — ${sv.role}\n${sv.desc}${copies > 1 ? `\n×${copies} copies` : ''}">
 
-      <!-- Rareté + classe globale -->
-      <div class="sc-top">
-        <span class="sc-rarity" style="color:${r.color}">${r.label}</span>
-        <span class="sc-class" style="color:${meta.classColor || r.color}" title="${meta.globalClass || ''}">
-          ${meta.classIcon || ''}
-        </span>
-      </div>
+      <!-- Rareté -->
+      <div class="sc-rarity" style="color:${r.color}">${r.label}</div>
 
-      <!-- Icône principale -->
+      <!-- Icône du survivant -->
       <div class="sc-icon">${sv.icon}</div>
 
-      <!-- Classe globale + sous-classe -->
-      <div class="sc-class-global" style="color:${meta.classColor || r.color}">${meta.globalClass || ''}</div>
+      <!-- Icône de sur-classe + sous-classe dessous -->
+      <div class="sc-class-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>
       <div class="sc-subclass" style="color:${r.color}">${sv.role}</div>
 
-      <!-- Nom -->
+      <!-- Nom tout en bas -->
       <div class="sc-name" style="color:${r.text}">${sv.name}</div>
 
       <!-- Badges flottants -->

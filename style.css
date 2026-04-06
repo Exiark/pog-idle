@@ -306,16 +306,11 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .survivor-card.in-team { border-width: 2px; }
 
 /* Layout interne de la carte */
-.sc-top {
-  display: flex; justify-content: space-between; align-items: center;
-  width: 100%; margin-bottom: 1px;
-}
-.sc-rarity    { font-size: 7px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-.sc-class     { font-size: 11px; line-height: 1; }
-.sc-icon      { font-size: 22px; margin: 2px 0; }
-.sc-class-global { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
-.sc-subclass  { font-size: 8px; opacity: 0.85; }
-.sc-name      { font-size: 8px; font-weight: 700; text-align: center; line-height: 1.2; margin-top: 2px; max-width: 62px; }
+.sc-rarity     { font-size: 7px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.sc-icon       { font-size: 24px; margin: 2px 0 1px; }
+.sc-class-icon { font-size: 14px; line-height: 1; }
+.sc-subclass   { font-size: 8px; opacity: 0.85; }
+.sc-name       { font-size: 8px; font-weight: 700; text-align: center; line-height: 1.2; margin-top: 3px; max-width: 62px; }
 
 .survivor-card-copies {
   position: absolute; top: -3px; right: -3px;

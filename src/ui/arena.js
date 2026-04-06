@@ -30,8 +30,8 @@ export function renderPreCombat(state) {
           const r    = RARITY[sv.rarity] || RARITY['D']
           const meta = ROLE_META[sv.role] || {}
           return `<div class="precombat-slot filled" style="background:${r.bg};border-color:${r.color}">
-            <div class="ts-class-icon" style="color:${meta.classColor || r.color};font-size:10px">${meta.classIcon || ''}</div>
             <div style="font-size:20px">${sv.icon}</div>
+            <div style="font-size:12px;color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>
             <div style="font-size:8px;color:${r.color}">${sv.role}</div>
             <div style="font-size:8px;font-weight:700;color:${r.text}">${sv.name}</div>
           </div>`
