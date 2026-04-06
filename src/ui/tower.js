@@ -1,4 +1,5 @@
-import { WORLDS } from '../data/worlds.js'
+// ── SHELTER SURVIVOR — Carte des zones ──
+import { ZONES } from '../data/zones.js'
 
 export function renderTower(state) {
   const container = document.getElementById('tower-container')
@@ -6,139 +7,92 @@ export function renderTower(state) {
 
   container.innerHTML = `
     <div style="text-align:center;margin-bottom:16px">
-      <div style="font-size:16px;font-weight:500">Tour de Babel</div>
+      <div style="font-size:16px;font-weight:500;color:var(--accent)">☣ Carte d'exploration</div>
       <div style="font-size:12px;color:var(--text-muted)">
-        Monde ${state.currentWorld} — Vague ${state.currentFloor}/11
+        Zone ${state.currentZone} — Vague ${state.currentWave}/11
       </div>
     </div>
 
-    <div style="
-      display:flex;flex-direction:column;gap:8px;
-      max-width:340px;margin:0 auto
-    ">
-      ${[...WORLDS].reverse().map(world => worldNode(world, state)).join('')}
+    <div style="display:flex;flex-direction:column;gap:8px;max-width:340px;margin:0 auto">
+      ${[...ZONES].reverse().map(zone => zoneNode(zone, state)).join('')}
     </div>
 
-    <div style="
-      text-align:center;margin-top:12px;
-      font-size:11px;color:var(--text-muted)
-    ">
-      Cliquez sur un monde déverrouillé pour y jouer
+    <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--text-muted)">
+      Appuyez sur une zone déverrouillée pour y envoyer votre équipe
     </div>`
 }
 
-function worldNode(world, state) {
-  const isUnlocked  = state.unlockedWorlds.includes(world.id)
-  const isActive    = state.activeWorld === world.id
-  const isCurrent   = state.currentWorld === world.id
-  const bossBeaten  = state.bossesDefeated.includes(`w${world.id}`)
-  const isFarming   = isActive && world.id < state.currentWorld
+function zoneNode(zone, state) {
+  const isUnlocked = state.unlockedZones.includes(zone.id)
+  const isActive   = state.activeZone === zone.id
+  const isCurrent  = state.currentZone === zone.id
+  const beaten     = state.bossesDefeated.includes(`z${zone.id}`)
+  const isFarming  = isActive && zone.id < state.currentZone
 
-  const colors = world.colors
+  const c = zone.colors
 
   return `
-    <div
-      onclick="${isUnlocked ? `selectWorldUI(${world.id})` : ''}"
+    <div onclick="${isUnlocked ? `window.selectZoneUI(${zone.id})` : ''}"
       style="
         display:flex;align-items:center;gap:12px;
-        padding:12px 14px;
-        border-radius:12px;
-        border:${isActive ? `2px solid ${colors.primary}` : '0.5px solid var(--gray-border)'};
-        background:${isActive ? colors.primary + '18' : 'white'};
+        padding:12px 14px;border-radius:12px;
+        border:${isActive ? `2px solid ${c.primary}` : '0.5px solid var(--gray-border)'};
+        background:${isActive ? c.primary + '22' : 'var(--panel-bg)'};
         cursor:${isUnlocked ? 'pointer' : 'default'};
         opacity:${isUnlocked ? '1' : '0.4'};
-        transition:border-color 0.2s,background 0.2s;
         position:relative;
       ">
 
-      <!-- Numéro d'étage -->
       <div style="
         width:36px;height:36px;border-radius:50%;flex-shrink:0;
-        background:${isUnlocked ? colors.primary : 'var(--gray-border)'};
+        background:${isUnlocked ? c.primary : 'var(--gray-border)'};
         color:white;font-size:14px;font-weight:500;
-        display:flex;align-items:center;justify-content:center;
-      ">${world.id}</div>
+        display:flex;align-items:center;justify-content:center;">
+        ${beaten ? '✓' : zone.id}
+      </div>
 
-      <!-- Infos monde -->
       <div style="flex:1;min-width:0">
-        <div style="
-          font-size:13px;font-weight:500;
-          color:${isUnlocked ? 'var(--text)' : 'var(--text-muted)'}
-        ">
-          ${world.name}
-          ${bossBeaten ? '<span style="color:#3B6D11;font-size:11px;margin-left:4px">✓</span>' : ''}
+        <div style="font-size:13px;font-weight:500;color:${isUnlocked ? 'var(--text)' : 'var(--text-muted)'}">
+          ${zone.name}
+          ${beaten ? '<span style="color:#5A9E3A;font-size:11px;margin-left:4px">✓</span>' : ''}
         </div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
-          ${isUnlocked ? world.desc : 'Verrouilllé — battez le boss du monde précédent'}
+          ${isUnlocked ? zone.desc : 'Verrouilée — battez le boss précédent'}
         </div>
 
-        ${isCurrent && !bossBeaten ? `
+        ${isCurrent && !beaten ? `
           <div style="margin-top:5px">
             <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-bottom:2px">
               <span>Progression</span>
-              <span>Vague ${state.currentFloor}/11</span>
+              <span>Vague ${state.currentWave}/11</span>
             </div>
             <div class="bar-track">
-              <div class="bar-fill" style="
-                width:${Math.round(state.currentFloor / 11 * 100)}%;
-                background:${colors.primary}
-              "></div>
+              <div class="bar-fill" style="width:${Math.round(state.currentWave / 11 * 100)}%;background:${c.primary}"></div>
             </div>
-          </div>` : ''
-        }
+          </div>` : ''}
 
-        ${bossBeaten ? `
-          <div style="font-size:11px;color:#3B6D11;margin-top:3px">
-            Boss vaincu · Récompenses obtenues
-          </div>` : ''
-        }
-
-        ${isFarming ? `
-          <div style="font-size:11px;color:#BA7517;margin-top:3px">
-            Mode farming — récompenses ×0.4
-          </div>` : ''
-        }
+        ${beaten ? `<div style="font-size:11px;color:#5A9E3A;margin-top:3px">Boss éliminé · Zone sécurisée</div>` : ''}
+        ${isFarming ? `<div style="font-size:11px;color:var(--accent);margin-top:3px">Mode farming — butin ×0.4</div>` : ''}
       </div>
 
-      <!-- Badge actif -->
-      ${isActive ? `
-        <span class="badge" style="
-          background:${colors.primary};color:white;
-          font-size:10px;flex-shrink:0
-        ">En jeu</span>` : ''
-      }
-
-      <!-- Cadenas -->
-      ${!isUnlocked ? `
-        <div style="font-size:18px;opacity:0.4">🔒</div>` : ''
-      }
-
-      <!-- Boss info -->
-      ${isUnlocked && !bossBeaten ? `
-        <div style="
-          position:absolute;top:8px;right:10px;
-          font-size:10px;color:var(--text-muted)
-        ">
-          Boss: ${world.boss.name}
-        </div>` : ''
-      }
+      ${isActive ? `<span class="badge" style="background:${c.primary};color:white;font-size:10px;flex-shrink:0">En cours</span>` : ''}
+      ${!isUnlocked ? `<div style="font-size:18px;opacity:0.4">🔒</div>` : ''}
+      ${isUnlocked && !beaten ? `
+        <div style="position:absolute;top:8px;right:10px;font-size:10px;color:var(--text-muted)">
+          Boss: ${zone.boss.name}
+        </div>` : ''}
     </div>`
 }
 
 window.renderTower = renderTower
 
-window.selectWorldUI = function(worldId) {
+window.selectZoneUI = function(zoneId) {
   const S = window._state
-  if (!S) return
-  if (!S.unlockedWorlds.includes(worldId)) return
-  S.activeWorld = worldId
-
+  if (!S || !S.unlockedZones.includes(zoneId)) return
+  S.activeZone = zoneId
   if (window.saveState) window.saveState(S)
-  if (window.renderTower) window.renderTower(S)
-
-  // Retourne sur l'onglet combat
-  if (window.setTab) window.setTab('combat')
-
-  // Relance le combat dans le nouveau monde
-  document.dispatchEvent(new CustomEvent('worldChanged'))
+  renderTower(S)
+  if (window.renderHub)  window.renderHub(S)
+  if (window.setTab)     window.setTab('combat')
+  document.dispatchEvent(new CustomEvent('zoneChanged'))
 }

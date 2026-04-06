@@ -1,273 +1,375 @@
-import { WORLDS } from '../data/worlds.js'
-import { POGS }   from '../data/pogs.js'
-import { KINIS }  from '../data/kinis.js'
-import { hasTalent, getEquippedPogs } from './state.js'
+import { ZONES }      from '../data/zones.js'
+import { SURVIVORS }  from '../data/survivors.js'
+import { hasTalent, getTeam } from './state.js'
 import { updateMission } from './economy.js'
 
 export const PHASE = {
-  FLIPPING:    'flipping',
-  CALCULATING: 'calculating',
-  BATTLING:    'battling',
-  RESULT:      'result',
+  IDLE:       'idle',       // au camp, sélection équipe
+  FIGHTING:   'fighting',   // combat auto en cours
+  RESULT:     'result',     // résultat affiché
 }
 
-const RARITY_MULT = { C: 1, R: 1.8, E: 3, L: 5, M: 9 }
-
-export function pogCombatStats(pogId) {
-  const pog  = POGS.find(p => p.id === pogId)
-  if (!pog) return { attack: 1, defense: 1, hp: 5 }
-  const mult = RARITY_MULT[pog.rarity] || 1
+// ── Retourne les stats complètes d'un survivant (depuis collection) ──
+export function survivorCombatStats(survivorId) {
+  const s = SURVIVORS.find(x => x.id === survivorId)
+  if (!s) return { id: survivorId, name: '?', icon: '?', rarity: 'D', hp: 10, atk: 5, def: 3, spd: 10, maxHp: 10 }
   return {
-    id:      pogId,
-    name:    pog.name,
-    icon:    pog.icon,
-    rarity:  pog.rarity,
-    attack:  Math.round(2 * mult),
-    defense: Math.round(1.5 * mult),
-    hp:      Math.round(5 * mult),
-    effect:  pog.effect,
+    id:     s.id,
+    name:   s.name,
+    role:   s.role,
+    icon:   s.icon,
+    rarity: s.rarity,
+    hp:     s.hp,
+    maxHp:  s.hp,
+    atk:    s.atk,
+    def:    s.def,
+    spd:    s.spd,
+    effect: s.effect,
   }
 }
 
-export function generateBotPogs(state) {
-  const world  = WORLDS[state.activeWorld - 1]
-  const count  = Math.floor(Math.random() * (world.enemyCount.max - world.enemyCount.min + 1)) + world.enemyCount.min
-  const resist = world.resistanceBase * (1 + state.currentFloor * 0.08)
+// ── Génère l'escouade ennemie (zombies génériques) ──
+export function generateEnemySquad(state) {
+  const zone    = ZONES[state.activeZone - 1]
+  const count   = Math.floor(Math.random() * (zone.enemyCount.max - zone.enemyCount.min + 1)) + zone.enemyCount.min
+  const scaling = zone.resistanceBase * (1 + state.currentWave * 0.08)
 
-  return Array.from({ length: count }, (_, i) => ({
-    id:      i,
-    flipped: false,
-    attack:  Math.round((2 + resist) * (1 + Math.random() * 0.3)),
-    defense: Math.round((1.5 + resist * 0.8) * (1 + Math.random() * 0.2)),
-    hp:      Math.round((5 + resist * 3) * (1 + Math.random() * 0.4)),
-    maxHp:   0,
-  })).map(p => ({ ...p, maxHp: p.hp }))
-}
-
-export function generateEnemyPile(state) {
-  const world = WORLDS[state.activeWorld - 1]
-  const count = Math.floor(Math.random() * (world.enemyCount.max - world.enemyCount.min + 1)) + world.enemyCount.min
-  return Array.from({ length: count }, (_, i) => ({ id: i, flipped: false }))
-}
-
-export function calcFlips(state) {
-  const kini    = KINIS[state.selectedKini] || KINIS[0]
-  const world   = WORLDS[state.activeWorld - 1]
-  const farming = state.activeWorld < state.currentWorld ? 0.6 : 1
-
-  let base   = kini.power * 0.4
-  let resist = world.resistanceBase * (1 + state.currentFloor * 0.2)
-
-  getEquippedPogs(state).forEach(p => {
-    if (!p?.effect) return
-    if (p.effect.startsWith('flips+'))  base   += parseFloat(p.effect.split('+')[1]) * 0.3
-    if (p.effect.startsWith('resist-')) resist -= parseFloat(p.effect.split('-')[1])
-    if (p.effect === 'all+0.1')         base   *= 1.05
-    if (p.effect === 'all+0.3')         base   *= 1.1
-    if (p.effect === 'master')          base   *= 1.3
+  return Array.from({ length: count }, (_, i) => {
+    const hp = Math.round((20 + scaling * 15) * (1 + Math.random() * 0.3))
+    return {
+      id:      i,
+      name:    randomZombieName(),
+      icon:    randomZombieIcon(),
+      hp,
+      maxHp:   hp,
+      atk:     Math.round((8 + scaling * 4)  * (1 + Math.random() * 0.3)),
+      def:     Math.round((4 + scaling * 2)  * (1 + Math.random() * 0.2)),
+      spd:     Math.round((10 + scaling * 3) * (1 + Math.random() * 0.2)),
+      alive:   true,
+      effects: [],  // statuts : poison, bleed, stun...
+    }
   })
-
-  if (hasTalent(state, 't3')) resist *= 0.85
-  if ((KINIS[state.selectedKini] || KINIS[0]).bonusEffect === 'ignore_resist') resist = 0.5
-
-  return Math.max(1, Math.floor((base / Math.max(0.5, resist)) * farming))
 }
 
-export function calcCrit(state) {
-  const kini = KINIS[state.selectedKini] || KINIS[0]
-  let crit = kini.chance
-  if (hasTalent(state, 't2')) crit += 0.1
-  getEquippedPogs(state).forEach(p => {
-    if (p?.effect?.startsWith('crit+')) crit += parseFloat(p.effect.split('+')[1])
-  })
-  return Math.min(0.95, crit)
-}
+const ZOMBIE_NAMES = ['Rôdeur','Grognard','Charognard','Mutant','Infecté','Zombie','Ravageur','Déviant']
+const ZOMBIE_ICONS = ['🧟','💀','🦷','🩸','☣','🕷','🦴','👁']
+function randomZombieName() { return ZOMBIE_NAMES[Math.floor(Math.random() * ZOMBIE_NAMES.length)] }
+function randomZombieIcon() { return ZOMBIE_ICONS[Math.floor(Math.random() * ZOMBIE_ICONS.length)] }
 
-export function calcSpeed(state) {
-  const kini = KINIS[state.selectedKini] || KINIS[0]
-  let speed = kini.speed
-  if (hasTalent(state, 't1')) speed *= 1.1
-  getEquippedPogs(state).forEach(p => {
-    if (p?.effect?.startsWith('speed+')) speed += parseFloat(p.effect.split('+')[1])
-  })
+// ── Calcule la vitesse d'attaque globale de l'équipe ──
+export function calcTeamSpeed(state) {
+  const team = getTeam(state)
+  if (team.length === 0) return 1.0
+  let totalSpd = team.reduce((sum, s) => {
+    const sv = SURVIVORS.find(x => x.id === s.id)
+    return sum + (sv ? sv.spd : 10)
+  }, 0)
+  const avgSpd = totalSpd / team.length
+  // SPD 10 = 1200ms, SPD 75 = 300ms (Blitz)
+  const speed = 0.5 + (avgSpd / 75) * 1.5
+  if (hasTalent(state, 't1')) return Math.min(4.0, speed * 1.1)
   return Math.min(4.0, speed)
 }
 
 export function calcInterval(state) {
-  return Math.max(300, Math.floor(1200 / calcSpeed(state)))
+  return Math.max(300, Math.floor(1200 / calcTeamSpeed(state)))
 }
 
-export function doAttack(state, enemyPile) {
-  const isCrit = Math.random() < calcCrit(state)
-  let flips    = calcFlips(state)
-  if (isCrit) flips = Math.floor(flips * 2)
+// ── Un tour de combat complet (6 survivants vs escouade ennemie) ──
+export function doFightTurn(playerTeam, enemySquad) {
+  const logs = []
 
-  const kini = KINIS[state.selectedKini] || KINIS[0]
-  if (kini.bonusEffect === 'min_flips+3')                             flips = Math.max(3, flips)
-  if (kini.bonusEffect === 'double_flip+0.2' && Math.random() < 0.2) flips *= 2
+  // Ordre d'attaque : tous les vivants triés par SPD décroissant
+  const allCombatants = [
+    ...playerTeam.filter(s => s.hp > 0).map(s => ({ ...s, side: 'player' })),
+    ...enemySquad.filter(e => e.alive).map(e => ({ ...e, side: 'enemy' })),
+  ].sort((a, b) => b.spd - a.spd)
 
-  const remaining = enemyPile.filter(p => !p.flipped)
-  const toFlip    = remaining.slice(0, Math.min(flips, remaining.length))
-  toFlip.forEach(p => { p.flipped = true })
+  for (const actor of allCombatants) {
+    // Vérifie que le combat n'est pas terminé
+    if (playerTeam.every(s => s.hp <= 0)) break
+    if (enemySquad.every(e => !e.alive))  break
 
-  state.totalFlips += toFlip.length
-  updateMission(state, 'flips', toFlip.length)
+    if (actor.side === 'player') {
+      const log = playerAttack(actor, enemySquad)
+      if (log) logs.push(log)
+    } else {
+      const log = enemyAttack(actor, playerTeam)
+      if (log) logs.push(log)
+    }
+  }
 
-  return { flipped: toFlip.length, isCrit, done: enemyPile.every(p => p.flipped) }
+  // Tick des effets persistants (poison, saignement, HoT)
+  tickEffects(playerTeam, enemySquad, logs)
+
+  return logs
 }
 
-// ── Calcule les scores à partir des pogs retournés ──
-export function calculateScores(state, flippedCount, botPogs) {
-  const kini    = KINIS[state.selectedKini] || KINIS[0]
-  const farming = state.activeWorld < state.currentWorld ? 0.4 : 1
+// ── Attaque d'un survivant joueur ──
+function playerAttack(survivor, enemySquad) {
+  const alive = enemySquad.filter(e => e.alive)
+  if (alive.length === 0) return null
 
-  // Stats de base par pog retourné — calculées depuis la pile
-  // (pas besoin d'avoir des pogs en collection)
-  const baseStatPerPog = { attack: 2, defense: 1.5, hp: 5 }
+  // Cible : priorité → ennemi le plus dangereux (ATK max), sinon premier vivant
+  const hasPriority = survivor.effect?.includes('priority')
+  const target = hasPriority
+    ? alive.reduce((a, b) => b.atk > a.atk ? b : a)
+    : alive[0]
 
-  // Bonus selon les pogs équipés (passifs)
-  let atkMult = 1
-  let defMult = 1
-  getEquippedPogs(state).forEach(p => {
-    if (!p?.effect) return
-    if (p.effect === 'all+0.1') { atkMult *= 1.1; defMult *= 1.1 }
-    if (p.effect === 'all+0.3') { atkMult *= 1.3; defMult *= 1.3 }
-    if (p.effect === 'master')  { atkMult *= 2;   defMult *= 2 }
-    if (p.effect.startsWith('flips+')) atkMult *= 1.05
-  })
-
-  // Bonus kini
-  const kiniAtkBonus = 1 + (kini.power - 8) * 0.05
-  const kiniDefBonus = 1 + kini.accuracy * 0.3
-
-  // Stats totales joueur
-  const playerAttack  = Math.max(1, Math.round(
-    flippedCount * baseStatPerPog.attack * kiniAtkBonus * atkMult * farming
-  ))
-  const playerDefense = Math.max(1, Math.round(
-    flippedCount * baseStatPerPog.defense * kiniDefBonus * defMult * farming
-  ))
-  const playerHp      = Math.max(10, Math.round(
-    flippedCount * baseStatPerPog.hp * farming
+  const isCrit    = Math.random() < critChance(survivor)
+  const isSnipe   = survivor.effect?.includes('snipe') && isCrit
+  const dmgMult   = isSnipe ? 3 : isCrit ? 2 : 1
+  const pierce    = survivor.effect?.includes('pierce') ? 0.5 : 0        // ignore % DEF
+  const effective = Math.max(1, Math.round(
+    (survivor.atk - target.def * (1 - pierce)) * dmgMult
   ))
 
-  // Talents
-  const finalAtk = hasTalent(state, 't2') ? Math.round(playerAttack  * 1.1) : playerAttack
-  const finalDef = hasTalent(state, 't7') ? Math.round(playerDefense * 1.2) : playerDefense
+  target.hp -= effective
+  if (target.hp <= 0) { target.hp = 0; target.alive = false }
 
-  // Pogs équipés en collection → cartes visuelles pour le bilan
-  const equippedPogStats = getEquippedPogs(state).slice(0, flippedCount).map(p => {
-    return pogCombatStats(p.id)
-  })
+  // AoE : splash sur 1 ennemi adjacent
+  if (survivor.effect?.includes('aoe') && alive.length > 1) {
+    const splash = alive.find(e => e !== target && e.alive)
+    if (splash) {
+      const splashDmg = Math.max(1, Math.round(effective * 0.5))
+      splash.hp -= splashDmg
+      if (splash.hp <= 0) { splash.hp = 0; splash.alive = false }
+    }
+  }
 
-  // Bot
-  const botFlipped  = botPogs.filter(p => p.flipped)
-  const botAttack   = Math.max(1, botFlipped.reduce((s, p) => s + p.attack,  0))
-  const botDefense  = Math.max(1, botFlipped.reduce((s, p) => s + p.defense, 0))
-  const botHp       = Math.max(10, botFlipped.reduce((s, p) => s + p.hp,     0))
+  // Saignement
+  if (survivor.effect?.includes('bleed') && Math.random() < 0.6) {
+    target.effects = target.effects || []
+    target.effects.push({ type: 'bleed', dmg: Math.round(survivor.atk * 0.3), turns: 3 })
+  }
+
+  // Stun
+  const stunChance = extractVal(survivor.effect, 'stun+')
+  if (stunChance && Math.random() < stunChance) {
+    target.effects = target.effects || []
+    target.effects.push({ type: 'stun', turns: 1 })
+  }
+
+  // Multi-cible (Lame)
+  const multiChance = extractVal(survivor.effect, 'multi+')
+  if (multiChance && Math.random() < multiChance) {
+    const second = alive.find(e => e !== target && e.alive)
+    if (second) {
+      const dmg2 = Math.max(1, Math.round(survivor.atk * 0.7))
+      second.hp -= dmg2
+      if (second.hp <= 0) { second.hp = 0; second.alive = false }
+    }
+  }
 
   return {
-    player: {
-      attack:  finalAtk,
-      defense: finalDef,
-      hp:      playerHp,
-      count:   flippedCount,
-      pogs:    equippedPogStats,
-    },
-    bot: {
-      attack:  botAttack,
-      defense: botDefense,
-      hp:      botHp,
-      count:   botFlipped.length,
-    },
+    side:   'player',
+    actor:  survivor.name,
+    target: target.name,
+    dmg:    effective,
+    isCrit,
+    isSnipe,
+    killed: !target.alive,
   }
 }
 
-export function simulateBattle(scores) {
-  let pHp  = scores.player.hp
-  let bHp  = scores.bot.hp
-  const log = []
-  let turn  = 0
+// ── Attaque d'un ennemi ──
+function enemyAttack(enemy, playerTeam) {
+  if (enemy.effects?.some(e => e.type === 'stun')) return null
 
-  while (pHp > 0 && bHp > 0 && turn < 30) {
-    turn++
-    const pDmg  = Math.max(1, scores.player.attack - Math.floor(scores.bot.defense * 0.5))
-    const bDmg  = Math.max(1, scores.bot.attack    - Math.floor(scores.player.defense * 0.5))
-    const pCrit = Math.random() < 0.15
-    const bCrit = Math.random() < 0.15
-    const fpDmg = pCrit ? Math.floor(pDmg * 2) : pDmg
-    const fbDmg = bCrit ? Math.floor(bDmg * 2) : bDmg
+  const alive = playerTeam.filter(s => s.hp > 0)
+  if (alive.length === 0) return null
 
-    bHp -= fpDmg
-    pHp -= fbDmg
+  // Cible le Bouclier/Blindé en priorité (taunt)
+  const tank = alive.find(s => s.effect?.includes('taunt'))
+  const target = tank || alive[Math.floor(Math.random() * alive.length)]
 
-    log.push({
-      turn,
-      playerDmg: fpDmg, botDmg: fbDmg,
-      playerCrit: pCrit, botCrit: bCrit,
-      playerHp: Math.max(0, pHp),
-      botHp:    Math.max(0, bHp),
+  // Esquive (Ombre)
+  const dodge = extractVal(target.effect, 'dodge+')
+  if (dodge && Math.random() < dodge) {
+    return { side: 'enemy', actor: enemy.name, target: target.name, dmg: 0, dodged: true }
+  }
+
+  // Armure (Blindé)
+  const armor = extractVal(target.effect, 'armor+')
+  const dmgReduction = armor || 0
+  const raw  = Math.max(1, enemy.atk - Math.floor(target.def * 0.5))
+  const dmg  = Math.max(1, Math.round(raw * (1 - dmgReduction)))
+
+  target.hp -= dmg
+  if (target.hp < 0) target.hp = 0
+
+  return {
+    side:   'enemy',
+    actor:  enemy.name,
+    target: target.name,
+    dmg,
+    dodged: false,
+    killed: target.hp <= 0,
+  }
+}
+
+// ── Tick des effets persistants ──
+function tickEffects(playerTeam, enemySquad, logs) {
+  // Soins (Médic / Biologiste)
+  playerTeam.filter(s => s.hp > 0).forEach(s => {
+    const healAmt = extractVal(s.effect, 'heal+')
+    if (healAmt) {
+      const target = playerTeam.filter(x => x.hp > 0 && x.hp < x.maxHp)
+        .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0]
+      if (target) {
+        target.hp = Math.min(target.maxHp, target.hp + healAmt)
+        logs.push({ side: 'heal', actor: s.name, target: target.name, amount: healAmt })
+      }
+    }
+  })
+
+  // HoT global (Biologiste)
+  playerTeam.filter(s => s.hp > 0).forEach(s => {
+    const hot = extractVal(s.effect, 'hot+')
+    if (hot) {
+      playerTeam.filter(x => x.hp > 0).forEach(ally => {
+        ally.hp = Math.min(ally.maxHp, ally.hp + hot)
+      })
+      logs.push({ side: 'hot', actor: s.name, amount: hot })
+    }
+  })
+
+  // Tourelle (Ingénieur)
+  playerTeam.filter(s => s.hp > 0).forEach(s => {
+    const turret = extractVal(s.effect, 'turret+')
+    if (turret) {
+      const target = enemySquad.filter(e => e.alive)[0]
+      if (target) {
+        target.hp -= turret
+        if (target.hp <= 0) { target.hp = 0; target.alive = false }
+        logs.push({ side: 'turret', actor: s.name, target: target.name, dmg: turret })
+      }
+    }
+  })
+
+  // Saignement / poison ennemis
+  enemySquad.filter(e => e.alive && e.effects?.length).forEach(e => {
+    e.effects = e.effects.filter(ef => {
+      if (ef.type === 'bleed') {
+        e.hp -= ef.dmg
+        if (e.hp <= 0) { e.hp = 0; e.alive = false }
+        ef.turns--
+        return ef.turns > 0
+      }
+      if (ef.type === 'stun') {
+        ef.turns--
+        return ef.turns > 0
+      }
+      return true
     })
-  }
-
-  return { victory: pHp > 0, turns: log }
+  })
 }
 
-export function calcWaveReward(state) {
-  const world    = WORLDS[state.activeWorld - 1]
-  const farming  = state.activeWorld < state.currentWorld ? 0.4 : 1
-  const baseGold = (15 + state.currentFloor * 5) * world.goldMultiplier
-  let goldMult   = farming
+// ── Chance critique d'un survivant ──
+function critChance(survivor) {
+  let base = 0.1
+  const c = extractVal(survivor.effect, 'crit+')
+  if (c) base += c
+  return Math.min(0.95, base)
+}
 
-  getEquippedPogs(state).forEach(p => {
-    if (!p?.effect) return
-    if (p.effect.startsWith('gold+')) goldMult += parseFloat(p.effect.split('+')[1])
-    if (p.effect === 'master')        goldMult *= 2
+// ── Extrait une valeur numérique d'un effet (ex: 'crit+0.2' → 0.2) ──
+function extractVal(effect, prefix) {
+  if (!effect || !effect.includes(prefix)) return null
+  const part = effect.split(prefix)[1]
+  return parseFloat(part)
+}
+
+// ── Simule un combat complet jusqu'au bout (résultat synchrone) ──
+export function simulateFight(playerTeamIds, enemySquad, state) {
+  // Instancie les stats des survivants
+  const playerTeam = playerTeamIds.map(id => {
+    const stats = survivorCombatStats(id)
+    return { ...stats }
   })
-  if (hasTalent(state, 't4')) goldMult += 0.15
+
+  const enemies = enemySquad.map(e => ({ ...e }))
+  const allLogs = []
+  let turns = 0
+  const MAX_TURNS = 50
+
+  while (turns < MAX_TURNS) {
+    turns++
+    const turnLogs = doFightTurn(playerTeam, enemies)
+    allLogs.push({ turn: turns, actions: turnLogs })
+
+    if (playerTeam.every(s => s.hp <= 0)) break
+    if (enemies.every(e => !e.alive))     break
+  }
+
+  const victory     = enemies.every(e => !e.alive)
+  const survived    = playerTeam.filter(s => s.hp > 0).length
+  const killCount   = enemySquad.filter(e => !e.alive).length
+
+  if (victory) updateMission(state, 'waves', 1)
+  updateMission(state, 'kills', killCount)
+
+  const playerMaxHp = playerTeamIds.reduce((s, id) => {
+    const sv = SURVIVORS.find(x => x.id === id)
+    return s + (sv ? sv.hp : 10)
+  }, 0)
+  const enemyMaxHp = enemySquad.reduce((s, e) => s + e.maxHp, 0)
+
+  return { victory, turns: allLogs, survived, totalTurns: turns, playerMaxHp, enemyMaxHp }
+}
+
+// ── Récompense de vague ──
+export function calcWaveReward(state) {
+  const zone    = ZONES[state.activeZone - 1]
+  const farming = state.activeZone < state.currentZone ? 0.4 : 1
+  const baseCap = (15 + state.currentWave * 5) * zone.capsuleMultiplier
+  let capMult   = farming
+
+  if (hasTalent(state, 't4')) capMult += 0.15
 
   return {
-    gold:      Math.floor(baseGold * goldMult),
-    fragments: Math.floor((2 + (hasTalent(state, 't6') ? 2 : 0)) * farming),
-    gems:      hasTalent(state, 't7') ? 1 : 0,
-    accountXP: Math.floor((10 + state.currentFloor * 2) * farming),
+    capsules:  Math.floor(baseCap * capMult),
+    dna:       Math.floor((2 + (hasTalent(state, 't6') ? 2 : 0)) * farming),
+    radium:    hasTalent(state, 't7') ? 1 : 0,
+    accountXP: Math.floor((10 + state.currentWave * 2) * farming),
   }
 }
 
-export function advanceFloor(state) {
-  if (state.activeWorld === state.currentWorld) {
-    state.currentFloor++
-    if (state.currentFloor > 11) state.currentFloor = 11
+// ── Avance la vague ──
+export function advanceWave(state) {
+  if (state.activeZone === state.currentZone) {
+    state.currentWave++
+    if (state.currentWave > 11) state.currentWave = 11
   }
 }
 
+// ── Vérifie si c'est la vague boss ──
 export function isBossWave(state) {
-  return state.currentFloor === 11 && state.activeWorld === state.currentWorld
+  return state.currentWave === 11 && state.activeZone === state.currentZone
 }
 
-export function defeatBoss(state, worldId) {
-  if (state.bossesDefeated.includes(`w${worldId}`)) return null
-  const world = WORLDS[worldId - 1]
-  state.bossesDefeated.push(`w${worldId}`)
+// ── Défaite du boss de zone ──
+export function defeatBoss(state, zoneId) {
+  if (state.bossesDefeated.includes(`z${zoneId}`)) return null
+  const zone = ZONES[zoneId - 1]
+  state.bossesDefeated.push(`z${zoneId}`)
 
-  if (!state.worldPogs.includes(world.boss.reward.pog)) {
-    state.collection.push({ id: world.boss.reward.pog, rarity: 'L' })
-    state.worldPogs.push(world.boss.reward.pog)
-  }
-  if (!state.worldKinis.includes(world.boss.reward.kini)) {
-    state.worldKinis.push(world.boss.reward.kini)
+  if (!state.zoneSurvivors.includes(zone.boss.reward.survivor)) {
+    state.collection.push({ id: zone.boss.reward.survivor, rarity: 'E' })
+    state.zoneSurvivors.push(zone.boss.reward.survivor)
   }
 
-  const nextWorld = worldId + 1
-  if (nextWorld <= 7 && !state.unlockedWorlds.includes(nextWorld)) {
-    state.unlockedWorlds.push(nextWorld)
-    state.currentWorld = nextWorld
-    state.currentFloor = 1
+  const nextZone = zoneId + 1
+  if (nextZone <= 7 && !state.unlockedZones.includes(nextZone)) {
+    state.unlockedZones.push(nextZone)
+    state.currentZone = nextZone
+    state.currentWave = 1
   }
 
-  return { pog: world.boss.reward.pog, kini: world.boss.reward.kini, nextWorld }
+  return { survivor: zone.boss.reward.survivor, nextZone }
 }
 
+// ── XP de compte ──
 export function gainAccountXP(state, amount) {
   state.accountXP += amount
   const level  = state.accountLevel

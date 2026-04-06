@@ -1,158 +1,212 @@
-import { POGS, RARITY } from '../data/pogs.js'
-import { KINIS }        from '../data/kinis.js'
+// ── SHELTER SURVIVOR — Arène de combat ──
+import { SURVIVORS, RARITY } from '../data/survivors.js'
+import { ZONES } from '../data/zones.js'
 
-export function renderTeam(state) {
-  const slotsDiv = document.getElementById('team-slots')
-  const bonusDiv = document.getElementById('team-bonus')
-  const friseDiv = document.getElementById('wave-frise')
-  const kiniCard = document.getElementById('kini-card')
+// ── Rendu de l'écran de sélection d'équipe (avant combat) ──
+export function renderPreCombat(state) {
+  const panel = document.getElementById('precombat-panel')
+  if (!panel) return
 
-  if (friseDiv) renderFrise(state, friseDiv)
-  if (kiniCard) renderKiniCard(state, kiniCard)
-  if (!slotsDiv) return
+  const zone = ZONES[state.activeZone - 1]
+  const team = state.team.filter(Boolean)
 
-  const maxSlots = state.talentsUnlocked.includes('t9') ? 11 : 10
-  slotsDiv.style.cssText = 'display:flex;flex-wrap:wrap;gap:5px;margin:8px 0'
+  panel.innerHTML = `
+    <div class="precombat-zone">
+      <div class="precombat-zone-icon">☣</div>
+      <div>
+        <div class="precombat-zone-name">Zone ${state.activeZone} — ${zone.name}</div>
+        <div class="precombat-zone-sub">Vague ${state.currentWave}/11 · Boss: ${zone.boss.name}</div>
+      </div>
+    </div>
 
-  slotsDiv.innerHTML = Array.from({ length: maxSlots }, (_, i) => {
-    const p = state.equippedPogs[i]
-    if (p) {
-      const pg = POGS.find(x => x.id === p.id)
-      const r  = RARITY[pg.rarity]
-      return `<div class="pog-circle"
-        style="background:${r.bg};border-color:${r.color};color:${r.text}"
-        onclick="toggleEquipUI('${p.id}')"
-        title="${pg.name} — ${r.label}\n${pg.desc}">
-        <span style="font-size:12px">${pg.icon}</span>
-      </div>`
-    }
-    return `<div class="slot-empty" onclick="setTab('pogs')" title="Ajouter un pog">+</div>`
-  }).join('')
+    <div class="precombat-team">
+      <div class="precombat-label">Équipe sélectionnée (${team.length}/6)</div>
+      <div class="precombat-slots">
+        ${Array.from({ length: 6 }, (_, i) => {
+          const s = state.team[i]
+          if (!s) return `<div class="precombat-slot empty">?</div>`
+          const sv = SURVIVORS.find(x => x.id === s.id)
+          if (!sv) return ''
+          const r = RARITY[sv.rarity] || RARITY['D']
+          return `<div class="precombat-slot filled" style="background:${r.bg};border-color:${r.color}">
+            <div style="font-size:20px">${sv.icon}</div>
+            <div style="font-size:9px;font-weight:500;color:${r.text}">${sv.name}</div>
+          </div>`
+        }).join('')}
+      </div>
+    </div>
 
-  const bonuses = calcSynergies(state)
-  if (bonusDiv) {
-    bonusDiv.style.cssText = 'font-size:11px;color:var(--text-muted);margin:0 0 8px'
-    bonusDiv.textContent   = bonuses.length ? bonuses.join(' · ') : 'Aucune synergie active'
-  }
+    ${team.length === 0 ? `
+      <div class="precombat-warning">
+        Aucun survivant dans l'équipe !<br>
+        <button onclick="window.setTab('survivors')" style="margin-top:8px">Recruter des survivants</button>
+      </div>` : `
+      <button class="btn-danger launch-btn" onclick="window.startCombat()">
+        ☣ Partir en mission
+      </button>`}
+  `
 }
 
-function renderKiniCard(state, container) {
-  const k  = KINIS[state.selectedKini] || KINIS[0]
-  const typeColors = {
-    'Débutant':  { bg: '#E6F1FB', c: '#185FA5' },
-    'Puissance': { bg: '#FAECE7', c: '#993C1D' },
-    'Polyvalent':{ bg: '#EEEDFE', c: '#534AB7' },
-    'Vitesse':   { bg: '#EAF3DE', c: '#3B6D11' },
-    'Chanceux':  { bg: '#FAEEDA', c: '#854F0B' },
-  }
-  const tc = typeColors[k.type] || { bg: '#F1EFE8', c: '#5F5E5A' }
+// ── Rendu du combat animé ──
+export function renderCombatPanel(state, playerTeam, enemySquad, result, onDone) {
+  const panel = document.getElementById('combat-panel')
+  if (!panel) return
 
-  container.innerHTML = `
-    <div style="
-      background:white;border:0.5px solid var(--gray-border);
-      border-radius:14px;padding:12px 14px;margin-bottom:10px;
-      display:flex;gap:12px;align-items:flex-start;
-    ">
-      <div style="
-        width:50px;height:50px;border-radius:50%;flex-shrink:0;
-        background:${tc.bg};border:2px solid ${tc.c};
-        display:flex;align-items:center;justify-content:center;font-size:22px;
-      ">${k.icon}</div>
+  panel.innerHTML = `
+    <div class="combat-header">
+      <div class="combat-title">Combat — Zone ${state.activeZone} · Vague ${state.currentWave}</div>
+      <div class="combat-turn" id="combat-turn">Initialisation...</div>
+    </div>
 
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-          <span style="font-size:14px;font-weight:500">${k.name}</span>
-          <span style="font-size:10px;padding:2px 7px;border-radius:10px;
-            background:${tc.bg};color:${tc.c}">${k.type}</span>
-          ${k.exclusive ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;
-            background:#FAEEDA;color:#412402">Exclusif W${k.world}</span>` : ''}
-        </div>
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">${k.desc}</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          ${statPill('⚔', 'Atk', k.power)}
-          ${statPill('⚡', 'Vit', k.speed.toFixed(1))}
-          ${statPill('🎯', 'Préc', Math.round(k.accuracy * 100) + '%')}
-          ${statPill('★', 'Crit', Math.round(k.chance * 100) + '%')}
+    <div class="combat-sides">
+      <div class="combat-side player-side">
+        <div class="combat-side-label">Votre équipe</div>
+        <div class="combat-fighters" id="player-fighters">
+          ${playerTeam.map(s => {
+            const r = RARITY[s.rarity] || RARITY['D']
+            return `
+              <div class="fighter-card" id="fighter-${s.id}"
+                style="background:${r.bg};border-color:${r.color}">
+                <div class="fighter-icon">${s.icon}</div>
+                <div class="fighter-name">${s.name}</div>
+                <div class="fighter-hp-bar">
+                  <div class="fighter-hp-fill" id="hp-${s.id}" style="width:100%;background:${r.color}"></div>
+                </div>
+                <div class="fighter-hp-text" id="hpv-${s.id}">${s.hp}</div>
+              </div>`
+          }).join('')}
         </div>
       </div>
-      <button onclick="setTab('kini')" style="font-size:11px;padding:5px 10px;flex-shrink:0;align-self:flex-start">
-        Changer
-      </button>
-    </div>`
+
+      <div class="combat-vs">VS</div>
+
+      <div class="combat-side enemy-side">
+        <div class="combat-side-label">Ennemis</div>
+        <div class="combat-fighters" id="enemy-fighters">
+          ${enemySquad.map(e => `
+            <div class="fighter-card enemy" id="enemy-${e.id}">
+              <div class="fighter-icon">${e.icon}</div>
+              <div class="fighter-name">${e.name}</div>
+              <div class="fighter-hp-bar">
+                <div class="fighter-hp-fill" id="ehp-${e.id}" style="width:100%;background:#D85A30"></div>
+              </div>
+              <div class="fighter-hp-text" id="ehpv-${e.id}">${e.hp}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="combat-log" id="combat-log"></div>
+  `
+
+  animateCombat(result, playerTeam, enemySquad, onDone)
 }
 
-function statPill(icon, label, value) {
-  return `<div style="
-    display:flex;align-items:center;gap:3px;
-    background:var(--gray-bg);border-radius:8px;padding:3px 8px;font-size:11px;
-  "><span style="font-size:11px">${icon}</span>
-  <span style="color:var(--text-muted)">${label}</span>
-  <span style="font-weight:500;margin-left:2px">${value}</span></div>`
-}
+function animateCombat(result, playerTeam, enemySquad, onDone) {
+  const log    = document.getElementById('combat-log')
+  const turnEl = document.getElementById('combat-turn')
+  let turnIdx  = 0
 
-function renderFrise(state, container) {
-  const total   = 11
-  const current = state.currentFloor
+  const interval = setInterval(() => {
+    if (turnIdx >= result.turns.length) {
+      clearInterval(interval)
+      setTimeout(onDone, 600)
+      return
+    }
 
-  container.innerHTML = `
-    <div style="
-      display:flex;align-items:center;gap:3px;
-      padding:10px 12px;background:white;
-      border:0.5px solid var(--gray-border);
-      border-radius:12px;margin-bottom:10px;overflow-x:auto;
-    ">
-      ${Array.from({ length: total }, (_, i) => {
-        const vague     = i + 1
-        const isBoss    = vague === 11
-        const isPast    = vague < current
-        const isCurrent = vague === current
+    const turn = result.turns[turnIdx]
+    if (turnEl) turnEl.textContent = `Tour ${turn.turn} / ${result.totalTurns}`
 
-        let bg = 'var(--gray-bg)', border = 'var(--gray-border)', color = 'var(--text-muted)'
-        let content = String(vague)
-
-        if (isBoss) {
-          bg      = isPast ? '#EAF3DE' : isCurrent ? '#FAECE7' : 'var(--gray-bg)'
-          border  = isPast ? '#3B6D11' : isCurrent ? '#D85A30' : 'var(--gray-border)'
-          color   = isPast ? '#173404' : isCurrent ? '#D85A30' : 'var(--text-muted)'
-          content = isPast ? '✓' : '💀'
-        } else if (isPast) {
-          bg = '#EAF3DE'; border = '#3B6D11'; color = '#173404'; content = '✓'
-        } else if (isCurrent) {
-          bg = '#EEEDFE'; border = 'var(--purple)'; color = 'var(--purple)'
+    // Met à jour les barres HP depuis les actions
+    turn.actions.forEach(a => {
+      if (!a) return
+      if (a.side === 'player') {
+        const enemy = enemySquad.find(e => e.name === a.target)
+        if (enemy) {
+          const pct = Math.round(Math.max(0, enemy.hp) / enemy.maxHp * 100)
+          const bar  = document.getElementById('ehp-' + enemy.id)
+          const val  = document.getElementById('ehpv-' + enemy.id)
+          if (bar) bar.style.width = pct + '%'
+          if (val) val.textContent = Math.max(0, enemy.hp)
+          if (!enemy.alive) {
+            const card = document.getElementById('enemy-' + enemy.id)
+            if (card) card.classList.add('dead')
+          }
         }
+      } else if (a.side === 'enemy') {
+        const ally = playerTeam.find(s => s.name === a.target)
+        if (ally) {
+          const pct = Math.round(Math.max(0, ally.hp) / ally.maxHp * 100)
+          const bar  = document.getElementById('hp-' + ally.id)
+          const val  = document.getElementById('hpv-' + ally.id)
+          if (bar) bar.style.width = pct + '%'
+          if (val) val.textContent = Math.max(0, ally.hp)
+          if (ally.hp <= 0) {
+            const card = document.getElementById('fighter-' + ally.id)
+            if (card) card.classList.add('dead')
+          }
+        }
+      }
+    })
 
-        return `
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">
-            <div style="
-              width:${isBoss ? '32px' : '26px'};height:${isBoss ? '32px' : '26px'};
-              border-radius:50%;background:${bg};
-              border:${isCurrent ? '2px' : '1px'} solid ${border};
-              color:${color};font-size:${isBoss ? '14px' : '11px'};
-              font-weight:${isCurrent ? '500' : '400'};
-              display:flex;align-items:center;justify-content:center;
-            ">${content}</div>
-            <div style="font-size:9px;color:${isCurrent ? 'var(--purple)' : 'var(--text-muted)'};
-              font-weight:${isCurrent ? '500' : '400'}">
-              ${isBoss ? 'BOSS' : 'V' + vague}
-            </div>
-          </div>
-          ${i < total - 1 ? `<div style="
-            flex:1;height:1px;
-            background:${isPast ? '#3B6D11' : 'var(--gray-border)'};
-            min-width:6px;max-width:16px;margin-bottom:14px;
-          "></div>` : ''}`
-      }).join('')}
-    </div>`
+    // Log des actions importantes
+    if (log && turn.actions.length > 0) {
+      turn.actions.slice(0, 2).forEach(a => {
+        if (!a || a.side === 'hot' || a.side === 'turret') return
+        const div = document.createElement('div')
+        div.className = 'combat-log-entry ' + (a.side === 'player' ? 'atk' : 'dmg')
+        if (a.side === 'heal') {
+          div.className = 'combat-log-entry heal'
+          div.textContent = `💊 ${a.actor} soigne ${a.target} +${a.amount}`
+        } else if (a.dodged) {
+          div.textContent = `${a.target} esquive l'attaque de ${a.actor} !`
+        } else if (a.isCrit) {
+          div.className += ' crit'
+          div.textContent = `★ ${a.actor} CRIT ${a.target} — ${a.dmg} dégâts !`
+        } else {
+          div.textContent = `${a.actor} → ${a.target} : ${a.dmg} dégâts${a.killed ? ' ☠' : ''}`
+        }
+        log.insertBefore(div, log.firstChild)
+      })
+      while (log.children.length > 12) log.removeChild(log.lastChild)
+    }
+
+    turnIdx++
+  }, 400)
 }
 
-function calcSynergies(state) {
-  const effects = state.equippedPogs.filter(Boolean).map(p => p.effect || '')
-  const bonuses = []
-  if (effects.filter(e => e.startsWith('idle+')).length  >= 2) bonuses.push('Duo Idle ×1.5')
-  if (effects.filter(e => e.startsWith('flips+')).length >= 3) bonuses.push('Trio Flip +3')
-  if (effects.some(e => e.startsWith('chain')))                bonuses.push('Chaîne active')
-  if (effects.filter(e => e.startsWith('crit+')).length  >= 2) bonuses.push('Duo Crit +10%')
-  return bonuses
+// ── Rendu du résultat ──
+export function renderResult(state, result, reward) {
+  const panel = document.getElementById('result-panel')
+  if (!panel) return
+
+  panel.innerHTML = `
+    <div class="result-icon">${result.victory ? '🏆' : '☠'}</div>
+    <div class="result-title ${result.victory ? 'win' : 'lose'}">
+      ${result.victory ? 'Mission réussie !' : 'Équipe éliminée...'}
+    </div>
+    <div class="result-sub">
+      ${result.victory
+        ? `${result.survived}/${state.team.filter(Boolean).length} survivants debout`
+        : 'Recrutez de meilleurs survivants ou améliorez votre équipe'}
+    </div>
+
+    ${result.victory ? `
+      <div class="result-reward">
+        <span>+${reward.capsules} capsules</span>
+        <span>+${reward.dna} ADN</span>
+        <span>+${reward.accountXP} XP</span>
+        ${reward.radium > 0 ? `<span>+${reward.radium} radium</span>` : ''}
+      </div>` : ''}
+
+    <button class="btn-danger result-btn" id="result-btn">
+      ${result.victory
+        ? (window._isBossWave ? 'Affronter le Boss !' : 'Vague suivante →')
+        : 'Réessayer'}
+    </button>
+  `
 }
 
-window.renderTeam = renderTeam
+window.renderPreCombat  = renderPreCombat
+window.renderCombatPanel = renderCombatPanel
+window.renderResult     = renderResult

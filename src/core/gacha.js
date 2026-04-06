@@ -1,8 +1,6 @@
-import { POGS, RARITY_ORDER } from '../data/pogs.js'
-import { PACK_CONFIG } from './economy.js'
-import { updateMission } from './economy.js'
+import { SURVIVORS, RARITY_ORDER } from '../data/survivors.js'
+import { SIGNAL_CONFIG, updateMission } from './economy.js'
 
-// ── Tire une rareté selon les poids ──
 function rollRarity(weights) {
   const total = Object.values(weights).reduce((a, b) => a + b, 0)
   let r = Math.random() * total
@@ -10,33 +8,26 @@ function rollRarity(weights) {
     r -= val
     if (r <= 0) return key
   }
-  return 'C'
+  return 'D'
 }
 
-// ── Tire un pog aléatoire d'une rareté donnée (hors pogs boss) ──
-function rollPog(rarity) {
-  const pool = POGS.filter(p => p.rarity === rarity && !p.boss)
+function rollSurvivor(rarity) {
+  const pool = SURVIVORS.filter(s => s.rarity === rarity && !s.boss)
+  if (!pool.length) return null
   return pool[Math.floor(Math.random() * pool.length)]
 }
 
-// ── Ouvre un pack et retourne les pogs obtenus ──
-export function openPack(state, packType) {
-  const cfg = PACK_CONFIG[packType]
-  if (!cfg) return { error: 'Pack inconnu' }
+export function openSignal(state, signalType) {
+  const cfg = SIGNAL_CONFIG[signalType]
+  if (!cfg) return { error: 'Signal inconnu' }
 
-  // Vérifie la devise
-  if (cfg.currency === 'gold' && state.gold < cfg.cost) {
-    return { error: 'Pas assez d\'or' }
-  }
-  if (cfg.currency === 'gems' && state.gems < cfg.cost) {
-    return { error: 'Pas assez de gemmes' }
-  }
+  if (cfg.currency === 'capsules' && state.capsules < cfg.cost) return { error: 'Pas assez de capsules' }
+  if (cfg.currency === 'radium'   && state.radium   < cfg.cost) return { error: 'Pas assez de radium' }
 
-  // Débite
-  if (cfg.currency === 'gold') state.gold -= cfg.cost
-  else state.gems -= cfg.cost
+  if (cfg.currency === 'capsules') state.capsules -= cfg.cost
+  else                             state.radium   -= cfg.cost
 
-  const obtained = []
+  const obtained   = []
   const fusionLogs = []
 
   for (let i = 0; i < cfg.count; i++) {
@@ -46,116 +37,97 @@ export function openPack(state, packType) {
 
     let rarity = rollRarity(cfg.weights)
 
-    // Pity épique : garanti tous les 10 pulls
-    if (state.pityE >= 10 && RARITY_ORDER.indexOf(rarity) < 2) {
-      rarity = 'E'
-      state.pityE = 0
+    // Pity Expert garanti tous les 10 pulls
+    if (state.pityE >= 10 && RARITY_ORDER.indexOf(rarity) < 1) {
+      rarity = 'E'; state.pityE = 0
     }
-
-    // Pity légendaire : garanti tous les 50 pulls
-    if (state.pityL >= 50 && RARITY_ORDER.indexOf(rarity) < 3) {
-      rarity = 'L'
-      state.pityL = 0
+    // Pity Légende garanti tous les 50 pulls
+    if (state.pityL >= 50 && RARITY_ORDER.indexOf(rarity) < 2) {
+      rarity = 'L'; state.pityL = 0
     }
-
-    // Reset pity si rareté haute obtenue naturellement
     if (rarity === 'E') state.pityE = 0
-    if (rarity === 'L' || rarity === 'M') state.pityL = 0
+    if (rarity === 'L') state.pityL = 0
 
-    const pog = rollPog(rarity)
-    if (!pog) continue
+    const survivor = rollSurvivor(rarity)
+    if (!survivor) continue
 
-    state.collection.push({ id: pog.id, rarity: pog.rarity })
-    obtained.push(pog)
+    state.collection.push({ id: survivor.id, rarity: survivor.rarity })
+    obtained.push(survivor)
 
-    // Vérifie fusion
-    const fusion = checkFusion(state, pog.id)
+    const fusion = checkFusion(state, survivor.id)
     if (fusion) fusionLogs.push(fusion)
   }
 
-  updateMission(state, 'packs', 1)
-
+  updateMission(state, 'signals', 1)
   return { obtained, fusionLogs }
 }
 
-// ── Vérifie et applique une fusion (3 copies → upgrade) ──
-export function checkFusion(state, pogId) {
-  const copies = state.collection.filter(p => p.id === pogId).length
+export function checkFusion(state, survivorId) {
+  const copies = state.collection.filter(p => p.id === survivorId).length
   if (copies < 3) return null
 
-  // Retire les 3 copies
   let removed = 0
   state.collection = state.collection.filter(p => {
-    if (p.id === pogId && removed < 3) { removed++; return false }
+    if (p.id === survivorId && removed < 3) { removed++; return false }
     return true
   })
 
-  // Donne des fragments bonus
-  state.fragments += 10
+  state.dna += 10
 
-  // Tire un pog de rareté supérieure
-  const pog = POGS.find(x => x.id === pogId)
-  const currentRarIdx = RARITY_ORDER.indexOf(pog.rarity)
-  const nextRarity = RARITY_ORDER[Math.min(currentRarIdx + 1, RARITY_ORDER.length - 1)]
-  const fused = rollPog(nextRarity)
+  const survivor     = SURVIVORS.find(x => x.id === survivorId)
+  const currentIdx   = RARITY_ORDER.indexOf(survivor.rarity)
+  if (currentIdx >= RARITY_ORDER.length - 1) return null
+
+  const nextRarity = RARITY_ORDER[currentIdx + 1]
+  const fused      = rollSurvivor(nextRarity)
 
   if (fused) {
     state.collection.push({ id: fused.id, rarity: fused.rarity })
     return {
-      from: pog,
+      from: survivor,
       to: fused,
-      message: `FUSION ! ${pog.name} ×3 → ${fused.name} (${nextRarity})`,
+      message: `FUSION ! ${survivor.name} ×3 → ${fused.name} (${nextRarity})`,
     }
   }
-
   return null
 }
 
-// ── Retourne les statistiques de la collection ──
 export function getCollectionStats(state) {
-  const total = POGS.filter(p => !p.boss).length
+  const total  = SURVIVORS.filter(s => !s.boss).length
   const unique = new Set(state.collection.map(p => p.id)).size
   const byRarity = {}
   RARITY_ORDER.forEach(r => {
     const have = new Set(
       state.collection.filter(p => {
-        const pg = POGS.find(x => x.id === p.id)
-        return pg && pg.rarity === r && !pg.boss
+        const sv = SURVIVORS.find(x => x.id === p.id)
+        return sv && sv.rarity === r && !sv.boss
       }).map(p => p.id)
     ).size
-    const tot = POGS.filter(p => p.rarity === r && !p.boss).length
+    const tot = SURVIVORS.filter(s => s.rarity === r && !s.boss).length
     byRarity[r] = { have, total: tot }
   })
   return { unique, total, byRarity }
 }
 
-// ── Retourne les copies d'un pog dans la collection ──
-export function getPogCopies(state, pogId) {
-  return state.collection.filter(p => p.id === pogId).length
+export function getSurvivorCopies(state, survivorId) {
+  return state.collection.filter(p => p.id === survivorId).length
 }
 
-// ── Équipe ou déséquipe un pog ──
-export function toggleEquip(state, pogId, maxSlots = 10) {
-  const equippedIndex = state.equippedPogs.findIndex(e => e && e.id === pogId)
-
-  if (equippedIndex >= 0) {
-    // Déséquipe
-    state.equippedPogs[equippedIndex] = null
-    return { action: 'unequipped' }
+export function toggleTeam(state, survivorId) {
+  const teamIndex = state.team.findIndex(e => e && e.id === survivorId)
+  if (teamIndex >= 0) {
+    state.team[teamIndex] = null
+    return { action: 'removed' }
   }
 
-  // Vérifie si le joueur possède ce pog
-  const owned = state.collection.some(p => p.id === pogId)
-  if (!owned) return { error: 'Pog non possédé' }
+  const owned = state.collection.some(p => p.id === survivorId)
+  if (!owned) return { error: 'Survivant non possédé' }
 
-  // Cherche un slot libre
-  const emptySlot = state.equippedPogs.findIndex(e => !e)
-  const equipped = state.equippedPogs.filter(Boolean).length
-  if (emptySlot < 0 || equipped >= maxSlots) {
-    return { error: 'Équipe pleine' }
-  }
+  const emptySlot = state.team.findIndex(e => !e)
+  const count     = state.team.filter(Boolean).length
+  if (emptySlot < 0 || count >= 6) return { error: 'Équipe pleine (6 max)' }
 
-  const pog = POGS.find(x => x.id === pogId)
-  state.equippedPogs[emptySlot] = { id: pogId, rarity: pog.rarity, effect: pog.effect }
-  return { action: 'equipped', slot: emptySlot }
+  const survivor = SURVIVORS.find(x => x.id === survivorId)
+  state.team[emptySlot] = { id: survivorId, rarity: survivor.rarity, effect: survivor.effect }
+  return { action: 'added', slot: emptySlot }
 }

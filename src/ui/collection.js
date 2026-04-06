@@ -1,61 +1,56 @@
-import { POGS, RARITY, RARITY_ORDER } from '../data/pogs.js'
+// ── SHELTER SURVIVOR — Collection de survivants ──
+import { SURVIVORS, RARITY, RARITY_ORDER } from '../data/survivors.js'
 import { getCollectionStats } from '../core/gacha.js'
 
 export function renderCollection(state) {
-  const collDiv  = document.getElementById('pog-collection')
+  const collDiv  = document.getElementById('survivor-collection')
   const albumDiv = document.getElementById('album-stats')
   if (!collDiv) return
 
-  // ── Grille de collection ──
   const grouped = {}
-  state.collection.forEach(p => {
-    grouped[p.id] = (grouped[p.id] || 0) + 1
-  })
+  state.collection.forEach(p => { grouped[p.id] = (grouped[p.id] || 0) + 1 })
   const uniqueIds = [...new Set(state.collection.map(p => p.id))]
 
   if (!uniqueIds.length) {
     collDiv.innerHTML = `
       <div class="card">
         <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px">
-          Aucun pog pour l'instant.<br>Ouvrez des packs pour commencer !
+          Aucun survivant.<br>Envoyez des signaux de détresse pour les recruter !
         </div>
       </div>`
   } else {
     collDiv.innerHTML = `
       <div class="card">
-        <div class="card-title">Collection (${uniqueIds.length} pogs uniques)</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;max-height:220px;overflow-y:auto">
-          ${uniqueIds.map(id => pogCircle(id, grouped[id], state)).join('')}
+        <div class="card-title">Survivants recrutés (${uniqueIds.length} uniques)</div>
+        <div class="survivor-grid">
+          ${uniqueIds.map(id => survivorCard(id, grouped[id], state)).join('')}
         </div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:8px">
-          Cliquez pour équiper / retirer. 3 copies = fusion automatique.
+          Appuyez pour ajouter/retirer de l'équipe. 3 copies = fusion automatique.
         </div>
       </div>`
   }
 
-  // ── Album ──
   if (!albumDiv) return
   const stats = getCollectionStats(state)
   const pct   = Math.round(stats.unique / stats.total * 100)
 
   albumDiv.innerHTML = `
     <div class="card">
-      <div class="card-title">Album de pogs</div>
+      <div class="card-title">Dossier des survivants</div>
       <div style="font-size:13px;font-weight:500;margin-bottom:6px">
-        ${stats.unique} / ${stats.total} découverts
+        ${stats.unique} / ${stats.total} recrutés
       </div>
       <div class="bar-track" style="margin-bottom:8px">
-        <div class="bar-fill" style="width:${pct}%;background:var(--purple)"></div>
+        <div class="bar-fill" style="width:${pct}%;background:var(--accent)"></div>
       </div>
       ${RARITY_ORDER.map(r => {
         const ri   = RARITY[r]
         const data = stats.byRarity[r]
-        const p    = Math.round(data.have / data.total * 100)
+        const p    = data.total > 0 ? Math.round(data.have / data.total * 100) : 0
         return `
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-            <span class="badge" style="background:${ri.bg};color:${ri.text};min-width:80px">
-              ${ri.label}
-            </span>
+            <span class="badge" style="background:${ri.bg};color:${ri.text};min-width:72px">${ri.label}</span>
             <div class="bar-track" style="flex:1">
               <div class="bar-fill" style="width:${p}%;background:${ri.color}"></div>
             </div>
@@ -67,26 +62,24 @@ export function renderCollection(state) {
     </div>`
 }
 
-function pogCircle(id, copies, state) {
-  const pg       = POGS.find(x => x.id === id)
-  if (!pg) return ''
-  const r        = RARITY[pg.rarity]
-  const equipped = state.equippedPogs.findIndex(e => e && e.id === id) >= 0
-  const isBoss   = pg.boss
+function survivorCard(id, copies, state) {
+  const sv = SURVIVORS.find(x => x.id === id)
+  if (!sv) return ''
+  const r        = RARITY[sv.rarity] || RARITY['D']
+  const inTeam   = state.team.some(e => e && e.id === id)
+  const isBoss   = sv.boss
 
   return `
-    <div class="pog-circle"
-      style="
-        background:${r.bg};
-        border-color:${equipped ? r.color : 'transparent'};
-        border-width:${equipped ? '2px' : '1.5px'};
-        color:${r.text};
-        ${isBoss ? 'outline:2px solid #EF9F27;' : ''}
-      "
-      onclick="${isBoss ? '' : `toggleEquipUI('${id}')`}"
-      title="${pg.name}\n${r.label}\n${pg.desc}${copies > 1 ? `\n${copies} copies` : ''}">
-      <span style="font-size:13px">${pg.icon}</span>
-      ${copies > 1 ? `<span class="copies">${copies}</span>` : ''}
+    <div class="survivor-card ${inTeam ? 'in-team' : ''}"
+      style="background:${r.bg};border-color:${inTeam ? r.color : 'transparent'};color:${r.text}"
+      onclick="${isBoss ? '' : `window.toggleTeamUI('${id}')`}"
+      title="${sv.name} — ${sv.role} (${r.label})\n${sv.desc}${copies > 1 ? `\n${copies} copies` : ''}">
+      <div class="survivor-card-icon">${sv.icon}</div>
+      <div class="survivor-card-name">${sv.name}</div>
+      <div class="survivor-card-role" style="color:${r.color}">${sv.role}</div>
+      ${copies > 1 ? `<div class="survivor-card-copies">${copies}</div>` : ''}
+      ${inTeam ? `<div class="survivor-card-check">✓</div>` : ''}
+      ${isBoss ? `<div class="survivor-card-boss">BOSS</div>` : ''}
     </div>`
 }
 
