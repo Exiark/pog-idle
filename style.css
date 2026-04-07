@@ -444,6 +444,83 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes pop  { 0%{transform:scale(1)} 50%{transform:scale(1.3)} 100%{transform:scale(1)} }
 
+/* ══════════════════════════════
+   RÉSULTAT AMÉLIORÉ
+   ══════════════════════════════ */
+.result-stats {
+  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+  width: 100%; margin: 4px 0;
+}
+.result-stat {
+  background: var(--panel-bg); border: 1px solid var(--gray-border);
+  border-radius: 8px; padding: 8px 12px; text-align: center; min-width: 70px;
+}
+.result-stat-val   { font-size: 16px; font-weight: 700; }
+.result-stat-label { font-size: 9px; color: var(--text-muted); margin-top: 2px; text-transform: uppercase; }
+.result-fallen {
+  font-size: 11px; color: var(--text-muted);
+  background: var(--panel-bg); border: 1px solid var(--gray-border);
+  border-radius: 8px; padding: 8px 12px; width: 100%; text-align: center;
+}
+.result-fallen-name {
+  color: var(--accent); font-weight: 700; margin: 0 3px;
+}
+.result-tip {
+  font-size: 11px; color: var(--text-muted);
+  background: #1A1205; border: 1px solid var(--accent);
+  border-radius: 8px; padding: 8px 12px; width: 100%; text-align: center;
+}
+
+/* ══════════════════════════════
+   MODAL FICHE SURVIVANT
+   ══════════════════════════════ */
+#survivor-modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; padding: 16px;
+}
+.sv-modal-box {
+  background: var(--panel-bg); border: 1.5px solid;
+  border-radius: var(--radius-lg); width: 100%; max-width: 320px;
+  overflow: hidden; position: relative;
+  animation: boss-appear 0.2s ease-out;
+}
+.sv-modal-close {
+  position: absolute; top: 8px; right: 8px;
+  background: transparent; border: none; color: var(--text-muted);
+  font-size: 14px; cursor: pointer; padding: 4px 6px; z-index: 2;
+}
+.sv-modal-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+}
+.sv-modal-class-icon { font-size: 32px; flex-shrink: 0; }
+.sv-modal-name   { font-size: 16px; font-weight: 700; }
+.sv-modal-role   { font-size: 11px; margin-top: 2px; }
+.sv-modal-rarity { font-size: 10px; font-weight: 700; text-transform: uppercase; margin-top: 2px; }
+.sv-modal-body   { padding: 12px 16px 16px; }
+.sv-modal-desc   { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5; }
+
+.sv-modal-stats  { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.sv-modal-stat-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.sv-modal-stat-label { font-size: 11px; width: 52px; flex-shrink: 0; color: var(--text-muted); }
+.sv-modal-stat-track {
+  flex: 1; height: 6px; background: var(--panel-bg2); border-radius: 3px; overflow: hidden;
+}
+.sv-modal-stat-fill  { height: 100%; border-radius: 3px; transition: width 0.4s; }
+.sv-modal-stat-val   { font-size: 11px; font-weight: 700; width: 30px; text-align: right; }
+
+.sv-modal-meta   { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.sv-modal-meta-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; color: var(--text-muted);
+  border-bottom: 0.5px solid var(--gray-border); padding-bottom: 4px;
+}
+.sv-modal-meta-row strong { color: var(--text); }
+.sv-modal-equip { width: 100%; padding: 10px; font-size: 13px; font-weight: 700; }
+
 /* ── Responsive ── */
 @media (max-width: 500px) {
   .tab { padding: 6px 7px; font-size: 10px; }

@@ -76,7 +76,7 @@ export function calcInterval(state) {
 }
 
 // ── Un tour de combat complet (6 survivants vs escouade ennemie) ──
-export function doFightTurn(playerTeam, enemySquad) {
+export function doFightTurn(playerTeam, enemySquad, bonuses = {}) {
   const logs = []
 
   // Ordre d'attaque : tous les vivants triés par SPD décroissant
@@ -91,7 +91,7 @@ export function doFightTurn(playerTeam, enemySquad) {
     if (enemySquad.every(e => !e.alive))  break
 
     if (actor.side === 'player') {
-      const log = playerAttack(actor, enemySquad)
+      const log = playerAttack(actor, enemySquad, bonuses)
       if (log) logs.push(log)
     } else {
       const log = enemyAttack(actor, playerTeam)
@@ -106,7 +106,7 @@ export function doFightTurn(playerTeam, enemySquad) {
 }
 
 // ── Attaque d'un survivant joueur ──
-function playerAttack(survivor, enemySquad) {
+function playerAttack(survivor, enemySquad, bonuses = {}) {
   const alive = enemySquad.filter(e => e.alive)
   if (alive.length === 0) return null
 
@@ -116,12 +116,13 @@ function playerAttack(survivor, enemySquad) {
     ? alive.reduce((a, b) => b.atk > a.atk ? b : a)
     : alive[0]
 
-  const isCrit    = Math.random() < critChance(survivor)
+  const isCrit    = Math.random() < critChance(survivor, bonuses)
   const isSnipe   = survivor.effect?.includes('snipe') && isCrit
   const dmgMult   = isSnipe ? 3 : isCrit ? 2 : 1
-  const pierce    = survivor.effect?.includes('pierce') ? 0.5 : 0        // ignore % DEF
+  const pierce    = survivor.effect?.includes('pierce') ? 0.5 : 0
+  const atkBonus  = 1 + (bonuses.atkMult || 0)        // ignore % DEF
   const effective = Math.max(1, Math.round(
-    (survivor.atk - target.def * (1 - pierce)) * dmgMult
+    (survivor.atk * atkBonus - target.def * (1 - pierce)) * dmgMult
   ))
 
   target.hp -= effective
@@ -266,10 +267,11 @@ function tickEffects(playerTeam, enemySquad, logs) {
 }
 
 // ── Chance critique d'un survivant ──
-function critChance(survivor) {
+function critChance(survivor, bonuses = {}) {
   let base = 0.1
   const c = extractVal(survivor.effect, 'crit+')
-  if (c) base += c
+  if (c)              base += c
+  if (bonuses.crit)   base += bonuses.crit
   return Math.min(0.95, base)
 }
 
@@ -280,42 +282,84 @@ function extractVal(effect, prefix) {
   return parseFloat(part)
 }
 
+// ── Calcule les bonus de talents applicables au combat ──
+export function calcTalentBonuses(state) {
+  return {
+    crit:    hasTalent(state, 't2') ? 0.10 : 0,   // +10% crit
+    atkMult: hasTalent(state, 't2') ? 0.10 : 0,   // +10% ATK (Coup Précis)
+    defMult: hasTalent(state, 't7') ? 0.20 : 0,   // +20% DEF (Collectionneur)
+    synergy: hasTalent(state, 't8') ? 0.20 : 0,   // +20% ATK par synergie (Synergiste)
+    resist:  hasTalent(state, 't3') ? 0.20 : 0,   // -20% résistance ennemie (Briseur)
+    speed:   hasTalent(state, 't1') ? 0.10 : 0,   // +10% vitesse (déjà dans calcTeamSpeed)
+  }
+}
+
 // ── Simule un combat complet jusqu'au bout (résultat synchrone) ──
 export function simulateFight(playerTeamIds, enemySquad, state) {
-  // Instancie les stats des survivants
+  const bonuses = calcTalentBonuses(state)
+
+  // Synergie t8 : +20% ATK si ≥3 rôles différents dans l'équipe
+  const roles = new Set(playerTeamIds.map(id => {
+    const sv = SURVIVORS.find(x => x.id === id)
+    return sv ? sv.role : ''
+  }))
+  if (bonuses.synergy && roles.size >= 3) bonuses.atkMult += bonuses.synergy
+
+  // Instancie les stats avec bonus de défense (t7)
   const playerTeam = playerTeamIds.map(id => {
     const stats = survivorCombatStats(id)
-    return { ...stats }
+    return {
+      ...stats,
+      def: Math.round(stats.def * (1 + bonuses.defMult)),
+    }
   })
 
-  const enemies = enemySquad.map(e => ({ ...e }))
-  const allLogs = []
-  let turns = 0
+  // Applique résistance réduite (t3) sur les ennemis
+  const enemies = enemySquad.map(e => ({
+    ...e,
+    atk: Math.round(e.atk * (1 - bonuses.resist)),
+  }))
+
+  const allLogs   = []
+  let turns       = 0
+  let dmgDealt    = 0
+  let dmgReceived = 0
   const MAX_TURNS = 50
 
   while (turns < MAX_TURNS) {
     turns++
-    const turnLogs = doFightTurn(playerTeam, enemies)
+    const turnLogs = doFightTurn(playerTeam, enemies, bonuses)
     allLogs.push({ turn: turns, actions: turnLogs })
+
+    // Cumul des dégâts pour le résultat
+    turnLogs.forEach(a => {
+      if (!a) return
+      if (a.side === 'player' || a.side === 'turret') dmgDealt    += a.dmg || 0
+      if (a.side === 'enemy'  && !a.dodged)           dmgReceived += a.dmg || 0
+    })
 
     if (playerTeam.every(s => s.hp <= 0)) break
     if (enemies.every(e => !e.alive))     break
   }
 
-  const victory     = enemies.every(e => !e.alive)
-  const survived    = playerTeam.filter(s => s.hp > 0).length
-  const killCount   = enemySquad.filter(e => !e.alive).length
+  const victory   = enemies.every(e => !e.alive)
+  const survived  = playerTeam.filter(s => s.hp > 0).length
+  const fallen    = playerTeam.filter(s => s.hp <= 0).map(s => s.name)
+  const killCount = enemies.filter(e => !e.alive).length
 
   if (victory) updateMission(state, 'waves', 1)
   updateMission(state, 'kills', killCount)
 
-  const playerMaxHp = playerTeamIds.reduce((s, id) => {
-    const sv = SURVIVORS.find(x => x.id === id)
-    return s + (sv ? sv.hp : 10)
-  }, 0)
-  const enemyMaxHp = enemySquad.reduce((s, e) => s + e.maxHp, 0)
+  const playerMaxHp = playerTeam.reduce((s, sv) => s + sv.maxHp, 0)
+  const enemyMaxHp  = enemySquad.reduce((s, e) => s + e.maxHp, 0)
 
-  return { victory, turns: allLogs, survived, totalTurns: turns, playerMaxHp, enemyMaxHp }
+  return {
+    victory, survived, fallen,
+    totalTurns: turns, turns: allLogs,
+    dmgDealt, dmgReceived,
+    killCount,
+    playerMaxHp, enemyMaxHp,
+  }
 }
 
 // ── Récompense de vague ──

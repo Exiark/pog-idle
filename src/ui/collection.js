@@ -2,6 +2,8 @@
 import { SURVIVORS, RARITY, RARITY_ORDER, ROLE_META } from '../data/survivors.js'
 import { getCollectionStats } from '../core/gacha.js'
 
+const IDLE_RATE = { D: 0.05, E: 0.15, L: 0.4 }
+
 export function renderCollection(state) {
   const collDiv  = document.getElementById('survivor-collection')
   const albumDiv = document.getElementById('album-stats')
@@ -73,7 +75,7 @@ function survivorCard(id, copies, state) {
   return `
     <div class="survivor-card ${inTeam ? 'in-team' : ''}"
       style="background:${r.bg};border-color:${inTeam ? r.color : r.color + '44'}"
-      onclick="${isBoss ? '' : `window.toggleTeamUI('${id}')`}"
+      onclick="window.showSurvivorModal('${id}')"
       title="${sv.name} — ${sv.role}\n${sv.desc}${copies > 1 ? `\n×${copies} copies` : ''}">
 
       <!-- Rareté -->
@@ -110,3 +112,81 @@ function statBar(label, value, max, color) {
 }
 
 window.renderCollection = renderCollection
+
+// ── Modal fiche survivant ──
+window.showSurvivorModal = function(id) {
+  const S   = window._state
+  const sv  = SURVIVORS.find(x => x.id === id)
+  if (!sv || !S) return
+  const r      = RARITY[sv.rarity] || RARITY['D']
+  const meta   = ROLE_META[sv.role] || {}
+  const copies = S.collection.filter(p => p.id === id).length
+  const inTeam = S.team.some(e => e && e.id === id)
+  const idle   = IDLE_RATE[sv.rarity] || 0
+
+  const modal = document.getElementById('survivor-modal')
+  if (!modal) return
+
+  modal.innerHTML = `
+    <div class="sv-modal-box" style="border-color:${r.color}">
+      <button class="sv-modal-close" onclick="document.getElementById('survivor-modal').style.display='none'">✕</button>
+
+      <div class="sv-modal-header" style="background:${r.bg}">
+        <div class="sv-modal-class-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>
+        <div>
+          <div class="sv-modal-name" style="color:${r.text}">${sv.name}</div>
+          <div class="sv-modal-role" style="color:${r.color}">${meta.globalClass || ''} · ${sv.role}</div>
+          <div class="sv-modal-rarity" style="color:${r.color}">${r.label}</div>
+        </div>
+      </div>
+
+      <div class="sv-modal-body">
+        <div class="sv-modal-desc">${sv.desc}</div>
+
+        <div class="sv-modal-stats">
+          ${modalStat('♥ HP',  sv.hp,  600, '#5AE05A')}
+          ${modalStat('⚔ ATK', sv.atk, 900, '#E05A4A')}
+          ${modalStat('🛡 DEF', sv.def, 300, '#4A8FE0')}
+          ${modalStat('⚡ SPD', sv.spd, 375, '#E0C44A')}
+        </div>
+
+        <div class="sv-modal-meta">
+          <div class="sv-modal-meta-row">
+            <span>Copies possédées</span>
+            <strong>${copies}</strong>
+          </div>
+          <div class="sv-modal-meta-row">
+            <span>Fusion dans</span>
+            <strong>${copies >= 3 ? '✓ Prête' : `${3 - copies} copie(s)`}</strong>
+          </div>
+          <div class="sv-modal-meta-row">
+            <span>Idle au repos</span>
+            <strong style="color:#E0C44A">+${idle} caps/s</strong>
+          </div>
+        </div>
+
+        ${!sv.boss ? `
+          <button class="btn-danger sv-modal-equip"
+            onclick="window.toggleTeamUI('${id}');window.renderCollection(window._state);document.getElementById('survivor-modal').style.display='none'">
+            ${inTeam ? '— Retirer de l\'équipe' : '+ Ajouter à l\'équipe'}
+          </button>` : `
+          <div style="text-align:center;font-size:11px;color:var(--text-muted);padding:8px">
+            Survivant boss — non équipable
+          </div>`}
+      </div>
+    </div>`
+
+  modal.style.display = 'flex'
+}
+
+function modalStat(label, value, max, color) {
+  const pct = Math.min(100, Math.round(value / max * 100))
+  return `
+    <div class="sv-modal-stat-row">
+      <span class="sv-modal-stat-label">${label}</span>
+      <div class="sv-modal-stat-track">
+        <div class="sv-modal-stat-fill" style="width:${pct}%;background:${color}"></div>
+      </div>
+      <span class="sv-modal-stat-val">${value}</span>
+    </div>`
+}

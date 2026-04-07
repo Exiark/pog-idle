@@ -182,31 +182,71 @@ export function renderResult(state, result, reward) {
   const panel = document.getElementById('result-panel')
   if (!panel) return
 
+  const teamSize  = state.team.filter(Boolean).length
+  const fallenStr = result.fallen?.length
+    ? result.fallen.map(n => `<span class="result-fallen-name">${n}</span>`).join('')
+    : ''
+
   panel.innerHTML = `
     <div class="result-icon">${result.victory ? '🏆' : '☠'}</div>
     <div class="result-title ${result.victory ? 'win' : 'lose'}">
       ${result.victory ? 'Mission réussie !' : 'Équipe éliminée...'}
     </div>
-    <div class="result-sub">
-      ${result.victory
-        ? `${result.survived}/${state.team.filter(Boolean).length} survivants debout`
-        : 'Recrutez de meilleurs survivants ou améliorez votre équipe'}
+
+    <div class="result-stats">
+      <div class="result-stat">
+        <div class="result-stat-val">${result.survived}/${teamSize}</div>
+        <div class="result-stat-label">Survivants</div>
+      </div>
+      <div class="result-stat">
+        <div class="result-stat-val">${result.killCount ?? 0}</div>
+        <div class="result-stat-label">Ennemis tués</div>
+      </div>
+      <div class="result-stat">
+        <div class="result-stat-val" style="color:#E05A4A">${result.dmgDealt ?? 0}</div>
+        <div class="result-stat-label">Dégâts infligés</div>
+      </div>
+      <div class="result-stat">
+        <div class="result-stat-val" style="color:#4A8FE0">${result.dmgReceived ?? 0}</div>
+        <div class="result-stat-label">Dégâts reçus</div>
+      </div>
+      <div class="result-stat">
+        <div class="result-stat-val">${result.totalTurns}</div>
+        <div class="result-stat-label">Tours</div>
+      </div>
     </div>
 
-    ${result.victory ? `
+    ${fallenStr ? `
+      <div class="result-fallen">
+        ☠ Tombés au combat : ${fallenStr}
+      </div>` : ''}
+
+    ${result.victory && reward ? `
       <div class="result-reward">
-        <span>+${reward.capsules} capsules</span>
-        <span>+${reward.dna} ADN</span>
-        <span>+${reward.accountXP} XP</span>
-        ${reward.radium > 0 ? `<span>+${reward.radium} radium</span>` : ''}
+        <span>💊 +${reward.capsules}</span>
+        <span>🧬 +${reward.dna}</span>
+        <span>⭐ +${reward.accountXP} XP</span>
+        ${reward.radium > 0 ? `<span>☢ +${reward.radium}</span>` : ''}
+      </div>` : ''}
+
+    ${!result.victory ? `
+      <div class="result-tip">
+        Conseil : ${getTip(result)}
       </div>` : ''}
 
     <button class="btn-danger result-btn" id="result-btn">
       ${result.victory
-        ? (window._isBossWave ? 'Affronter le Boss !' : 'Vague suivante →')
+        ? (window._isBossWave ? '☠ Affronter le Boss !' : 'Vague suivante →')
         : 'Réessayer'}
     </button>
   `
+}
+
+function getTip(result) {
+  if (result.dmgReceived > result.dmgDealt * 2) return 'Ajoutez un Tank pour absorber les dégâts.'
+  if (result.totalTurns >= 45)                  return 'Votre ATK est trop faible — recrutez des combattants.'
+  if (result.survived === 0)                    return 'Ajoutez un Médic pour maintenir l\'équipe en vie.'
+  return 'Améliorez vos survivants ou ouvrez des signaux pour en recruter de meilleurs.'
 }
 
 window.renderPreCombat  = renderPreCombat
