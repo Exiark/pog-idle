@@ -1,4 +1,8 @@
 import { MISSIONS_DEFAULT } from './economy.js'
+import { SURVIVORS } from '../data/survivors.js'
+
+// Capsules/s générées par un survivant au repos selon sa rareté
+const IDLE_RATE_BY_RARITY = { D: 0.05, E: 0.15, L: 0.4 }
 
 const SAVE_KEY = 'shelter_survivor_v1'
 
@@ -108,13 +112,22 @@ export function getTeam(state) {
   return state.team.filter(Boolean)
 }
 
-// ── Calcul du taux idle (capsules/s) depuis l'équipe ──
+// ── Calcul du taux idle (capsules/s) ──
+// Tous les survivants en collection génèrent des capsules au repos.
+// Les survivants en équipe (Médic/Biologiste avec hot+) ajoutent un bonus.
 export function calcIdleRate(state) {
   let rate = 0
-  getTeam(state).forEach(s => {
-    if (s.effect?.startsWith('idle+')) rate += parseFloat(s.effect.split('+')[1])
-    if (s.effect === 'master') rate *= 2
+
+  // Base : chaque survivant possédé génère selon sa rareté
+  const uniqueIds = [...new Set((state.collection || []).map(p => p.id))]
+  uniqueIds.forEach(id => {
+    const sv = SURVIVORS.find(x => x.id === id)
+    if (sv && !sv.boss) rate += IDLE_RATE_BY_RARITY[sv.rarity] || 0
   })
+
+  // Bonus d'équipe : talents et effets passifs
+  if (hasTalent(state, 't5')) rate *= 1.5
+
   return Math.round(rate * 10) / 10
 }
 

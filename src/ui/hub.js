@@ -48,6 +48,11 @@ export function renderTeam(state) {
         title="${sv.name} — ${sv.role}\n${sv.desc}">
         <div class="ts-class-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>
         <div class="ts-subclass" style="color:${r.color}">${sv.role}</div>
+        <div class="ts-stats">
+          <div class="ts-stat"><span style="color:#E05A4A">⚔</span>${sv.atk}</div>
+          <div class="ts-stat"><span style="color:#4A8FE0">🛡</span>${sv.def}</div>
+          <div class="ts-stat"><span style="color:#5AE05A">♥</span>${sv.hp}</div>
+        </div>
         <div class="ts-name" style="color:${r.text}">${sv.name}</div>
       </div>`
   }).join('')

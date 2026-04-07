@@ -83,6 +83,14 @@ function survivorCard(id, copies, state) {
       <div class="sc-class-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>
       <div class="sc-subclass" style="color:${r.color}">${sv.role}</div>
 
+      <!-- Mini stats -->
+      <div class="sc-stats">
+        ${statBar('HP',  sv.hp,  600, '#5AE05A')}
+        ${statBar('ATK', sv.atk, 900, '#E05A4A')}
+        ${statBar('DEF', sv.def, 300, '#4A8FE0')}
+        ${statBar('SPD', sv.spd, 375, '#E0C44A')}
+      </div>
+
       <!-- Nom tout en bas -->
       <div class="sc-name" style="color:${r.text}">${sv.name}</div>
 
@@ -91,6 +99,14 @@ function survivorCard(id, copies, state) {
       ${inTeam      ? `<div class="survivor-card-check">✓</div>` : ''}
       ${isBoss      ? `<div class="survivor-card-boss">BOSS</div>` : ''}
     </div>`
+}
+
+function statBar(label, value, max, color) {
+  const pct = Math.min(100, Math.round(value / max * 100))
+  return `<div class="sc-stat-row">
+    <span class="sc-stat-label">${label}</span>
+    <div class="sc-stat-track"><div class="sc-stat-fill" style="width:${pct}%;background:${color}"></div></div>
+  </div>`
 }
 
 window.renderCollection = renderCollection

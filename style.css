@@ -273,7 +273,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 #team-slots { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0; }
 
 .team-slot {
-  width: 66px; height: 80px; border-radius: 8px;
+  width: 68px; height: 92px; border-radius: 8px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 1px; cursor: pointer; transition: opacity 0.15s, transform 0.1s;
 }
@@ -284,9 +284,10 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .team-slot.empty:hover { background: var(--panel-bg2); }
 .team-slot.filled { border: 1.5px solid; }
 .team-slot.filled:hover { opacity: 0.8; transform: scale(1.03); }
-.ts-class-icon { font-size: 10px; line-height: 1; }
-.ts-icon       { font-size: 20px; margin: 1px 0; }
+.ts-class-icon { font-size: 18px; line-height: 1; margin-bottom: 1px; }
 .ts-subclass   { font-size: 7px; text-align: center; opacity: 0.85; }
+.ts-stats      { display: flex; gap: 4px; margin: 2px 0; }
+.ts-stat       { font-size: 7px; color: var(--text-muted); display: flex; align-items: center; gap: 1px; }
 .ts-name       { font-size: 7px; font-weight: 700; text-align: center; line-height: 1.2; max-width: 62px; }
 
 /* ══════════════════════════════
@@ -309,7 +310,12 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .sc-rarity     { font-size: 7px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .sc-class-icon { font-size: 20px; line-height: 1; margin: 4px 0 2px; }
 .sc-subclass   { font-size: 8px; opacity: 0.85; }
-.sc-name       { font-size: 8px; font-weight: 700; text-align: center; line-height: 1.2; margin-top: 3px; max-width: 62px; }
+.sc-stats      { width: 100%; display: flex; flex-direction: column; gap: 2px; margin: 4px 0 2px; }
+.sc-stat-row   { display: flex; align-items: center; gap: 3px; }
+.sc-stat-label { font-size: 6px; color: var(--text-muted); width: 16px; flex-shrink: 0; }
+.sc-stat-track { flex: 1; height: 3px; background: var(--panel-bg2); border-radius: 2px; overflow: hidden; }
+.sc-stat-fill  { height: 100%; border-radius: 2px; }
+.sc-name       { font-size: 8px; font-weight: 700; text-align: center; line-height: 1.2; margin-top: 2px; max-width: 62px; }
 
 .survivor-card-copies {
   position: absolute; top: -3px; right: -3px;
