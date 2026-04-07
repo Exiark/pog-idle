@@ -46,7 +46,6 @@ export function renderTeam(state) {
         style="background:${r.bg};border-color:${r.color}"
         onclick="window.toggleTeamUI('${s.id}')"
         title="${sv.name} — ${sv.role}\n${sv.desc}">
-        <div class="ts-icon">${sv.icon}</div>
         <div class="ts-class-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>
         <div class="ts-subclass" style="color:${r.color}">${sv.role}</div>
         <div class="ts-name" style="color:${r.text}">${sv.name}</div>
