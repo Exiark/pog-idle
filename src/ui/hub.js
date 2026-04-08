@@ -50,7 +50,7 @@ export function renderTeam(state) {
         ${sprite
           ? `<div class="ts-sprite-wrap"><img class="ts-sprite" src="${sprite}" alt="${sv.name}"></div>`
           : `<div class="ts-class-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>`}
-        <div class="ts-subclass" style="color:${r.color}">${sv.role}</div>
+        <div class="ts-subclass" style="color:${r.color}">${meta.globalClass || sv.role}</div>
         <div class="ts-stats">
           <div class="ts-stat"><span style="color:#E05A4A">⚔</span>${sv.atk}</div>
           <div class="ts-stat"><span style="color:#4A8FE0">🛡</span>${sv.def}</div>

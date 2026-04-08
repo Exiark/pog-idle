@@ -318,54 +318,54 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   border-bottom: 3px solid #1A0C05;
   border-radius: var(--radius-lg); padding: 10px 12px; margin-top: 8px;
 }
-#team-slots { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0; }
+#team-slots { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
 .team-slot {
-  width: 68px; height: 92px; border-radius: 8px;
+  width: 82px; height: 108px; border-radius: 10px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 1px; cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+  gap: 2px; cursor: pointer; transition: opacity 0.15s, transform 0.1s;
 }
 .team-slot.empty {
-  border: 2px dashed var(--gray-border); color: var(--text-muted); font-size: 20px;
+  border: 2px dashed var(--gray-border); color: var(--text-muted); font-size: 22px;
 }
 .team-slot.empty:hover { background: var(--panel-bg2); }
 .team-slot.filled { border: 2px solid; border-bottom: 3px solid; }
 .team-slot.filled:hover { opacity: 0.85; transform: scale(1.04); }
-.ts-class-icon  { font-size: 18px; line-height: 1; margin-bottom: 1px; }
-.ts-sprite-wrap { height: 36px; display: flex; align-items: flex-end; justify-content: center; }
-.ts-sprite      { height: 36px; width: auto; image-rendering: pixelated; }
-.ts-subclass   { font-size: 7px; text-align: center; opacity: 0.85; }
+.ts-class-icon  { font-size: 22px; line-height: 1; margin-bottom: 2px; }
+.ts-sprite-wrap { height: 48px; display: flex; align-items: flex-end; justify-content: center; }
+.ts-sprite      { height: 48px; width: auto; image-rendering: pixelated; }
+.ts-subclass   { font-size: 9px; text-align: center; opacity: 0.85; font-weight: 600; }
 .ts-stats      { display: flex; gap: 4px; margin: 2px 0; }
-.ts-stat       { font-size: 7px; color: var(--text-muted); display: flex; align-items: center; gap: 1px; }
-.ts-name       { font-size: 7px; font-weight: 700; text-align: center; line-height: 1.2; max-width: 62px; }
+.ts-stat       { font-size: 8px; color: var(--text-muted); display: flex; align-items: center; gap: 1px; }
+.ts-name       { font-size: 9px; font-weight: 700; text-align: center; line-height: 1.2; max-width: 78px; }
 
 /* ══════════════════════════════
    COLLECTION DE SURVIVANTS
    ══════════════════════════════ */
 .survivor-grid {
-  display: flex; flex-wrap: wrap; gap: 6px;
-  max-height: 320px; overflow-y: auto;
+  display: flex; flex-wrap: wrap; gap: 8px;
+  max-height: 380px; overflow-y: auto;
 }
 .survivor-card {
-  display: flex; flex-direction: column; align-items: center; gap: 1px;
-  padding: 6px 5px 5px; border-radius: 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 6px 6px; border-radius: 12px;
   border: 2px solid; border-bottom: 3px solid;
-  width: 66px; cursor: pointer; position: relative;
+  width: 82px; cursor: pointer; position: relative;
   transition: opacity 0.15s, transform 0.1s;
 }
 .survivor-card:hover  { opacity: 0.85; transform: scale(1.04) translateY(-2px); }
 .survivor-card.in-team { border-width: 2px; }
 
-.sc-rarity     { font-family: var(--pixel); font-size: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-.sc-class-icon { font-size: 20px; line-height: 1; margin: 4px 0 2px; }
-.sc-sprite-wrap { height: 46px; display: flex; align-items: flex-end; justify-content: center; margin: 2px 0; }
-.sc-sprite      { height: 46px; width: auto; image-rendering: pixelated; }
-.sc-subclass   { font-size: 8px; opacity: 0.85; }
-.sc-stats      { width: 100%; display: flex; flex-direction: column; gap: 2px; margin: 4px 0 2px; }
+.sc-rarity     { font-family: var(--pixel); font-size: 7px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.sc-class-icon { font-size: 24px; line-height: 1; margin: 4px 0 2px; }
+.sc-sprite-wrap { height: 56px; display: flex; align-items: flex-end; justify-content: center; margin: 2px 0; }
+.sc-sprite      { height: 56px; width: auto; image-rendering: pixelated; }
+.sc-subclass   { font-size: 10px; opacity: 0.85; font-weight: 600; }
+.sc-stats      { width: 100%; display: flex; flex-direction: column; gap: 3px; margin: 4px 0 2px; }
 .sc-stat-row   { display: flex; align-items: center; gap: 3px; }
-.sc-stat-label { font-size: 6px; color: var(--text-muted); width: 16px; flex-shrink: 0; }
-.sc-stat-track { flex: 1; height: 3px; background: var(--panel-bg2); border-radius: 2px; overflow: hidden; }
+.sc-stat-label { font-size: 7px; color: var(--text-muted); width: 18px; flex-shrink: 0; }
+.sc-stat-track { flex: 1; height: 4px; background: var(--panel-bg2); border-radius: 2px; overflow: hidden; }
 .sc-stat-fill  { height: 100%; border-radius: 2px; }
-.sc-name       { font-size: 8px; font-weight: 700; text-align: center; line-height: 1.2; margin-top: 2px; max-width: 62px; }
+.sc-name       { font-size: 10px; font-weight: 700; text-align: center; line-height: 1.2; margin-top: 2px; max-width: 78px; }
 
 .survivor-card-copies {
   position: absolute; top: -4px; right: -4px;
@@ -553,6 +553,14 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 .sv-modal-meta-row strong { color: var(--text); }
 .sv-modal-equip { width: 100%; padding: 10px; font-size: 13px; font-weight: 700; }
+.sv-modal-fusion-btn {
+  width: 100%; padding: 10px; font-size: 13px; font-weight: 700; margin-bottom: 8px;
+  background: linear-gradient(135deg, #6A3FA0, #3A2060);
+  border: 2px solid #9A60E0; border-bottom: 3px solid #2A1040;
+  color: #E8C8FF; border-radius: 8px; cursor: pointer;
+  font-family: var(--body); transition: opacity 0.15s;
+}
+.sv-modal-fusion-btn:hover { opacity: 0.85; }
 
 /* ══════════════════════════════
    UPGRADE SURVIVANT (ADN)

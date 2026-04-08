@@ -1,6 +1,6 @@
 // ── SHELTER SURVIVOR — Collection de survivants ──
 import { SURVIVORS, RARITY, RARITY_ORDER, ROLE_META, getSpriteUrl } from '../data/survivors.js'
-import { getCollectionStats } from '../core/gacha.js'
+import { getCollectionStats, checkFusion } from '../core/gacha.js'
 import { UPGRADE_COST, UPGRADE_MAX, upgradeSurvivor } from '../core/economy.js'
 import { saveState } from '../core/state.js'
 
@@ -90,7 +90,7 @@ function survivorCard(id, copies, state) {
           ? `<img class="sc-sprite" src="${sprite}" alt="${sv.name}">`
           : `<div class="sc-class-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>`}
       </div>
-      <div class="sc-subclass" style="color:${r.color}">${sv.role}</div>
+      <div class="sc-subclass" style="color:${r.color}">${meta.globalClass || sv.role}</div>
 
       <!-- Mini stats -->
       <div class="sc-stats">
@@ -120,6 +120,18 @@ function statBar(label, value, max, color) {
 }
 
 window.renderCollection = renderCollection
+
+window.fuseSurvivorUI = function(id) {
+  const S = window._state
+  if (!S) return
+  const fusion = checkFusion(S, id)
+  saveState(S)
+  if (fusion) {
+    if (window.showToast) window.showToast(`⚡ ${fusion.message}`, 'fusion', 3500)
+  }
+  document.getElementById('survivor-modal').style.display = 'none'
+  renderCollection(S)
+}
 
 window.upgradeSurvivorUI = function(id) {
   const S = window._state
@@ -191,6 +203,11 @@ window.showSurvivorModal = function(id) {
         </div>
 
         ${!sv.boss ? upgradeSection(id, S) : ''}
+
+        ${!sv.boss && copies >= 3 && sv.rarity !== 'L' ? `
+          <button class="sv-modal-fusion-btn" onclick="window.fuseSurvivorUI('${id}')">
+            ⚡ Fusionner ×3 → ${RARITY_ORDER[RARITY_ORDER.indexOf(sv.rarity) + 1] || '?'}
+          </button>` : ''}
 
         ${!sv.boss ? `
           <button class="btn-danger sv-modal-equip"

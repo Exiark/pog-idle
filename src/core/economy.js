@@ -52,21 +52,21 @@ export const SIGNAL_CONFIG = {
     count: 3,
     currency: 'capsules',
     cost: 100,
-    weights: { D: 60, E: 30, L: 10 },
+    weights: { D: 82, E: 15, L: 3 },
   },
   urgent: {
     name: 'Signal Urgent',
     count: 3,
     currency: 'capsules',
     cost: 300,
-    weights: { D: 25, E: 55, L: 20 },
+    weights: { D: 65, E: 30, L: 5 },
   },
   premium: {
     name: 'Signal Premium',
     count: 5,
     currency: 'radium',
     cost: 20,
-    weights: { D: 5, E: 50, L: 45 },
+    weights: { D: 35, E: 50, L: 15 },
   },
 }
 
