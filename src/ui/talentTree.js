@@ -1,7 +1,26 @@
-// ── SHELTER SURVIVOR — Arbre de talents ──
+// ── SHELTER SURVIVOR — Arbre de talents visuel ──
 import { TALENTS } from '../data/talents.js'
 import { saveState } from '../core/state.js'
 import { unlockMastery } from '../core/economy.js'
+
+// Grid: 3 cols × 3 rows, each cell 90px, gap 10px → total 290×290
+// Centers: col x = 45 / 145 / 245 ; row y = 45 / 145 / 245
+const NODE_POS = {
+  t1: { x: 45,  y: 45  },
+  t2: { x: 145, y: 45  },
+  t3: { x: 245, y: 45  },
+  t4: { x: 45,  y: 145 },
+  t5: { x: 145, y: 145 },
+  t6: { x: 245, y: 145 },
+  t7: { x: 45,  y: 245 },
+  t8: { x: 145, y: 245 },
+  t9: { x: 245, y: 245 },
+}
+
+const CONNECTIONS = [
+  ['t1', 't4'], ['t2', 't5'], ['t3', 't6'],
+  ['t4', 't7'], ['t5', 't8'], ['t6', 't9'],
+]
 
 export function renderTalents(state) {
   const pointsDiv = document.getElementById('talent-points-display')
@@ -19,51 +38,88 @@ export function renderTalents(state) {
       </div>`
   }
 
-  const rows = {}
-  TALENTS.forEach(t => {
-    if (!rows[t.row]) rows[t.row] = []
-    rows[t.row].push(t)
-  })
+  const unlocked = state.talentsUnlocked || []
 
-  gridDiv.innerHTML = Object.entries(rows).map(([row, talents]) => `
-    <div style="margin-bottom:10px">
-      <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Niveau ${row}</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-        ${talents.map(t => talentNode(t, state)).join('')}
+  // ── SVG connector lines ──
+  const svgLines = CONNECTIONS.map(([from, to]) => {
+    const p1 = NODE_POS[from]
+    const p2 = NODE_POS[to]
+    const bothOn  = unlocked.includes(from) && unlocked.includes(to)
+    const parentOn = unlocked.includes(from) && !unlocked.includes(to)
+    const color   = bothOn  ? '#5A9E3A' : parentOn ? '#c0832a' : '#3a3a3a'
+    const width   = bothOn  ? 3 : 2
+    const opacity = bothOn  ? 1 : parentOn ? 0.7 : 0.3
+    const dash    = bothOn  ? '' : 'stroke-dasharray="6 4"'
+    return `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}"
+      stroke="${color}" stroke-width="${width}" stroke-opacity="${opacity}" ${dash}/>`
+  }).join('\n    ')
+
+  // ── Talent nodes ──
+  const nodesHtml = TALENTS.map(t => {
+    const isUnlocked  = unlocked.includes(t.id)
+    const canAfford   = state.talentPoints >= t.cost
+    const reqMet      = !t.requires || unlocked.includes(t.requires)
+    const available   = canAfford && reqMet && !isUnlocked
+    const locked      = !reqMet
+    const isT5        = t.id === 't5'
+
+    let cls = 'tn-node'
+    if (isUnlocked)       cls += ' tn-unlocked'
+    else if (locked)      cls += ' tn-locked'
+    else if (available)   cls += ' tn-available'
+    else                  cls += ' tn-unaffordable'
+    if (isT5)             cls += ' tn-star'
+
+    const tooltip = t.requires && !reqMet
+      ? `Nécessite : ${getTalentName(t.requires)}`
+      : available ? `Déverrouiller : ${t.cost} point${t.cost > 1 ? 's' : ''}`
+      : isUnlocked ? 'Acquis'
+      : ''
+
+    const costLabel = isUnlocked
+      ? `<span class="tn-cost tn-cost--done">✓ Acquis</span>`
+      : locked
+      ? `<span class="tn-cost tn-cost--locked">🔒</span>`
+      : `<span class="tn-cost">${t.cost} pt${t.cost > 1 ? 's' : ''}</span>`
+
+    return `
+      <div class="${cls}"
+        onclick="${available ? `window.unlockTalentUI('${t.id}')` : ''}"
+        title="${tooltip}">
+        ${isT5 ? `<div class="tn-star-badge">IDLE</div>` : ''}
+        <div class="tn-icon">${t.icon}</div>
+        <div class="tn-name">${t.name}</div>
+        <div class="tn-desc">${t.desc}</div>
+        ${costLabel}
+      </div>`
+  }).join('')
+
+  // Row labels
+  const ROW_LABELS = ['Combat', 'Économie', 'Maîtrise']
+  const rowLabelsHtml = ROW_LABELS.map(label =>
+    `<div class="tn-row-label">${label}</div>`
+  ).join('')
+
+  gridDiv.innerHTML = `
+    <div class="tn-wrapper">
+      <div class="tn-row-labels">${rowLabelsHtml}</div>
+      <div class="tn-tree">
+        <svg class="tn-svg" viewBox="0 0 290 290" preserveAspectRatio="xMidYMid meet"
+          xmlns="http://www.w3.org/2000/svg">
+          ${svgLines}
+        </svg>
+        <div class="tn-grid">
+          ${nodesHtml}
+        </div>
       </div>
-    </div>`).join('') + masteryBlock(state)
-}
-
-function talentNode(t, state) {
-  const unlocked  = state.talentsUnlocked.includes(t.id)
-  const canAfford = state.talentPoints >= t.cost
-  const reqMet    = !t.requires || state.talentsUnlocked.includes(t.requires)
-  const available = canAfford && reqMet && !unlocked
-  const locked    = !reqMet
-
-  let cls = 'talent-node'
-  if (unlocked) cls += ' unlocked'
-  else if (locked) cls += ' locked'
-
-  return `
-    <div class="${cls}" onclick="${available ? `window.unlockTalentUI('${t.id}')` : ''}"
-      title="${t.requires && !reqMet ? `Nécessite : ${getTalentName(t.requires)}` : ''}">
-      <div style="font-size:18px;margin-bottom:4px">${t.icon}</div>
-      <div style="font-size:12px;font-weight:500">${t.name}</div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${t.desc}</div>
-      <div style="font-size:11px;margin-top:5px;color:${unlocked ? '#5A9E3A' : 'var(--accent)'}">
-        ${unlocked ? '✓ Acquis' : `${t.cost} pt${t.cost > 1 ? 's' : ''}`}
-      </div>
-      ${t.requires && !reqMet
-        ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px">Nécessite : ${getTalentName(t.requires)}</div>`
-        : ''}
-    </div>`
+    </div>
+  ` + masteryBlock(state)
 }
 
 function masteryBlock(state) {
-  const rank    = state.masteryRank || 0
-  const cost    = 1 + Math.floor(rank / 3)
-  const canBuy  = state.talentPoints >= cost
+  const rank   = state.masteryRank || 0
+  const cost   = 1 + Math.floor(rank / 3)
+  const canBuy = state.talentPoints >= cost
 
   return `
     <div class="mastery-block">
@@ -115,9 +171,13 @@ window.unlockTalentUI = function(id) {
   if (S.talentPoints < talent.cost) return
   if (talent.requires && !S.talentsUnlocked.includes(talent.requires)) return
 
-  S.talentPoints -= talent.cost
+  S.talentPoints  -= talent.cost
   S.talentsUnlocked.push(id)
   saveState(S)
+
+  if (window.playUpgradeSound) window.playUpgradeSound()
+  if (window.showToast) window.showToast(`✓ ${talent.name} déverrouillé !`, 'levelup', 2500)
+
   renderTalents(S)
   if (window.renderHub) window.renderHub(S)
 }

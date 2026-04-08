@@ -205,6 +205,7 @@ window.fuseSurvivorUI = function(id) {
   saveState(S)
   if (fusion) {
     if (window.showToast) window.showToast(`⚡ ${fusion.message}`, 'fusion', 3500)
+    if (window.playFusionSound) window.playFusionSound()
   }
   document.getElementById('survivor-modal').style.display = 'none'
   renderCollection(S)
@@ -220,6 +221,7 @@ window.upgradeSurvivorUI = function(id) {
   }
   saveState(S)
   if (window.showToast) window.showToast(`🧬 ${SURVIVORS.find(x => x.id === id)?.name} → Niv. ${result.newLevel} !`, 'fusion', 3000)
+  if (window.playUpgradeSound) window.playUpgradeSound()
   window.showSurvivorModal(id)
   renderCollection(S)
 }

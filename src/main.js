@@ -7,6 +7,7 @@ import {
   gainAccountXP, doPrestige, PHASE,
 } from './core/combat.js'
 import { ZONES } from './data/zones.js'
+import { SURVIVORS } from './data/survivors.js'
 import { getNarration, markNarrationShown } from './data/narration.js'
 
 import './ui/hub.js'
@@ -20,8 +21,11 @@ import './ui/tower.js'
 
 // ── État global ──
 let S = loadState()
-window._state    = S
-window.saveState = saveState
+window._state             = S
+window.saveState          = saveState
+window._SURVIVORS         = SURVIVORS
+window.getNarration       = getNarration
+window.markNarrationShown = markNarrationShown
 
 // ── État de combat ──
 let enemySquad   = []
@@ -66,21 +70,87 @@ function checkOnboarding() {
   })
 }
 
+const ONBOARDING_STEPS = [
+  {
+    tab:     'survivors',
+    title:   'Vos premiers survivants',
+    body:    'Trois rescapés viennent de rejoindre votre abri. Ajoutez-les à votre équipe en appuyant sur leurs cartes.',
+    arrow:   'tab-survivors',
+    btnText: 'Voir l\'équipe →',
+    action:  () => setTab('survivors'),
+  },
+  {
+    tab:     'combat',
+    title:   'Première mission',
+    body:    'Votre équipe est prête. Allez dans Exploration et lancez votre première mission contre les zombies.',
+    arrow:   'tab-combat',
+    btnText: 'Partir en mission →',
+    action:  () => setTab('combat'),
+  },
+  {
+    tab:     'packs',
+    title:   'Renforcez-vous',
+    body:    'Après chaque victoire, vous gagnez des capsules. Utilisez-les à la Tour Radio pour recruter de nouveaux survivants.',
+    arrow:   'tab-packs',
+    btnText: 'Compris !',
+    action:  null,
+  },
+]
+
+let _onboardingStep = 0
+
 function showOnboardingMessage() {
-  const panel = document.getElementById('precombat-panel')
-  const banner = document.createElement('div')
-  banner.className = 'onboarding-banner'
-  banner.innerHTML = `
-    <div class="onboarding-icon">☣</div>
-    <div class="onboarding-text">
-      <strong>Bienvenue au Shelter !</strong><br>
-      3 survivants vous ont rejoint. Allez dans <strong>Équipe</strong> pour les ajouter à votre groupe,
-      puis lancez votre première mission !
+  _onboardingStep = 0
+  showOnboardingStep()
+}
+
+function showOnboardingStep() {
+  document.getElementById('onboarding-overlay')?.remove()
+  const step = ONBOARDING_STEPS[_onboardingStep]
+  if (!step) return
+
+  const overlay = document.createElement('div')
+  overlay.id = 'onboarding-overlay'
+
+  // Trouver la position de l'onglet cible pour la flèche
+  const targetTab = document.querySelector(`.tab[data-tab="${step.tab}"]`)
+  const rect = targetTab?.getBoundingClientRect()
+
+  overlay.innerHTML = `
+    <div class="ob-backdrop"></div>
+    <div class="ob-box">
+      <div class="ob-step">${_onboardingStep + 1} / ${ONBOARDING_STEPS.length}</div>
+      <div class="ob-title">☣ ${step.title}</div>
+      <div class="ob-body">${step.body}</div>
+      <div class="ob-actions">
+        ${_onboardingStep > 0 ? `<button class="ob-skip" onclick="window._dismissOnboarding()">Passer</button>` : ''}
+        <button class="ob-btn" onclick="window._nextOnboardingStep()">${step.btnText}</button>
+      </div>
     </div>
-    <button class="onboarding-dismiss" onclick="this.parentElement.remove()">✕</button>
+    ${rect ? `<div class="ob-arrow" style="left:${Math.round(rect.left + rect.width / 2)}px;top:${Math.round(rect.bottom + 6)}px"></div>` : ''}
+    ${targetTab ? `<div class="ob-highlight" style="left:${Math.round(rect.left - 3)}px;top:${Math.round(rect.top - 3)}px;width:${Math.round(rect.width + 6)}px;height:${Math.round(rect.height + 6)}px"></div>` : ''}
   `
-  if (panel) panel.prepend(banner)
-  else document.body.prepend(banner)
+  document.body.appendChild(overlay)
+  requestAnimationFrame(() => overlay.classList.add('visible'))
+}
+
+window._nextOnboardingStep = function() {
+  const step = ONBOARDING_STEPS[_onboardingStep]
+  if (step?.action) step.action()
+  _onboardingStep++
+  if (_onboardingStep >= ONBOARDING_STEPS.length) {
+    window._dismissOnboarding()
+  } else {
+    setTimeout(showOnboardingStep, 400)
+  }
+}
+
+window._dismissOnboarding = function() {
+  const overlay = document.getElementById('onboarding-overlay')
+  if (overlay) {
+    overlay.classList.remove('visible')
+    setTimeout(() => overlay.remove(), 300)
+  }
 }
 
 // ── Offline ──
@@ -209,6 +279,7 @@ function showNarration(narr, onDone) {
   overlay.addEventListener('click', close)
   setTimeout(close, 5000) // auto-skip après 5s
 }
+window.showNarration = showNarration
 
 function onCombatDone() {
   currentPhase = PHASE.RESULT
@@ -235,6 +306,9 @@ function onCombatDone() {
     const leveledUp = gainAccountXP(S, reward.accountXP)
     if (leveledUp) {
       showToast(`⭐ Niveau ${S.accountLevel} atteint ! +1 point de talent`, 'levelup', 4000)
+      playLevelUpSound()
+      const narrLvl = getNarration('first_levelup', S)
+      if (narrLvl) { markNarrationShown('first_levelup', S); showNarration(narrLvl, () => {}) }
     }
     updateMission(S, 'capsules_earned', reward.capsules)
     addLog(`Vague ${S.currentWave} terminée ! +${reward.capsules} capsules`, 'reward')
@@ -313,7 +387,15 @@ function handleBossVictory() {
   hideBossPanel()
   const result = defeatBoss(S, S.activeZone)
   if (result) addLog(`Boss éliminé ! Zone ${result.nextZone} déverrouillée !`, 'reward')
-  showBossVictoryScreen(result)
+
+  // Narration premier boss
+  const narrBoss = getNarration('first_boss', S)
+  if (narrBoss) {
+    markNarrationShown('first_boss', S)
+    showNarration(narrBoss, () => showBossVictoryScreen(result))
+  } else {
+    showBossVictoryScreen(result)
+  }
   advanceWave(S)
   saveState(S)
 }
@@ -435,12 +517,20 @@ window.openSignalUI = function(type) {
   if (result.error) { addLog(result.error, 'miss'); return }
   result.fusionLogs?.forEach(f => {
     addLog(f.message, 'reward')
-    showToast(
-      `🔬 FUSION ! <strong>${f.from.name}</strong> ×3 → <strong>${f.to.name}</strong>`,
-      'fusion', 4000
-    )
+    showToast(`🔬 FUSION ! <strong>${f.from.name}</strong> ×3 → <strong>${f.to.name}</strong>`, 'fusion', 4000)
   })
   saveState(S); updateUI()
+
+  // Narration premier Expert / Légendaire (après la fermeture du gacha)
+  const hasNewL = result.newIds?.some(id => {
+    const sv = SURVIVORS.find(x => x.id === id); return sv?.rarity === 'L'
+  })
+  const hasNewE = result.newIds?.some(id => {
+    const sv = SURVIVORS.find(x => x.id === id); return sv?.rarity === 'E'
+  })
+  const pendingNarr = hasNewL ? 'first_legendary' : hasNewE ? 'first_expert' : null
+  if (pendingNarr) window._pendingGachaNarr = pendingNarr
+
   if (window.playPackAnim) window.playPackAnim(result.obtained, result.newIds || [])
   if (window.setTab) window.setTab('packs')
 }
@@ -468,7 +558,10 @@ window.recycleSurvivorUI = function(survivorId, stacks) {
   const result = recycleSurvivor(S, survivorId, stacks)
   if (result.error) { showToast(result.error, 'info'); return }
   showToast(`♻ ${result.survivorName} ×${result.stacks * 3} → +${result.dna} 🧬 ADN`, 'fusion', 3000)
+  playRecycleSound()
   saveState(S); updateUI()
+  const narrR = getNarration('first_recycle', S)
+  if (narrR) { markNarrationShown('first_recycle', S); showNarration(narrR, () => {}) }
   if (window.showSurvivorModal) window.showSurvivorModal(survivorId)
 }
 
@@ -517,11 +610,20 @@ window.openPrestigeUI = function() {
 window.confirmPrestige = function() {
   document.getElementById('prestige-modal')?.remove()
   if (doPrestige(S)) {
-    showToast(`☣ Prestige ${S.prestigeLevel} ! Gains idle ×${1 + S.prestigeLevel * 0.1}`, 'fusion', 5000)
     saveState(S)
-    currentPhase = PHASE.IDLE
-    renderCombatView()
-    updateUI()
+    const narrP = getNarration('first_prestige', S)
+    const afterPrestige = () => {
+      showToast(`☣ Prestige ${S.prestigeLevel} ! Gains idle ×${1 + S.prestigeLevel * 0.1}`, 'fusion', 5000)
+      currentPhase = PHASE.IDLE
+      renderCombatView()
+      updateUI()
+    }
+    if (narrP) {
+      markNarrationShown('first_prestige', S)
+      showNarration(narrP, afterPrestige)
+    } else {
+      afterPrestige()
+    }
   }
 }
 
@@ -531,6 +633,7 @@ function setTab(tab) {
     t.classList.toggle('active', t.dataset.tab === tab))
   document.querySelectorAll('.view').forEach(v =>
     v.style.display = v.dataset.view === tab ? '' : 'none')
+  playMenuSound()
   updateUI()
 }
 
@@ -660,7 +763,125 @@ function playVictorySound() {
   } catch (_) {}
 }
 
-window.playHitSound    = playHitSound
-window.playVictorySound = playVictorySound
+// Son de fusion (⚡ chord épique montant)
+function playFusionSound() {
+  try {
+    const ctx = getAudio()
+    const chord = [220, 277, 330, 440, 554]
+    chord.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.type = 'sawtooth'
+      const t = ctx.currentTime + i * 0.07
+      osc.frequency.setValueAtTime(freq, t)
+      osc.frequency.exponentialRampToValueAtTime(freq * 2, t + 0.3)
+      gain.gain.setValueAtTime(0.12, t)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4)
+      osc.start(t); osc.stop(t + 0.45)
+    })
+  } catch (_) {}
+}
+
+// Son de recyclage (bruit de broyeur descendant)
+function playRecycleSound() {
+  try {
+    const ctx = getAudio()
+    const osc  = ctx.createOscillator()
+    const gain = ctx.createGain()
+    const filter = ctx.createBiquadFilter()
+    filter.type = 'bandpass'
+    filter.frequency.value = 600
+    osc.connect(filter); filter.connect(gain); gain.connect(ctx.destination)
+    osc.type = 'sawtooth'
+    osc.frequency.setValueAtTime(400, ctx.currentTime)
+    osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.35)
+    gain.gain.setValueAtTime(0.2, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4)
+  } catch (_) {}
+}
+
+// Son d'upgrade ADN (ping électrique montant)
+function playUpgradeSound() {
+  try {
+    const ctx = getAudio()
+    const notes = [440, 550, 660]
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.type = 'sine'
+      const t = ctx.currentTime + i * 0.1
+      osc.frequency.setValueAtTime(freq, t)
+      gain.gain.setValueAtTime(0.18, t)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15)
+      osc.start(t); osc.stop(t + 0.18)
+    })
+  } catch (_) {}
+}
+
+// Son gacha Légendaire (fanfare dorée — arpège long)
+function playLegendarySound() {
+  try {
+    const ctx = getAudio()
+    const melody = [523, 659, 784, 1047, 784, 1047, 1319]
+    melody.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.type = 'triangle'
+      const t = ctx.currentTime + i * 0.14
+      osc.frequency.setValueAtTime(freq, t)
+      gain.gain.setValueAtTime(0.22, t)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22)
+      osc.start(t); osc.stop(t + 0.25)
+    })
+  } catch (_) {}
+}
+
+// Son level-up (accord joyeux + shimmer)
+function playLevelUpSound() {
+  try {
+    const ctx = getAudio()
+    const arp = [392, 494, 587, 784, 987]
+    arp.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.type = i < 3 ? 'square' : 'sine'
+      const t = ctx.currentTime + i * 0.08
+      osc.frequency.setValueAtTime(freq, t)
+      gain.gain.setValueAtTime(0.15, t)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2)
+      osc.start(t); osc.stop(t + 0.22)
+    })
+  } catch (_) {}
+}
+
+// Son d'ouverture de menu / tab switch
+function playMenuSound() {
+  try {
+    const ctx = getAudio()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain); gain.connect(ctx.destination)
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(660, ctx.currentTime)
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.06)
+    gain.gain.setValueAtTime(0.08, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1)
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.12)
+  } catch (_) {}
+}
+
+window.playHitSound      = playHitSound
+window.playVictorySound  = playVictorySound
+window.playFusionSound   = playFusionSound
+window.playRecycleSound  = playRecycleSound
+window.playUpgradeSound  = playUpgradeSound
+window.playLegendarySound = playLegendarySound
+window.playLevelUpSound  = playLevelUpSound
+window.playMenuSound     = playMenuSound
 
 document.addEventListener('DOMContentLoaded', init)

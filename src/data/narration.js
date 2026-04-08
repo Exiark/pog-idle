@@ -105,6 +105,75 @@ export const NARRATION = {
     ],
   },
 
+  // ── Recrutement premier Expert ──
+  first_expert: {
+    speaker: 'Atlas',
+    role: 'Tacticien',
+    lines: [
+      'Un Expert dans nos rangs. La donne change.',
+      'Avec des gens comme ça, on tient la distance.',
+    ],
+  },
+
+  // ── Recrutement premier Légendaire ──
+  first_legendary: {
+    speaker: null,
+    lines: [
+      'Je suis là maintenant. Vous pouvez compter sur moi.',
+      'Ce que j\'ai vécu... ça m\'a rendu plus fort. Je vous protègerai.',
+    ],
+  },
+
+  // ── Premier recyclage ──
+  first_recycle: {
+    speaker: 'Genome',
+    role: 'Biologiste',
+    lines: [
+      'ADN récupéré. Chaque ressource compte dans ce monde.',
+      'On optimise. On survit. C\'est ça, l\'adaptation.',
+    ],
+  },
+
+  // ── Premier boss battu ──
+  first_boss: {
+    speaker: 'Marcus',
+    role: 'Bouclier',
+    lines: [
+      'Boss éliminé. On a prouvé qu\'on peut gagner.',
+      'Ils sont forts. Mais on est plus malins. Avancez.',
+    ],
+  },
+
+  // ── Premier prestige ──
+  first_prestige: {
+    speaker: 'Lazarus',
+    role: 'Médic',
+    lines: [
+      'Recommencer... mais plus forts. C\'est ça, la survie.',
+      'Les cycles se répètent. Nous, on s\'améliore à chaque fois.',
+    ],
+  },
+
+  // ── Upgrade ADN premier niveau ──
+  first_upgrade: {
+    speaker: 'Doc',
+    role: 'Médic',
+    lines: [
+      'Modification génétique réussie. Impressionnant.',
+      'L\'ADN ne ment pas. Cette personne est plus dangereuse qu\'avant.',
+    ],
+  },
+
+  // ── Premier niveau de compte ──
+  first_levelup: {
+    speaker: 'Atlas',
+    role: 'Tacticien',
+    lines: [
+      'L\'équipe gagne en expérience. Les talents se révèlent.',
+      'Chaque combat nous forge. Débloquez vos talents.',
+    ],
+  },
+
   // ── Boss : lignes spécifiques ──
   boss_z1: {
     speaker: 'Le Berger',
@@ -143,7 +212,11 @@ export function getNarration(trigger, state) {
 
   // Filtre : n'affiche certains dialogues qu'une seule fois
   const shown = state.shownNarrations || []
-  const oneShot = ['first_victory', 'first_defeat', 'recruit_legend']
+  const oneShot = [
+    'first_victory', 'first_defeat', 'recruit_legend',
+    'first_expert', 'first_legendary', 'first_recycle',
+    'first_boss', 'first_prestige', 'first_upgrade', 'first_levelup',
+  ]
   if (oneShot.includes(trigger) && shown.includes(trigger)) return null
 
   return n

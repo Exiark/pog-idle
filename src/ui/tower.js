@@ -102,6 +102,23 @@ window.selectZoneUI = function(zoneId) {
   if (window.saveState) window.saveState(S)
   renderTower(S)
   if (window.renderHub) window.renderHub(S)
-  if (window.setTab)    window.setTab('combat')
+
+  // Feedback visuel de transition
+  const zone = ZONES[zoneId - 1]
+  if (zone && window.showToast) {
+    window.showToast(`📍 Zone ${zoneId} — <strong>${zone.name}</strong>`, 'info', 2500)
+  }
+  // Flash couleur zone
+  if (zone) {
+    const flash = document.createElement('div')
+    flash.style.cssText = `position:fixed;inset:0;z-index:9999;pointer-events:none;background:${zone.colors.primary};opacity:0;transition:opacity 0.15s ease-in-out;`
+    document.body.appendChild(flash)
+    requestAnimationFrame(() => {
+      flash.style.opacity = '0.18'
+      setTimeout(() => { flash.style.opacity = '0'; setTimeout(() => flash.remove(), 200) }, 150)
+    })
+  }
+
+  if (window.setTab) window.setTab('combat')
   document.dispatchEvent(new CustomEvent('zoneChanged'))
 }

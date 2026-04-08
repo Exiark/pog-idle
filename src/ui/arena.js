@@ -533,10 +533,40 @@ function animateCounter(elId, target, suffix = '', prefix = '+', duration = 800)
 }
 
 function getTip(result) {
-  if (result.dmgReceived > result.dmgDealt * 2) return 'Ajoutez un Tank pour absorber les dégâts.'
-  if (result.totalTurns >= 45)                  return 'Votre ATK est trop faible — recrutez des combattants.'
-  if (result.survived === 0)                    return 'Ajoutez un Médic pour maintenir l\'équipe en vie.'
-  return 'Améliorez vos survivants ou ouvrez des signaux pour en recruter de meilleurs.'
+  const state = window._state
+  if (!state) return 'Améliorez vos survivants ou ouvrez des signaux.'
+
+  const team = state.team.filter(Boolean)
+  const roles = team.map(s => {
+    const sv = (window._SURVIVORS || []).find(x => x.id === s.id)
+    return sv?.role || ''
+  })
+
+  const hasTank    = roles.some(r => ['Bouclier','Blindé'].includes(r))
+  const hasHealer  = roles.some(r => ['Médic','Biologiste'].includes(r))
+  const hasDPS     = roles.some(r => ['Berserk','Lame','Ombre','Pistard','Tireur','Artificier'].includes(r))
+  const hasSupport = roles.some(r => ['Tacticien','Ingénieur'].includes(r))
+
+  // Diagnostic basé sur ce qui s'est passé
+  if (result.totalTurns >= 50)
+    return hasDPS
+      ? 'Améliorez l\'ATK de vos combattants ou ouvrez des signaux pour des recrues E/L.'
+      : 'Aucun combattant offensif dans l\'équipe — ajoutez un Berserk, Tireur ou Assassin.'
+
+  if (result.survived === 0 && result.dmgReceived > result.dmgDealt * 1.8)
+    return hasTank
+      ? hasHealer
+        ? 'Votre équipe est trop fragile — améliorez vos survivants avec de l\'ADN.'
+        : 'Ajoutez un Médic ou Biologiste pour soigner pendant le combat.'
+      : 'Ajoutez un Tank (Bouclier ou Blindé) pour absorber les dégâts ennemis.'
+
+  if (!hasHealer && result.fallen?.length >= Math.ceil(team.length / 2))
+    return 'La moitié de votre équipe est tombée — un Médic pourrait changer la donne.'
+
+  if (!hasSupport)
+    return 'Un Tacticien ou Ingénieur renforcerait la synergie de votre équipe.'
+
+  return 'Ouvrez des signaux pour recruter des survivants Expert ou Légendaire.'
 }
 
 // Lancer les animations de compteur après le rendu

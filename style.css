@@ -752,8 +752,10 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .rev-card-wrap { width: 0; height: 0; display: none; }
 
 /* ══════════════════════════════
-   TALENTS
+   TALENTS — ARBRE VISUEL
    ══════════════════════════════ */
+
+/* Legacy nodes (kept for safety) */
 .talent-node {
   padding: 10px 8px; background: var(--panel-bg2); border-radius: var(--radius);
   text-align: center; cursor: pointer;
@@ -765,6 +767,138 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .talent-node:active:not(.locked) { transform: translateY(1px); }
 .talent-node.unlocked { border-color: var(--green); background: #1A3A0A44; }
 .talent-node.locked   { opacity: 0.4; cursor: not-allowed; }
+
+/* ── New visual tree ── */
+.tn-wrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.tn-row-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+.tn-row-label {
+  height: 90px;
+  display: flex;
+  align-items: center;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  opacity: 0.6;
+}
+
+.tn-tree {
+  position: relative;
+  width: 290px;
+  height: 290px;
+  flex-shrink: 0;
+}
+.tn-svg {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+.tn-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 90px);
+  grid-template-rows: repeat(3, 90px);
+  gap: 10px;
+}
+
+/* ── Individual nodes ── */
+.tn-node {
+  width: 90px;
+  height: 90px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 2px solid #3a3a3a;
+  background: var(--panel-bg2);
+  cursor: default;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s, opacity 0.2s;
+  position: relative;
+  padding: 6px 4px;
+  text-align: center;
+}
+.tn-node.tn-unlocked {
+  border-color: #5A9E3A;
+  background: rgba(90, 158, 58, 0.15);
+  box-shadow: 0 0 14px rgba(90, 158, 58, 0.35);
+}
+.tn-node.tn-available {
+  border-color: var(--accent);
+  cursor: pointer;
+  animation: tn-pulse 2s ease-in-out infinite;
+}
+.tn-node.tn-available:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(200, 120, 40, 0.45);
+}
+.tn-node.tn-available:active { transform: translateY(0); }
+.tn-node.tn-locked {
+  opacity: 0.35;
+  filter: grayscale(0.7);
+}
+.tn-node.tn-unaffordable {
+  border-color: #3a3a3a;
+  opacity: 0.55;
+}
+
+/* t5 Veilleur — special idle highlight */
+.tn-node.tn-star {
+  border-color: #c0a030 !important;
+  background: rgba(192, 160, 48, 0.1) !important;
+}
+.tn-node.tn-star.tn-unlocked {
+  box-shadow: 0 0 22px rgba(192, 160, 48, 0.55) !important;
+}
+.tn-node.tn-star.tn-available {
+  animation: tn-pulse-star 2s ease-in-out infinite !important;
+}
+.tn-star-badge {
+  position: absolute;
+  top: 3px; right: 3px;
+  font-size: 8px;
+  font-weight: 700;
+  color: #c0a030;
+  background: rgba(192,160,48,0.15);
+  border: 1px solid rgba(192,160,48,0.5);
+  border-radius: 3px;
+  padding: 1px 3px;
+  line-height: 1;
+}
+
+.tn-icon  { font-size: 20px; margin-bottom: 2px; line-height: 1; }
+.tn-name  { font-size: 11px; font-weight: 600; line-height: 1.2; }
+.tn-desc  { font-size: 9px; color: var(--text-muted); margin-top: 2px; line-height: 1.3; }
+.tn-cost  { font-size: 10px; margin-top: 3px; color: var(--accent); font-weight: 700; }
+.tn-cost--done   { color: #5A9E3A; }
+.tn-cost--locked { color: #555; }
+
+@keyframes tn-pulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(200, 120, 40, 0.3); }
+  50%       { box-shadow: 0 0 18px rgba(200, 120, 40, 0.65); }
+}
+@keyframes tn-pulse-star {
+  0%, 100% { box-shadow: 0 0 8px rgba(192, 160, 48, 0.35); }
+  50%       { box-shadow: 0 0 22px rgba(192, 160, 48, 0.7); }
+}
 
 /* ══════════════════════════════
    OFFLINE NOTIF
@@ -1901,6 +2035,110 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   margin-top: 2px;
 }
 .pity-item { flex-direction: column; gap: 2px; }
+
+/* ══════════════════════════════
+   ONBOARDING GUIDÉ
+   ══════════════════════════════ */
+#onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+#onboarding-overlay.visible { opacity: 1; pointer-events: auto; }
+
+.ob-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+}
+.ob-box {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(360px, 92vw);
+  background: var(--panel-bg);
+  border: 2px solid var(--accent);
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 0 30px rgba(245,166,35,0.3);
+  z-index: 2;
+}
+.ob-step {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
+.ob-title {
+  font-family: var(--pixel);
+  font-size: 10px;
+  color: var(--accent);
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+.ob-body {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+.ob-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.ob-btn {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.ob-btn:hover { filter: brightness(1.15); }
+.ob-skip {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--gray-border);
+  font-size: 11px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.ob-arrow {
+  position: absolute;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 12px solid var(--accent);
+  z-index: 3;
+  animation: ob-bounce 0.8s ease-in-out infinite;
+}
+@keyframes ob-bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50%       { transform: translateX(-50%) translateY(-6px); }
+}
+.ob-highlight {
+  position: absolute;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: 0 0 12px rgba(245,166,35,0.5);
+  z-index: 3;
+  pointer-events: none;
+  animation: ob-pulse 1s ease-in-out infinite;
+}
+@keyframes ob-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(245,166,35,0.4); }
+  50%       { box-shadow: 0 0 20px rgba(245,166,35,0.7); }
+}
 
 /* ── Effet spécial boss dans précombat ── */
 .pcr-boss-effect {

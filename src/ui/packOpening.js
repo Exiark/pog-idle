@@ -288,7 +288,8 @@ function triggerRarityEffect(rarity, r) {
     }
     document.getElementById('pm-spotlight')?.classList.add('pm-spotlight--l')
     setTimeout(() => document.getElementById('pm-spotlight')?.classList.remove('pm-spotlight--l'), 2500)
-    if (window.playVictorySound) window.playVictorySound()
+    if (window.playLegendarySound) window.playLegendarySound()
+    else if (window.playVictorySound) window.playVictorySound()
 
   } else if (rarity === 'E') {
     // Electric pulse
@@ -340,6 +341,20 @@ window.closePackModal = function() {
   revealDone  = false
   const modal = document.getElementById('pack-modal')
   if (modal) { modal.style.display = 'none'; modal.onclick = null }
+
+  // Déclenche la narration en attente (first_expert / first_legendary)
+  const trigger = window._pendingGachaNarr
+  if (trigger) {
+    window._pendingGachaNarr = null
+    const S = window._state
+    if (S && window.getNarration) {
+      const narr = window.getNarration(trigger, S)
+      if (narr && window.showNarration) {
+        window.markNarrationShown?.(trigger, S)
+        window.showNarration(narr, () => {})
+      }
+    }
+  }
 }
 
 window.playPackAnim = playSignalAnim
