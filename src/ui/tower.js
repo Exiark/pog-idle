@@ -36,8 +36,7 @@ function zoneCard(zone, state) {
   const wavePct    = isCurrent && !beaten ? Math.round(state.currentWave / 11 * 100) : beaten ? 100 : 0
   const c          = zone.colors
 
-  // Étoiles accumulées sur cette zone (simulées depuis progression)
-  const starsTotal = beaten ? Math.floor(Math.random() * 5 + 25) : (isCurrent ? state.currentWave * 2 : 0)
+  const starsTotal = (state.zoneStars || {})[zone.id] || 0
 
   if (!isUnlocked) {
     return `

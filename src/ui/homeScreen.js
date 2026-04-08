@@ -1,8 +1,7 @@
 // ── SHELTER SURVIVOR — Écran d'accueil (Hub) ──
 import { SURVIVORS, RARITY, ROLE_META, getSpriteUrl, classIconHtml } from '../data/survivors.js'
 import { ZONES } from '../data/zones.js'
-
-const IDLE_RATE = { D: 0.05, E: 0.15, L: 0.4 }
+import { calcIdleRate } from '../core/state.js'
 
 export function renderHome(state) {
   const el = document.getElementById('home-view-inner')
@@ -10,7 +9,7 @@ export function renderHome(state) {
 
   const zone      = ZONES[(state.activeZone || 1) - 1]
   const teamCount = state.team.filter(Boolean).length
-  const idleRate  = calcHomeIdleRate(state)
+  const idleRate  = calcIdleRate(state)
   const lvl       = state.accountLevel
   const xpMax     = (lvl + 1) * 100
   const xpPct     = Math.round(state.accountXP / xpMax * 100)
@@ -172,19 +171,5 @@ function zoneBg(zone) {
   return `position:relative;overflow:hidden;background:linear-gradient(180deg,${c1}99 0%,${c2}44 60%,transparent 100%);`
 }
 
-function calcHomeIdleRate(state) {
-  let rate = 0
-  if (state.collection?.length) {
-    const ids = [...new Set(state.collection.map(p => p.id))]
-    ids.forEach(id => {
-      const sv = state.collection.find(p => p.id === id)
-      if (sv) rate += IDLE_RATE[sv.rarity] || 0
-    })
-  }
-  if (state.talentsUnlocked?.includes('t5')) rate *= 1.5
-  rate += (state.masteryRank || 0) * 0.02
-  rate *= 1 + (state.prestigeLevel || 0) * 0.1
-  return Math.round(rate * 100) / 100
-}
 
 window.renderHome = renderHome

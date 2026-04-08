@@ -23,6 +23,7 @@ export const DEFAULT_STATE = {
   unlockedZones:   [1], // était: unlockedWorlds
   bossesDefeated:  [],
   zoneSurvivors:   [],  // survivants boss obtenus (était: worldPogs)
+  zoneStars:       {},  // meilleur score étoiles par zone { [zoneId]: 1|2|3 }
 
   // ── Collection & équipe ──
   collection:   [],              // { id, rarity }
@@ -46,10 +47,12 @@ export const DEFAULT_STATE = {
   accountLevel: 0,
 
   // ── Temps / daily ──
-  lastSeen:     Date.now(),
-  dailyClaimed: false,
-  dailyDay:     0,
-  missions:     [],
+  lastSeen:          Date.now(),
+  dailyClaimed:      false,
+  dailyDay:          0,
+  dailyStreak:       0,    // jours consécutifs de connexion
+  lastDailyDate:     null, // date ISO du dernier claim
+  missions:          [],
 
   stripeCustomerId: null,
 }
@@ -116,23 +119,27 @@ export function getTeam(state) {
   return state.team.filter(Boolean)
 }
 
-// ── Calcul du taux idle (capsules/s) ──
-// Tous les survivants en collection génèrent des capsules au repos.
-// Les survivants en équipe (Médic/Biologiste avec hot+) ajoutent un bonus.
+// ── Calcul du taux idle (capsules/s) — source unique de vérité ──
 export function calcIdleRate(state) {
   let rate = 0
 
-  // Base : chaque survivant possédé génère selon sa rareté
+  // Base : chaque survivant unique possédé génère selon sa rareté
   const uniqueIds = [...new Set((state.collection || []).map(p => p.id))]
   uniqueIds.forEach(id => {
     const sv = SURVIVORS.find(x => x.id === id)
     if (sv && !sv.boss) rate += IDLE_RATE_BY_RARITY[sv.rarity] || 0
   })
 
-  // Bonus d'équipe : talents et effets passifs
+  // Talent t5 : +50% idle
   if (hasTalent(state, 't5')) rate *= 1.5
 
-  return Math.round(rate * 10) / 10
+  // Maîtrise : +0.02 caps/s par rang
+  rate += (state.masteryRank || 0) * 0.02
+
+  // Prestige : multiplicateur
+  rate *= 1 + (state.prestigeLevel || 0) * 0.1
+
+  return Math.round(rate * 100) / 100
 }
 
 // ── Calcul des capsules gagnées hors-ligne ──

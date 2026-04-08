@@ -1702,6 +1702,209 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   text-shadow: 1px 1px 0 #000;
 }
 
+/* ══════════════════════════════
+   NOUVEAUX STYLES UX 2024
+   ══════════════════════════════ */
+
+/* ── Tab badges de notification ── */
+.tab { position: relative; }
+.tab-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  background: #E05A4A;
+  border-radius: 50%;
+  border: 1.5px solid var(--bg);
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+@keyframes badge-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.3); opacity: 0.7; }
+}
+
+/* ── Streak badge journalier ── */
+.streak-badge {
+  display: inline-flex;
+  align-items: center;
+  background: #3A2A0A;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+/* ── Missions claimable ── */
+.mission-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 0.5px solid var(--gray-border);
+}
+.mission-claimable {
+  background: #1A2A0A;
+  margin: 0 -8px;
+  padding: 8px;
+  border-radius: 8px;
+  border-bottom: none;
+  margin-bottom: 4px;
+}
+.mission-claim-btn {
+  background: linear-gradient(135deg, #3A6A0A, #5A9E2A);
+  border: 1px solid #5AE05A;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  animation: claim-glow 2s ease-in-out infinite;
+}
+.mission-claim-btn:hover { filter: brightness(1.2); }
+@keyframes claim-glow {
+  0%, 100% { box-shadow: 0 0 6px #5AE05A44; }
+  50%       { box-shadow: 0 0 14px #5AE05A88; }
+}
+
+/* ── Précombat team preview ── */
+.precombat-team {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 8px;
+  background: #0A0A0A44;
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+.pct-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 1px solid;
+  border-radius: 8px;
+  padding: 5px 6px;
+  min-width: 50px;
+  max-width: 60px;
+  gap: 3px;
+}
+.pct-sprite {
+  height: 36px;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+.pct-icon { display: flex; align-items: center; justify-content: center; height: 36px; }
+.pct-name {
+  font-size: 9px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* ── Filtres collection ── */
+.filter-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 6px 0 10px;
+}
+.filter-chip {
+  background: var(--panel-bg2);
+  border: 1px solid var(--gray-border);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.filter-chip:hover { border-color: var(--accent); color: var(--text); }
+.filter-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
+}
+
+/* ── Vitesse combat ── */
+.combat-speed-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 8px;
+}
+.speed-btn {
+  background: var(--panel-bg2);
+  border: 1px solid var(--gray-border);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.speed-btn:hover { border-color: var(--accent); color: var(--text); }
+.speed-btn.active {
+  background: #2A1A0A;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.speed-btn.skip-btn { color: var(--text-muted); flex: 1; max-width: 100px; }
+
+/* ── Animation mort fighters ── */
+@keyframes fighter-die {
+  0%   { transform: scale(1); opacity: 1; }
+  30%  { transform: scale(1.05) rotate(-3deg); filter: brightness(2); }
+  100% { transform: scale(0.85); opacity: 0.3; filter: grayscale(1) brightness(0.4); }
+}
+.fighter-card.dying {
+  animation: fighter-die 0.5s ease-out forwards;
+}
+.fighter-card.dead {
+  opacity: 0.3;
+  filter: grayscale(1) brightness(0.4);
+}
+
+/* ── Badge NOUVEAU gacha ── */
+.pm-summary-card { position: relative; }
+.pm-summary-new {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #E0C44A;
+  color: #000;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  z-index: 2;
+}
+
+/* ── Pity hint ── */
+.pity-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  width: 100%;
+  text-align: right;
+  margin-top: 2px;
+}
+.pity-item { flex-direction: column; gap: 2px; }
+
+/* ── Récompenses résultat animées ── */
+.result-reward span {
+  transition: color 0.3s;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Responsive ── */
 @media (max-width: 500px) {
   .tab { padding: 6px 7px; font-size: 9px; }

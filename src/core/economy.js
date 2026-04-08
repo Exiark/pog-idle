@@ -1,4 +1,5 @@
 // ── SHELTER SURVIVOR — Économie ──
+import { SURVIVORS } from '../data/survivors.js'
 
 // Missions quotidiennes (pool rotatif — 4 tirées chaque jour)
 const MISSION_POOL = [
@@ -92,12 +93,22 @@ export function updateMission(state, type, amount) {
     if (m.done || m.type !== type) return
     m.progress = Math.min(m.target, m.progress + amount)
     if (m.progress >= m.target) {
-      m.done = true
-      applyReward(state, m.reward)
+      m.done    = true
+      m.claimed = false   // attente de réclamation manuelle
       logs.push(`Mission : ${m.name}`)
     }
   })
   return logs
+}
+
+// Réclame une mission individuelle — applique la récompense manuellement
+export function claimMission(state, missionId) {
+  if (!state.missions) return null
+  const m = state.missions.find(x => x.id === missionId)
+  if (!m || !m.done || m.claimed) return null
+  m.claimed = true
+  applyReward(state, m.reward)
+  return m.reward
 }
 
 export function claimDaily(state) {
@@ -107,13 +118,37 @@ export function claimDaily(state) {
     state.dailyClaimed = false
   }
   if (state.dailyClaimed) return null
-  const day = state.dailyDay % 7
-  const reward = DAILY_REWARDS[day]
+  const day    = state.dailyDay % 7
+  const reward = { ...DAILY_REWARDS[day] }
+
+  // Gestion du streak (jours consécutifs)
+  const yesterday = getYesterdayKey()
+  if (state.lastDailyDate === yesterday) {
+    state.dailyStreak = (state.dailyStreak || 0) + 1
+  } else if (state.lastDailyDate !== today) {
+    state.dailyStreak = 1
+  }
+
+  // Bonus streak au 7e jour consécutif
+  let streakBonus = null
+  if (state.dailyStreak > 0 && state.dailyStreak % 7 === 0) {
+    streakBonus = { capsules: 500, radium: 10 }
+    reward.capsules = (reward.capsules || 0) + streakBonus.capsules
+    reward.radium   = (reward.radium   || 0) + streakBonus.radium
+  }
+
   applyReward(state, reward)
   state.dailyClaimed    = true
   state.dailyClaimedDay = today
+  state.lastDailyDate   = today
   state.dailyDay++
-  return reward
+  return { reward, streak: state.dailyStreak, streakBonus }
+}
+
+function getYesterdayKey() {
+  const d = new Date()
+  d.setDate(d.getDate() - 1)
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
 }
 
 // ── Upgrade survivant (ADN) ──
@@ -147,15 +182,11 @@ export function unlockMastery(state) {
 export function collectOffline(state, multiplier = 1) {
   const IDLE_RATE_BY_RARITY = { D: 0.05, E: 0.15, L: 0.4 }
   let rate = 0
-
-  // Taux basé sur la collection (comme le tick en jeu)
-  if (state.collection?.length) {
-    const ids = [...new Set(state.collection.map(p => p.id))]
-    ids.forEach(id => {
-      const sv = state.collection.find(p => p.id === id)
-      if (sv) rate += IDLE_RATE_BY_RARITY[sv.rarity] || 0
-    })
-  }
+  const uniqueIds = [...new Set((state.collection || []).map(p => p.id))]
+  uniqueIds.forEach(id => {
+    const sv = SURVIVORS.find(x => x.id === id)
+    if (sv && !sv.boss) rate += IDLE_RATE_BY_RARITY[sv.rarity] || 0
+  })
   if (state.talentsUnlocked?.includes('t5')) rate *= 1.5
   rate += (state.masteryRank || 0) * 0.02
   rate *= 1 + (state.prestigeLevel || 0) * 0.1

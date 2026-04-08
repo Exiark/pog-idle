@@ -6,6 +6,10 @@ import { saveState } from '../core/state.js'
 
 const IDLE_RATE = { D: 0.05, E: 0.15, L: 0.4 }
 
+// État de filtre courant
+let filterRarity = 'all'
+let filterTeam   = false
+
 export function renderCollection(state) {
   const collDiv  = document.getElementById('survivor-collection')
   const albumDiv = document.getElementById('album-stats')
@@ -13,14 +17,38 @@ export function renderCollection(state) {
 
   const grouped = {}
   state.collection.forEach(p => { grouped[p.id] = (grouped[p.id] || 0) + 1 })
-  const uniqueIds = [...new Set(state.collection.map(p => p.id))]
+  let uniqueIds = [...new Set(state.collection.map(p => p.id))]
+
+  // Appliquer les filtres
+  if (filterRarity !== 'all') {
+    uniqueIds = uniqueIds.filter(id => {
+      const sv = SURVIVORS.find(x => x.id === id)
+      return sv && sv.rarity === filterRarity
+    })
+  }
+  if (filterTeam) {
+    uniqueIds = uniqueIds.filter(id => state.team.some(e => e && e.id === id))
+  }
 
   // Séparation recrutés / manquants (non-boss uniquement)
   const allRoster   = SURVIVORS.filter(sv => !sv.boss)
-  const missingIds  = allRoster.filter(sv => !uniqueIds.includes(sv.id)).map(sv => sv.id)
+  const allUniqueIds = [...new Set(state.collection.map(p => p.id))]
+  const missingIds  = filterRarity !== 'all' || filterTeam
+    ? []  // on cache les silhouettes si un filtre actif
+    : allRoster.filter(sv => !allUniqueIds.includes(sv.id)).map(sv => sv.id)
 
-  if (!uniqueIds.length) {
+  const filterBar = `
+    <div class="filter-bar">
+      <button class="filter-chip ${filterRarity === 'all' ? 'active' : ''}" onclick="window._setFilterRarity('all')">Tous</button>
+      <button class="filter-chip ${filterRarity === 'D' ? 'active' : ''}" onclick="window._setFilterRarity('D')" style="color:var(--rarity-d)">D</button>
+      <button class="filter-chip ${filterRarity === 'E' ? 'active' : ''}" onclick="window._setFilterRarity('E')" style="color:var(--rarity-e)">E</button>
+      <button class="filter-chip ${filterRarity === 'L' ? 'active' : ''}" onclick="window._setFilterRarity('L')" style="color:var(--rarity-l)">L</button>
+      <button class="filter-chip ${filterTeam ? 'active' : ''}" onclick="window._setFilterTeam()">Équipe</button>
+    </div>`
+
+  if (!allUniqueIds.length) {
     collDiv.innerHTML = `
+      ${filterBar}
       <div class="card">
         <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px">
           Aucun survivant.<br>Envoyez des signaux de détresse pour les recruter !
@@ -31,11 +59,14 @@ export function renderCollection(state) {
       </div>`
   } else {
     collDiv.innerHTML = `
+      ${filterBar}
       <div class="card">
-        <div class="card-title">Survivants recrutés (${uniqueIds.length} uniques)</div>
-        <div class="survivor-grid">
-          ${uniqueIds.map(id => survivorCard(id, grouped[id], state)).join('')}
-        </div>
+        <div class="card-title">Survivants recrutés (${allUniqueIds.length} uniques)</div>
+        ${uniqueIds.length === 0
+          ? `<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px">Aucun survivant dans ce filtre</div>`
+          : `<div class="survivor-grid">
+               ${uniqueIds.map(id => survivorCard(id, grouped[id], state)).join('')}
+             </div>`}
         <div style="font-size:11px;color:var(--text-muted);margin-top:8px">
           Appuyez pour ajouter/retirer de l'équipe. 3 copies = fusion automatique.
         </div>
@@ -155,6 +186,17 @@ function statBar(label, value, max, color) {
 }
 
 window.renderCollection = renderCollection
+
+window._setFilterRarity = function(r) {
+  filterRarity = r
+  filterTeam   = false
+  renderCollection(window._state)
+}
+window._setFilterTeam = function() {
+  filterTeam   = !filterTeam
+  filterRarity = 'all'
+  renderCollection(window._state)
+}
 
 window.fuseSurvivorUI = function(id) {
   const S = window._state

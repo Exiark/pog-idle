@@ -6,6 +6,7 @@ let animRunning  = false
 let revealQueue  = []
 let revealIndex  = 0
 let revealDone   = false
+let newSurvivorIds = []   // IDs de survivants nouvellement découverts
 
 // ══════════════════════════════
 // SÉLECTEUR DE SIGNAUX
@@ -26,6 +27,7 @@ export function renderPacks(state) {
             <div class="pity-fill pity-e" style="width:${Math.min(100, Math.round(state.pityE / 10 * 100))}%"></div>
           </div>
           <span class="pity-count">${state.pityE}/10</span>
+          <span class="pity-hint">Garanti au 10e signal</span>
         </div>
         <div class="pity-item">
           <span class="pity-label">Légende garanti</span>
@@ -33,6 +35,7 @@ export function renderPacks(state) {
             <div class="pity-fill pity-l" style="width:${Math.min(100, Math.round(state.pityL / 50 * 100))}%"></div>
           </div>
           <span class="pity-count">${state.pityL}/50</span>
+          <span class="pity-hint">Garanti au 50e signal</span>
         </div>
       </div>`
   }
@@ -90,12 +93,13 @@ export function renderPacks(state) {
 // ══════════════════════════════
 // ANIMATION REVEAL — NOUVELLE VERSION ÉPIQUE
 // ══════════════════════════════
-export function playSignalAnim(survivors) {
+export function playSignalAnim(survivors, newIds = []) {
   if (animRunning) return
-  animRunning  = true
-  revealQueue  = survivors
-  revealIndex  = 0
-  revealDone   = false
+  animRunning      = true
+  revealQueue      = survivors
+  revealIndex      = 0
+  revealDone       = false
+  newSurvivorIds   = newIds
 
   const modal = document.getElementById('pack-modal')
   if (!modal) return
@@ -313,8 +317,10 @@ function showSummary() {
       const r       = RARITY[sv.rarity] || RARITY['D']
       const sprite  = getSpriteUrl(sv_data)
       const meta    = ROLE_META[sv_data.role] || {}
+      const isNew   = newSurvivorIds.includes(sv.id)
       return `
         <div class="pm-summary-card" style="background:${r.bg};border-color:${r.color}">
+          ${isNew ? `<div class="pm-summary-new">NOUVEAU</div>` : ''}
           ${sprite
             ? `<img class="pm-summary-sprite" src="${sprite}" alt="${sv_data.name}">`
             : `<div class="pm-summary-icon">${classIconHtml(meta, 40, meta.classColor || r.color)}</div>`}

@@ -1,5 +1,5 @@
-import { loadState, saveState, calcOfflineCapsules } from './core/state.js'
-import { collectOffline, claimDaily, updateMission, applyReward, checkMissionsReset } from './core/economy.js'
+import { loadState, saveState, calcOfflineCapsules, calcIdleRate } from './core/state.js'
+import { collectOffline, claimDaily, claimMission, updateMission, applyReward, checkMissionsReset } from './core/economy.js'
 import { openSignal, toggleTeam } from './core/gacha.js'
 import {
   generateEnemySquad, simulateFight, survivorCombatStats,
@@ -41,15 +41,15 @@ function init() {
 
   setInterval(() => saveState(S), 15000)
 
-  // Tick idle capsules (basé sur la collection)
-  const IDLE_RATE = { D: 0.05, E: 0.15, L: 0.4 }
+  // Tick idle capsules
   setInterval(() => {
-    const rate = calcIdleRate(S, IDLE_RATE)
+    const rate = calcIdleRate(S)
     if (rate > 0) {
-      S.capsules += Math.round(rate * 10) / 10
+      S.capsules += rate
       const el = document.getElementById('d-capsules')
       if (el) el.textContent = Math.floor(S.capsules)
     }
+    updateTabBadges(S)
   }, 1000)
 }
 
@@ -212,9 +212,25 @@ function showNarration(narr, onDone) {
 
 function onCombatDone() {
   currentPhase = PHASE.RESULT
-  const reward = lastResult.victory ? calcWaveReward(S) : null
+  const stars  = lastResult.stars || 0
+
+  // Bonus de récompenses selon étoiles (×1 / ×1.15 / ×1.30)
+  const starMult = stars >= 3 ? 1.30 : stars >= 2 ? 1.15 : 1.0
+  const baseReward = lastResult.victory ? calcWaveReward(S) : null
+  const reward = baseReward ? {
+    capsules:  Math.round(baseReward.capsules  * starMult),
+    dna:       Math.round(baseReward.dna       * starMult),
+    radium:    baseReward.radium,
+    accountXP: Math.round(baseReward.accountXP * starMult),
+  } : null
 
   if (lastResult.victory) {
+    // Sauvegarde le meilleur score d'étoiles pour la zone
+    const prevStars = (S.zoneStars || {})[S.activeZone] || 0
+    if (stars > prevStars) {
+      S.zoneStars = { ...(S.zoneStars || {}), [S.activeZone]: stars }
+    }
+
     applyReward(S, reward)
     const leveledUp = gainAccountXP(S, reward.accountXP)
     if (leveledUp) {
@@ -222,6 +238,10 @@ function onCombatDone() {
     }
     updateMission(S, 'capsules_earned', reward.capsules)
     addLog(`Vague ${S.currentWave} terminée ! +${reward.capsules} capsules`, 'reward')
+
+    // Toasts missions complètes
+    const missionLogs = S.missions?.filter(m => m.done && !m.claimed).map(m => m.name) || []
+    missionLogs.forEach(name => showToast(`📋 Mission accomplie : ${name} !`, 'levelup', 3500))
   } else {
     addLog('Équipe éliminée — renforcez vos survivants !', 'miss')
   }
@@ -229,6 +249,7 @@ function onCombatDone() {
   showPanel('result-panel')
   if (window.renderResult) window.renderResult(S, lastResult, reward || {})
   if (lastResult.victory && window.playVictorySound) window.playVictorySound()
+  if (lastResult.victory && reward && window.startRewardCounters) window.startRewardCounters(reward)
 
   // Branche le bouton résultat
   const btn = document.getElementById('result-btn')
@@ -412,7 +433,7 @@ window.openSignalUI = function(type) {
     )
   })
   saveState(S); updateUI()
-  if (window.playPackAnim) window.playPackAnim(result.obtained)
+  if (window.playPackAnim) window.playPackAnim(result.obtained, result.newIds || [])
   if (window.setTab) window.setTab('packs')
 }
 
@@ -423,10 +444,26 @@ window.toggleTeamUI = function(survivorId) {
 }
 
 window.claimDailyUI = function() {
-  const reward = claimDaily(S)
-  if (!reward) { addLog('Déjà réclamé aujourd\'hui !', 'miss'); return }
-  addLog('Rapport journalier réclamé !', 'reward')
+  const result = claimDaily(S)
+  if (!result) { addLog('Déjà réclamé aujourd\'hui !', 'miss'); return }
+  const { reward, streak, streakBonus } = result
+  let msg = 'Rapport journalier réclamé !'
+  if (streak > 1) msg += ` — ${streak} jours consécutifs 🔥`
+  if (streakBonus) msg += ` BONUS x7 ! +${streakBonus.capsules}💊 +${streakBonus.radium}☢`
+  addLog(msg, 'reward')
+  if (streakBonus) showToast(`🔥 Streak x7 ! +${streakBonus.capsules} capsules +${streakBonus.radium} radium`, 'fusion', 5000)
   checkMissionsReset(S)
+  saveState(S); updateUI()
+}
+
+window.claimMissionUI = function(missionId) {
+  const reward = claimMission(S, missionId)
+  if (!reward) return
+  const parts = []
+  if (reward.capsules) parts.push(`+${reward.capsules}💊`)
+  if (reward.dna)      parts.push(`+${reward.dna}🧬`)
+  if (reward.radium)   parts.push(`+${reward.radium}☢`)
+  showToast(`📋 Mission réclamée ! ${parts.join(' ')}`, 'levelup', 3000)
   saveState(S); updateUI()
 }
 
@@ -505,9 +542,8 @@ function updateUI() {
   if (el('acc-lvl-badge')) el('acc-lvl-badge').textContent = lvl + 1
   if (el('acc-xp-fill'))   el('acc-xp-fill').style.width   = Math.round(S.accountXP / xpMax * 100) + '%'
 
-  const IDLE_R = { D: 0.05, E: 0.15, L: 0.4 }
-  const idleRate = calcIdleRate(S, IDLE_R)
-  if (el('idle-display')) el('idle-display').textContent = `Idle: +${Math.round(idleRate * 100) / 100} caps/s`
+  const idleRate = calcIdleRate(S)
+  if (el('idle-display')) el('idle-display').textContent = `Idle: +${idleRate} caps/s`
 
   window._state = S
   if (window.renderHome)       window.renderHome(S)
@@ -520,25 +556,32 @@ function updateUI() {
   if (window.renderHub)        window.renderHub(S)
   // Re-rend le précombat si on est en phase IDLE (ex: après ajout d'un survivant à l'équipe)
   if (currentPhase === PHASE.IDLE && window.renderPreCombat) window.renderPreCombat(S)
+  updateTabBadges(S)
 }
 
-// ── Calcul taux idle (collection + maîtrise + prestige + t5) ──
-function calcIdleRate(state, IDLE_RATE) {
-  let rate = 0
-  if (state.collection?.length) {
-    const ids = [...new Set(state.collection.map(p => p.id))]
-    ids.forEach(id => {
-      const sv = state.collection.find(p => p.id === id)
-      if (sv) rate += IDLE_RATE[sv.rarity] || 0
-    })
+// ── Badges de notification sur les onglets ──
+function updateTabBadges(state) {
+  // Missions : mission complète non réclamée OU rapport journalier disponible
+  const hasMissionReady = state.missions?.some(m => m.done && !m.claimed)
+  const hasDailyReady   = !state.dailyClaimed
+  setBadge('daily', hasMissionReady || hasDailyReady)
+
+  // Talents : points disponibles
+  const hasPoints = (state.talentPoints || 0) > 0
+  setBadge('talents', hasPoints)
+}
+
+function setBadge(tab, show) {
+  const btn = document.querySelector(`.tab[data-tab="${tab}"]`)
+  if (!btn) return
+  let dot = btn.querySelector('.tab-badge')
+  if (show && !dot) {
+    dot = document.createElement('span')
+    dot.className = 'tab-badge'
+    btn.appendChild(dot)
+  } else if (!show && dot) {
+    dot.remove()
   }
-  // t5 : +50% idle
-  if (state.talentsUnlocked?.includes('t5')) rate *= 1.5
-  // Maîtrise : bonus flat par rang
-  rate += (state.masteryRank || 0) * 0.02
-  // Prestige multiplicateur
-  rate *= 1 + (state.prestigeLevel || 0) * 0.1
-  return Math.round(rate * 100) / 100
 }
 
 // ── Toasts ──

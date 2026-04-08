@@ -1,6 +1,7 @@
 // ── SHELTER SURVIVOR — Hub (camp de base) ──
 import { SURVIVORS, RARITY, ROLE_META, getSpriteUrl, classIconHtml } from '../data/survivors.js'
 import { ZONES } from '../data/zones.js'
+import { calcIdleRate } from '../core/state.js'
 
 export function renderHub(state) {
   renderHUD(state)
@@ -21,11 +22,8 @@ function renderHUD(state) {
   if (el('acc-lvl-badge')) el('acc-lvl-badge').textContent = lvl + 1
   if (el('acc-xp-fill'))   el('acc-xp-fill').style.width   = Math.round(state.accountXP / xpMax * 100) + '%'
 
-  let idleRate = 0
-  if (state.team) state.team.forEach(s => {
-    if (s?.effect?.startsWith('idle+')) idleRate += parseFloat(s.effect.split('+')[1])
-  })
-  if (el('idle-display')) el('idle-display').textContent = `Idle: +${Math.round(idleRate * 10) / 10} caps/s`
+  const idleRate = calcIdleRate(state)
+  if (el('idle-display')) el('idle-display').textContent = `Idle: +${idleRate} caps/s`
 }
 
 // ── Équipe (6 slots) ──

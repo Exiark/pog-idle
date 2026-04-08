@@ -4,6 +4,7 @@ import { ZONES } from '../data/zones.js'
 import { calcWaveReward } from '../core/combat.js'
 
 let combatSkipped = false
+let combatSpeed   = 1   // 1 = normal, 2 = ×2, 4 = ×4
 
 // ══════════════════════════════
 // PRÉ-COMBAT
@@ -34,6 +35,7 @@ export function renderPreCombat(state) {
         Aucun survivant dans l'équipe !<br>
         <button onclick="window.setTab('survivors')" style="margin-top:8px">Recruter des survivants</button>
       </div>` : `
+      ${precombatTeamPreview(team)}
       ${precombatRewardPreview(state)}
       <button class="btn-danger launch-btn" onclick="window.startCombat()">
         ☣ Partir en mission
@@ -41,6 +43,26 @@ export function renderPreCombat(state) {
 
     ${nextObjective(state)}
   `
+}
+
+function precombatTeamPreview(team) {
+  return `
+    <div class="precombat-team">
+      ${team.map(s => {
+        const sv   = SURVIVORS.find(x => x.id === s.id)
+        if (!sv) return ''
+        const r    = RARITY[sv.rarity] || RARITY['D']
+        const meta = ROLE_META[sv.role] || {}
+        const sp   = getSpriteUrl(sv)
+        return `
+          <div class="pct-slot" style="border-color:${r.color};background:${r.bg}">
+            ${sp
+              ? `<img class="pct-sprite" src="${sp}" alt="${sv.name}">`
+              : `<div class="pct-icon">${classIconHtml(meta, 28, meta.classColor || r.color)}</div>`}
+            <div class="pct-name" style="color:${r.text}">${sv.name}</div>
+          </div>`
+      }).join('')}
+    </div>`
 }
 
 function precombatRewardPreview(state) {
@@ -149,15 +171,24 @@ export function renderCombatPanel(state, playerTeam, enemySquad, result, onDone)
     </div>
 
     <div class="combat-log" id="combat-log"></div>
-    <button class="combat-skip-btn" id="combat-skip-btn">⏩ Passer</button>
+    <div class="combat-speed-row">
+      <button class="speed-btn active" id="spd-1" onclick="window._setCombatSpeed(1)">×1</button>
+      <button class="speed-btn" id="spd-2" onclick="window._setCombatSpeed(2)">×2</button>
+      <button class="speed-btn" id="spd-4" onclick="window._setCombatSpeed(4)">×4</button>
+      <button class="speed-btn skip-btn" onclick="window._skipCombat()">⏩ Passer</button>
+    </div>
   `
 
-  document.getElementById('combat-skip-btn')?.addEventListener('click', () => {
+  window._setCombatSpeed = (spd) => {
+    combatSpeed = spd
+    document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'))
+    document.getElementById('spd-' + spd)?.classList.add('active')
+  }
+  window._skipCombat = () => {
     combatSkipped = true
     applyAllFinalStates(result, playerTeam, enemySquad)
-    document.getElementById('combat-skip-btn')?.remove()
     setTimeout(onDone, 300)
-  })
+  }
 
   animateCombat(result, playerTeam, enemySquad, onDone)
 }
@@ -177,11 +208,13 @@ function animateCombat(result, playerTeam, enemySquad, onDone) {
   let idx = 0
 
   function getDelay(a) {
-    if (a.isDeathCrit)              return 1300
-    if (a.isCrit || a.killed)       return 1000
-    if (a.side === 'heal')          return 750
-    if (a.side === 'turret' || a.side === 'hot') return 350
-    return 750
+    let base
+    if (a.isDeathCrit)              base = 1300
+    else if (a.isCrit || a.killed)  base = 1000
+    else if (a.side === 'heal')     base = 750
+    else if (a.side === 'turret' || a.side === 'hot') base = 350
+    else                            base = 750
+    return Math.round(base / combatSpeed)
   }
 
   function playNext() {
@@ -223,7 +256,7 @@ function playAction(a, playerTeam, enemySquad, log, turnEl) {
         spawnDmgFloat(card, a.dmg, a.isCrit || a.isDeathCrit)
         if (window.playHitSound) window.playHitSound()
       }
-      if (!enemy.alive && card) card.classList.add('dead')
+      if (!enemy.alive && card) animateDeath(card)
     }
 
   } else if (a.side === 'heal') {
@@ -253,7 +286,7 @@ function playAction(a, playerTeam, enemySquad, log, turnEl) {
         flashHit(card, true)
         spawnDmgFloat(card, a.dmg, false, true)
       }
-      if (ally.hp <= 0 && card) card.classList.add('dead')
+      if (ally.hp <= 0 && card) animateDeath(card)
     }
 
   } else if (a.side === 'turret') {
@@ -309,7 +342,7 @@ function applyAllFinalStates(result, playerTeam, enemySquad) {
         const enemy = enemySquad.find(e => e.name === a.target)
         if (enemy) {
           updateHP('ehp-' + enemy.id, 'ehpv-' + enemy.id, enemy.hp, enemy.maxHp)
-          if (!enemy.alive) document.getElementById('enemy-' + enemy.id)?.classList.add('dead')
+          if (!enemy.alive) { const c = document.getElementById('enemy-' + enemy.id); if (c) c.classList.add('dead') }
         }
       }
       if (a.side === 'enemy' && a.target) {
@@ -332,7 +365,11 @@ function updateHP(barId, valId, hp, maxHp) {
   const bar = document.getElementById(barId)
   const val = document.getElementById(valId)
   const pct = Math.round(Math.max(0, hp) / maxHp * 100)
-  if (bar) bar.style.width = pct + '%'
+  if (bar) {
+    bar.style.width = pct + '%'
+    // Couleur dynamique selon % HP
+    bar.style.background = pct > 60 ? '#5AE05A' : pct > 30 ? '#E0C44A' : '#E05A4A'
+  }
   if (val) val.textContent = Math.max(0, hp)
 }
 
@@ -348,6 +385,15 @@ function flashHit(card, isAlly = false) {
   void card.offsetWidth
   card.classList.add(isAlly ? 'hit-flash-ally' : 'hit-flash')
   setTimeout(() => card.classList.remove('hit-flash', 'hit-flash-ally'), 300)
+}
+
+function animateDeath(card) {
+  if (!card || card.classList.contains('dead')) return
+  card.classList.add('dying')
+  setTimeout(() => {
+    card.classList.remove('dying')
+    card.classList.add('dead')
+  }, 500)
 }
 
 function spawnDmgFloat(card, dmg, isCrit = false, isAlly = false, isHeal = false, isTurret = false) {
@@ -415,11 +461,11 @@ export function renderResult(state, result, reward) {
     ${fallenStr ? `<div class="result-fallen">☠ Tombés : ${fallenStr}</div>` : ''}
 
     ${result.victory && reward?.capsules ? `
-      <div class="result-reward">
-        <span>💊 +${reward.capsules}</span>
-        <span>🧬 +${reward.dna}</span>
-        <span>⭐ +${reward.accountXP} XP</span>
-        ${reward.radium > 0 ? `<span>☢ +${reward.radium}</span>` : ''}
+      <div class="result-reward" id="result-reward-row">
+        <span id="rr-caps">💊 +0</span>
+        <span id="rr-dna">🧬 +0</span>
+        <span id="rr-xp">⭐ +0 XP</span>
+        ${reward.radium > 0 ? `<span id="rr-rad">☢ +0</span>` : ''}
       </div>` : ''}
 
     ${!result.victory ? `<div class="result-tip">Conseil : ${getTip(result)}</div>` : ''}
@@ -432,6 +478,19 @@ export function renderResult(state, result, reward) {
   `
 }
 
+function animateCounter(elId, target, suffix = '', prefix = '+', duration = 800) {
+  const el = document.getElementById(elId)
+  if (!el || !target) return
+  const steps = 20
+  const step  = target / steps
+  let current = 0
+  const interval = setInterval(() => {
+    current = Math.min(current + step, target)
+    el.textContent = el.textContent.split(' ')[0] + ` ${prefix}${Math.round(current)}${suffix}`
+    if (current >= target) clearInterval(interval)
+  }, duration / steps)
+}
+
 function getTip(result) {
   if (result.dmgReceived > result.dmgDealt * 2) return 'Ajoutez un Tank pour absorber les dégâts.'
   if (result.totalTurns >= 45)                  return 'Votre ATK est trop faible — recrutez des combattants.'
@@ -439,6 +498,18 @@ function getTip(result) {
   return 'Améliorez vos survivants ou ouvrez des signaux pour en recruter de meilleurs.'
 }
 
-window.renderPreCombat   = renderPreCombat
-window.renderCombatPanel = renderCombatPanel
-window.renderResult      = renderResult
+// Lancer les animations de compteur après le rendu
+export function startRewardCounters(reward) {
+  if (!reward?.capsules) return
+  setTimeout(() => {
+    animateCounter('rr-caps', reward.capsules, '', '💊 +', 900)
+    setTimeout(() => animateCounter('rr-dna', reward.dna, '', '🧬 +', 700), 150)
+    setTimeout(() => animateCounter('rr-xp', reward.accountXP, ' XP', '⭐ +', 700), 300)
+    if (reward.radium > 0) setTimeout(() => animateCounter('rr-rad', reward.radium, '', '☢ +', 500), 450)
+  }, 600)
+}
+
+window.renderPreCombat    = renderPreCombat
+window.renderCombatPanel  = renderCombatPanel
+window.renderResult       = renderResult
+window.startRewardCounters = startRewardCounters

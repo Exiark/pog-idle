@@ -7,11 +7,21 @@ export function renderDaily(state) {
   const missionsDiv = document.getElementById('missions-list')
   if (!rewardsDiv) return
 
-  const today = state.dailyDay % 7
+  const today  = state.dailyDay % 7
+  const streak = state.dailyStreak || 0
 
   rewardsDiv.innerHTML = `
     <div class="card">
-      <div class="card-title">Rapport journalier — Jour ${today + 1}/7</div>
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span>Rapport journalier — Jour ${today + 1}/7</span>
+        ${streak > 0 ? `<span class="streak-badge">🔥 ${streak}j</span>` : ''}
+      </div>
+      ${streak > 0 ? `
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">
+          ${streak % 7 === 0 && streak > 0
+            ? '⭐ Semaine complète — bonus obtenu !'
+            : `${7 - (streak % 7)} jour(s) avant le bonus de semaine`}
+        </div>` : ''}
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
         ${DAILY_REWARDS.map((r, i) => {
           const isPast   = i < today
@@ -49,24 +59,35 @@ export function renderDaily(state) {
     state.missions = JSON.parse(JSON.stringify(MISSIONS_DEFAULT))
   }
 
+  const pendingCount = state.missions.filter(m => m.done && !m.claimed).length
+
   missionsDiv.innerHTML = `
     <div class="card">
-      <div class="card-title">Missions de terrain</div>
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span>Missions de terrain</span>
+        ${pendingCount > 0 ? `<span class="streak-badge" style="background:#2A4A1A;color:#5AE05A">${pendingCount} à réclamer</span>` : ''}
+      </div>
       ${state.missions.map(m => {
-        const pct = Math.round(m.progress / m.target * 100)
+        const pct      = Math.round(m.progress / m.target * 100)
+        const claimable = m.done && !m.claimed
+        const claimed   = m.done && m.claimed
         return `
-          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--gray-border)">
+          <div class="mission-row ${claimable ? 'mission-claimable' : ''}">
             <div style="flex:1">
-              <div style="font-size:12px;${m.done ? 'color:var(--text-muted)' : ''}">${m.name}</div>
+              <div style="font-size:12px;${claimed ? 'color:var(--text-muted)' : ''}">${m.name}</div>
               <div class="bar-track" style="margin:4px 0 2px">
-                <div class="bar-fill" style="width:${pct}%;background:${m.done ? '#5A9E3A' : 'var(--accent)'}"></div>
+                <div class="bar-fill" style="width:${pct}%;background:${claimed ? '#3A6A2A' : claimable ? '#5AE05A' : 'var(--accent)'}"></div>
               </div>
               <div style="font-size:10px;color:var(--text-muted)">${m.progress}/${m.target}</div>
             </div>
-            <div>
-              <span class="badge" style="background:${m.done ? '#1A3A0A' : '#2A1A0A'};color:${m.done ? '#5A9E3A' : 'var(--accent)'}">
-                ${m.done ? 'Accomplie !' : missionRewardLabel(m.reward)}
-              </span>
+            <div style="flex-shrink:0;margin-left:10px">
+              ${claimable
+                ? `<button class="mission-claim-btn" onclick="window.claimMissionUI('${m.id}')">
+                    Réclamer !
+                   </button>`
+                : `<span class="badge" style="background:${claimed ? '#1A3A0A' : '#2A1A0A'};color:${claimed ? '#5AE05A' : 'var(--accent)'}">
+                    ${claimed ? '✓ Réclamé' : missionRewardLabel(m.reward)}
+                   </span>`}
             </div>
           </div>`
       }).join('')}

@@ -28,8 +28,11 @@ export function openSignal(state, signalType) {
   if (cfg.currency === 'capsules') state.capsules -= cfg.cost
   else                             state.radium   -= cfg.cost
 
-  const obtained   = []
-  const fusionLogs = []
+  // IDs déjà en collection avant ce pull (pour détecter les nouveaux)
+  const existingIds = new Set(state.collection.map(p => p.id))
+  const obtained    = []
+  const fusionLogs  = []
+  const newIds      = []
 
   for (let i = 0; i < cfg.count; i++) {
     state.pityE++
@@ -52,6 +55,7 @@ export function openSignal(state, signalType) {
     const survivor = rollSurvivor(rarity)
     if (!survivor) continue
 
+    if (!existingIds.has(survivor.id)) newIds.push(survivor.id)
     state.collection.push({ id: survivor.id, rarity: survivor.rarity })
     obtained.push(survivor)
 
@@ -60,7 +64,7 @@ export function openSignal(state, signalType) {
   }
 
   updateMission(state, 'signals', 1)
-  return { obtained, fusionLogs }
+  return { obtained, fusionLogs, newIds }
 }
 
 export function checkFusion(state, survivorId) {
