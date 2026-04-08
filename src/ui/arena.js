@@ -1,5 +1,5 @@
 // ── SHELTER SURVIVOR — Arène de combat ──
-import { SURVIVORS, RARITY, ROLE_META, getSpriteUrl } from '../data/survivors.js'
+import { SURVIVORS, RARITY, ROLE_META, getSpriteUrl, classIconHtml } from '../data/survivors.js'
 import { ZONES } from '../data/zones.js'
 
 // ── Rendu de l'écran de sélection d'équipe (avant combat) ──
@@ -71,11 +71,18 @@ export function renderCombatPanel(state, playerTeam, enemySquad, result, onDone)
         <div class="combat-side-label">Votre équipe</div>
         <div class="combat-fighters" id="player-fighters">
           ${playerTeam.map(s => {
-            const r = RARITY[s.rarity] || RARITY['D']
+            const r      = RARITY[s.rarity] || RARITY['D']
+            const sv     = SURVIVORS.find(x => x.id === s.id)
+            const meta   = ROLE_META[sv?.role] || {}
+            const sprite = sv ? getSpriteUrl(sv) : null
             return `
               <div class="fighter-card" id="fighter-${s.id}"
                 style="background:${r.bg};border-color:${r.color}">
-                <div class="fighter-icon">${s.icon}</div>
+                <div class="fighter-icon">
+                  ${sprite
+                    ? `<img src="${sprite}" style="height:36px;image-rendering:pixelated;object-fit:contain" onerror="this.outerHTML='${s.icon}'">`
+                    : classIconHtml(meta, 32, r.color) || s.icon}
+                </div>
                 <div class="fighter-name">${s.name}</div>
                 <div class="fighter-hp-bar">
                   <div class="fighter-hp-fill" id="hp-${s.id}" style="width:100%;background:${r.color}"></div>
@@ -93,7 +100,11 @@ export function renderCombatPanel(state, playerTeam, enemySquad, result, onDone)
         <div class="combat-fighters" id="enemy-fighters">
           ${enemySquad.map(e => `
             <div class="fighter-card enemy" id="enemy-${e.id}">
-              <div class="fighter-icon">${e.icon}</div>
+              <div class="fighter-icon">
+                ${e.spriteUrl
+                  ? `<img src="${e.spriteUrl}" style="height:36px;image-rendering:pixelated;object-fit:contain" onerror="this.outerHTML='${e.icon}'">`
+                  : e.icon}
+              </div>
               <div class="fighter-name">${e.name}</div>
               <div class="fighter-hp-bar">
                 <div class="fighter-hp-fill" id="ehp-${e.id}" style="width:100%;background:#D85A30"></div>

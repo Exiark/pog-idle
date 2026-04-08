@@ -38,9 +38,10 @@ export function generateEnemySquad(state) {
   return Array.from({ length: count }, (_, i) => {
     const hp = Math.round((25 + scaling * 18) * (1 + Math.random() * 0.25))
     return {
-      id:      i,
-      name:    randomZombieName(),
-      icon:    randomZombieIcon(),
+      id:        i,
+      name:      randomZombieName(),
+      icon:      randomZombieIcon(),
+      spriteUrl: randomZombieSprite(),
       hp,
       maxHp:   hp,
       atk:     Math.round((10 + scaling * 5)   * (1 + Math.random() * 0.25)),
@@ -52,10 +53,12 @@ export function generateEnemySquad(state) {
   })
 }
 
-const ZOMBIE_NAMES = ['Rôdeur','Grognard','Charognard','Mutant','Infecté','Zombie','Ravageur','Déviant']
-const ZOMBIE_ICONS = ['🧟','💀','🦷','🩸','☣','🕷','🦴','👁']
-function randomZombieName() { return ZOMBIE_NAMES[Math.floor(Math.random() * ZOMBIE_NAMES.length)] }
-function randomZombieIcon() { return ZOMBIE_ICONS[Math.floor(Math.random() * ZOMBIE_ICONS.length)] }
+const ZOMBIE_NAMES   = ['Rôdeur','Grognard','Charognard','Mutant','Infecté','Zombie','Ravageur','Déviant']
+const ZOMBIE_ICONS   = ['🧟','💀','🦷','🩸','☣','🕷','🦴','👁']
+const ZOMBIE_SPRITES = ['assets/sprites/enemies/walker.png', 'assets/sprites/enemies/brute.png', 'assets/sprites/enemies/soldier.png']
+function randomZombieName()   { return ZOMBIE_NAMES[Math.floor(Math.random() * ZOMBIE_NAMES.length)] }
+function randomZombieIcon()   { return ZOMBIE_ICONS[Math.floor(Math.random() * ZOMBIE_ICONS.length)] }
+function randomZombieSprite() { return ZOMBIE_SPRITES[Math.floor(Math.random() * ZOMBIE_SPRITES.length)] }
 
 // ── Calcule la vitesse d'attaque globale de l'équipe ──
 export function calcTeamSpeed(state) {

@@ -68,6 +68,7 @@ body {
 }
 .res { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; }
 .res-dot { font-size: 14px; line-height: 1; }
+.res-icon { width: 20px; height: 20px; image-rendering: pixelated; object-fit: contain; }
 #acc-bar { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 #acc-lvl-badge {
   width: 26px; height: 26px; border-radius: 6px;
