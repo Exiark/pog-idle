@@ -1116,6 +1116,103 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .toast-info    { border-color: var(--gray-border); }
 
 /* ══════════════════════════════
+   CARTE DU MONDE
+   ══════════════════════════════ */
+.world-map { padding: 0 2px; }
+.world-map-header { text-align: center; margin-bottom: 14px; }
+.world-map-title  { font-size: 16px; font-weight: 600; color: var(--accent); }
+.world-map-sub    { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+.world-map-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.zone-card {
+  position: relative; overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--gray-border);
+  min-height: 120px;
+  cursor: pointer;
+  transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s;
+}
+.zone-card:hover { transform: translateY(-2px); border-color: var(--zc, var(--accent)); }
+.zone-card--active {
+  border: 2px solid var(--zc, var(--accent));
+  box-shadow: 0 0 16px var(--zc, var(--accent))44;
+}
+.zone-card--beaten { border-color: #5A9E3A55; }
+.zone-card--locked {
+  cursor: default; opacity: 0.45;
+  background: #0E0C0A;
+}
+.zone-card--locked:hover { transform: none; }
+
+.zone-card-bg {
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, var(--zc2, #1A1510) 0%, var(--zc, #2A2010) 100%);
+}
+.zone-card-bg--fog { background: #0E0C0A; }
+.zone-card-bg-gradient {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, #0E0C0Aee 30%, transparent 100%);
+}
+
+.zone-card-content {
+  position: relative; z-index: 1;
+  padding: 10px; display: flex;
+  flex-direction: column; gap: 4px;
+  height: 100%;
+}
+.zone-card-top-row {
+  display: flex; justify-content: space-between; align-items: flex-start;
+}
+.zone-card-num-badge {
+  font-size: 10px; font-weight: 700;
+  padding: 2px 6px; border-radius: 4px;
+  border: 1px solid;
+}
+.zone-card-status {
+  font-size: 9px; font-weight: 700;
+  padding: 2px 6px; border-radius: 10px;
+}
+.zone-card-status.beaten { background: #1A3A0A; color: #5AE05A; }
+
+.zone-card-name {
+  font-size: 13px; font-weight: 700;
+  line-height: 1.2; margin-top: 2px;
+}
+.zone-card-name--locked { color: var(--text-muted); font-size: 12px; }
+.zone-card-boss  { font-size: 10px; }
+
+.zone-card-lock {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -60%);
+  font-size: 28px; opacity: 0.3;
+}
+.zone-card-num {
+  position: absolute; bottom: 8px; right: 10px;
+  font-size: 22px; font-weight: 700; color: #ffffff11;
+  font-family: var(--pixel);
+}
+
+/* Pips de vagues */
+.zone-card-progress { margin-top: auto; padding-top: 6px; }
+.zone-card-wave-pips {
+  display: flex; gap: 2px; flex-wrap: wrap;
+}
+.zone-wave-pip {
+  width: 12px; height: 8px; border-radius: 2px;
+  background: #ffffff18; font-size: 7px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; transition: background 0.2s;
+}
+.zone-wave-pip.boss { width: 16px; }
+.zone-wave-pip.done { opacity: 0.7; }
+.zone-wave-pip.curr { opacity: 1; }
+
+/*  ══════════════════════════════
    PRESTIGE
    ══════════════════════════════ */
 .prestige-panel {

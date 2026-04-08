@@ -1,4 +1,4 @@
-// ── SHELTER SURVIVOR — Carte des zones ──
+// ── SHELTER SURVIVOR — Carte du monde visuelle ──
 import { ZONES } from '../data/zones.js'
 
 export function renderTower(state) {
@@ -6,91 +6,91 @@ export function renderTower(state) {
   if (!container) return
 
   container.innerHTML = `
-    <div style="text-align:center;margin-bottom:16px">
-      <div style="font-size:16px;font-weight:500;color:var(--accent)">☣ Carte d'exploration</div>
-      <div style="font-size:12px;color:var(--text-muted)">
-        Zone ${state.currentZone} — Vague ${state.currentWave}/11
+    <div class="world-map">
+      <div class="world-map-header">
+        <div class="world-map-title">☣ Carte d'exploration</div>
+        <div class="world-map-sub">Zone ${state.currentZone} — Vague ${state.currentWave}/11</div>
       </div>
-    </div>
 
-    <div style="display:flex;flex-direction:column;gap:8px;max-width:340px;margin:0 auto">
-      ${[...ZONES].reverse().map(zone => zoneNode(zone, state)).join('')}
-    </div>
+      <div class="world-map-grid">
+        ${ZONES.map(zone => zoneCard(zone, state)).join('')}
+      </div>
 
-    <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--text-muted)">
-      Appuyez sur une zone déverrouillée pour y envoyer votre équipe
+      ${state.bossesDefeated?.includes('z7') || state.bossesDefeated?.length >= 7 ? `
+        <div class="prestige-panel" style="margin-top:12px">
+          <div class="prestige-panel-title">☣ Toutes les zones sécurisées !</div>
+          <div class="prestige-panel-sub">Prestige ${state.prestigeLevel || 0} — Bonus idle actuel : ×${(1 + (state.prestigeLevel || 0) * 0.1).toFixed(1)}</div>
+          <button class="btn-danger" style="width:100%;margin-top:8px" onclick="window.openPrestigeUI()">
+            ☣ Lancer un nouveau cycle
+          </button>
+        </div>` : ''}
     </div>
-
-    ${state.bossesDefeated?.length >= 7 || state.bossesDefeated?.includes('z7') ? `
-      <div class="prestige-panel">
-        <div class="prestige-panel-title">☣ Toutes les zones sécurisées !</div>
-        <div class="prestige-panel-sub">Prestige ${state.prestigeLevel || 0} — Bonus idle actuel : ×${1 + (state.prestigeLevel || 0) * 0.1}</div>
-        <button class="btn-danger" style="width:100%;margin-top:8px" onclick="window.openPrestigeUI()">
-          ☣ Lancer un nouveau cycle
-        </button>
-      </div>` : ''}
   `
 }
 
-function zoneNode(zone, state) {
+function zoneCard(zone, state) {
   const isUnlocked = state.unlockedZones.includes(zone.id)
   const isActive   = state.activeZone === zone.id
   const isCurrent  = state.currentZone === zone.id
   const beaten     = state.bossesDefeated.includes(`z${zone.id}`)
-  const isFarming  = isActive && zone.id < state.currentZone
+  const wavePct    = isCurrent && !beaten ? Math.round(state.currentWave / 11 * 100) : beaten ? 100 : 0
+  const c          = zone.colors
 
-  const c = zone.colors
+  // Étoiles accumulées sur cette zone (simulées depuis progression)
+  const starsTotal = beaten ? Math.floor(Math.random() * 5 + 25) : (isCurrent ? state.currentWave * 2 : 0)
+
+  if (!isUnlocked) {
+    return `
+      <div class="zone-card zone-card--locked">
+        <div class="zone-card-bg zone-card-bg--fog"></div>
+        <div class="zone-card-lock">🔒</div>
+        <div class="zone-card-num">${zone.id}</div>
+        <div class="zone-card-name zone-card-name--locked">???</div>
+      </div>`
+  }
 
   return `
-    <div onclick="${isUnlocked ? `window.selectZoneUI(${zone.id})` : ''}"
-      style="
-        display:flex;align-items:center;gap:12px;
-        padding:12px 14px;border-radius:12px;
-        border:${isActive ? `2px solid ${c.primary}` : '0.5px solid var(--gray-border)'};
-        background:${isActive ? c.primary + '22' : 'var(--panel-bg)'};
-        cursor:${isUnlocked ? 'pointer' : 'default'};
-        opacity:${isUnlocked ? '1' : '0.4'};
-        position:relative;
-      ">
+    <div class="zone-card ${isActive ? 'zone-card--active' : ''} ${beaten ? 'zone-card--beaten' : ''}"
+      style="--zc: ${c.primary}; --zc2: ${c.secondary}"
+      onclick="window.selectZoneUI(${zone.id})">
 
-      <div style="
-        width:36px;height:36px;border-radius:50%;flex-shrink:0;
-        background:${isUnlocked ? c.primary : 'var(--gray-border)'};
-        color:white;font-size:14px;font-weight:500;
-        display:flex;align-items:center;justify-content:center;">
-        ${beaten ? '✓' : zone.id}
+      <!-- Illustration de fond -->
+      <div class="zone-card-bg">
+        <img src="assets/backgrounds/zone${zone.id}.png" alt="${zone.name}"
+          style="width:100%;height:100%;object-fit:cover;opacity:0.55"
+          onerror="this.style.display='none'">
+        <div class="zone-card-bg-gradient"></div>
       </div>
 
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:500;color:${isUnlocked ? 'var(--text)' : 'var(--text-muted)'}">
-          ${zone.name}
-          ${beaten ? '<span style="color:#5A9E3A;font-size:11px;margin-left:4px">✓</span>' : ''}
-        </div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
-          ${isUnlocked ? zone.desc : 'Verrouilée — battez le boss précédent'}
+      <!-- Contenu -->
+      <div class="zone-card-content">
+        <div class="zone-card-top-row">
+          <span class="zone-card-num-badge" style="background:${c.primary}22;border-color:${c.primary}55;color:${c.primary}">Z${zone.id}</span>
+          ${beaten
+            ? `<span class="zone-card-status beaten">✓ Sécurisée</span>`
+            : isActive
+              ? `<span class="zone-card-status active" style="background:${c.primary};color:#fff">En cours</span>`
+              : ''}
         </div>
 
-        ${isCurrent && !beaten ? `
-          <div style="margin-top:5px">
-            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-bottom:2px">
-              <span>Progression</span>
-              <span>Vague ${state.currentWave}/11</span>
-            </div>
-            <div class="bar-track">
-              <div class="bar-fill" style="width:${Math.round(state.currentWave / 11 * 100)}%;background:${c.primary}"></div>
-            </div>
-          </div>` : ''}
+        <div class="zone-card-name" style="color:${c.primary}">${zone.name}</div>
+        <div class="zone-card-boss" style="color:${c.primary}99">☠ ${zone.boss.name}</div>
 
-        ${beaten ? `<div style="font-size:11px;color:#5A9E3A;margin-top:3px">Boss éliminé · Zone sécurisée</div>` : ''}
-        ${isFarming ? `<div style="font-size:11px;color:var(--accent);margin-top:3px">Mode farming — butin ×0.4</div>` : ''}
+        <!-- Barre de progression -->
+        <div class="zone-card-progress">
+          <div class="zone-card-wave-pips">
+            ${Array.from({ length: 11 }, (_, i) => {
+              const w = i + 1
+              const done = beaten || (isCurrent && w < state.currentWave)
+              const curr = isCurrent && !beaten && w === state.currentWave
+              return `<div class="zone-wave-pip ${done ? 'done' : ''} ${curr ? 'curr' : ''} ${w === 11 ? 'boss' : ''}"
+                style="${done || curr ? `background:${c.primary};` : ''}${curr ? `box-shadow:0 0 6px ${c.primary};` : ''}">
+                ${w === 11 ? '☠' : ''}
+              </div>`
+            }).join('')}
+          </div>
+        </div>
       </div>
-
-      ${isActive ? `<span class="badge" style="background:${c.primary};color:white;font-size:10px;flex-shrink:0">En cours</span>` : ''}
-      ${!isUnlocked ? `<div style="font-size:18px;opacity:0.4">🔒</div>` : ''}
-      ${isUnlocked && !beaten ? `
-        <div style="position:absolute;top:8px;right:10px;font-size:10px;color:var(--text-muted)">
-          Boss: ${zone.boss.name}
-        </div>` : ''}
     </div>`
 }
 
@@ -102,7 +102,7 @@ window.selectZoneUI = function(zoneId) {
   S.activeZone = zoneId
   if (window.saveState) window.saveState(S)
   renderTower(S)
-  if (window.renderHub)  window.renderHub(S)
-  if (window.setTab)     window.setTab('combat')
+  if (window.renderHub) window.renderHub(S)
+  if (window.setTab)    window.setTab('combat')
   document.dispatchEvent(new CustomEvent('zoneChanged'))
 }
