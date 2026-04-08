@@ -65,9 +65,12 @@ export function renderTeam(state) {
       return sv ? sv.role : ''
     }))]
     const synergy = calcTeamSynergy(roles)
-    infoDiv.textContent = count > 0
-      ? `${count}/6 survivants${synergy ? ` · ${synergy}` : ''}`
-      : 'Aucun survivant — sélectionnez votre équipe'
+    infoDiv.innerHTML = `
+      <span>${count > 0
+        ? `${count}/6 survivants${synergy ? ` · ${synergy}` : ''}`
+        : 'Aucun survivant — sélectionnez votre équipe'}</span>
+      ${state.collection?.length ? `<button class="team-auto-btn" onclick="window.autoTeamUI()">⚡ Équipe auto</button>` : ''}
+    `
   }
 }
 

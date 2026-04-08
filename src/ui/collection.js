@@ -6,9 +6,10 @@ import { saveState } from '../core/state.js'
 
 const IDLE_RATE = { D: 0.05, E: 0.15, L: 0.4 }
 
-// État de filtre courant
+// État de filtre / tri courant
 let filterRarity = 'all'
 let filterTeam   = false
+let sortBy       = 'rarity'  // 'rarity' | 'atk' | 'hp' | 'upgrade'
 
 export function renderCollection(state) {
   const collDiv  = document.getElementById('survivor-collection')
@@ -30,6 +31,26 @@ export function renderCollection(state) {
     uniqueIds = uniqueIds.filter(id => state.team.some(e => e && e.id === id))
   }
 
+  // Tri
+  const RARITY_WEIGHT = { L: 3, E: 2, D: 1 }
+  uniqueIds.sort((a, b) => {
+    const svA = SURVIVORS.find(x => x.id === a)
+    const svB = SURVIVORS.find(x => x.id === b)
+    if (!svA || !svB) return 0
+    if (sortBy === 'rarity') {
+      const rDiff = (RARITY_WEIGHT[svB.rarity] || 0) - (RARITY_WEIGHT[svA.rarity] || 0)
+      return rDiff !== 0 ? rDiff : svB.atk - svA.atk
+    }
+    if (sortBy === 'atk')     return svB.atk - svA.atk
+    if (sortBy === 'hp')      return svB.hp  - svA.hp
+    if (sortBy === 'upgrade') {
+      const upA = (state.survivorUpgrades || {})[a] || 0
+      const upB = (state.survivorUpgrades || {})[b] || 0
+      return upB - upA || (RARITY_WEIGHT[svB.rarity] || 0) - (RARITY_WEIGHT[svA.rarity] || 0)
+    }
+    return 0
+  })
+
   // Séparation recrutés / manquants (non-boss uniquement)
   const allRoster   = SURVIVORS.filter(sv => !sv.boss)
   const allUniqueIds = [...new Set(state.collection.map(p => p.id))]
@@ -44,6 +65,12 @@ export function renderCollection(state) {
       <button class="filter-chip ${filterRarity === 'E' ? 'active' : ''}" onclick="window._setFilterRarity('E')" style="color:var(--rarity-e)">E</button>
       <button class="filter-chip ${filterRarity === 'L' ? 'active' : ''}" onclick="window._setFilterRarity('L')" style="color:var(--rarity-l)">L</button>
       <button class="filter-chip ${filterTeam ? 'active' : ''}" onclick="window._setFilterTeam()">Équipe</button>
+      <select class="filter-sort" onchange="window._setSortBy(this.value)">
+        <option value="rarity"  ${sortBy === 'rarity'  ? 'selected' : ''}>Rareté</option>
+        <option value="atk"     ${sortBy === 'atk'     ? 'selected' : ''}>ATK ↓</option>
+        <option value="hp"      ${sortBy === 'hp'      ? 'selected' : ''}>HP ↓</option>
+        <option value="upgrade" ${sortBy === 'upgrade' ? 'selected' : ''}>Niveau ↓</option>
+      </select>
     </div>`
 
   if (!allUniqueIds.length) {
@@ -198,6 +225,11 @@ window._setFilterTeam = function() {
   renderCollection(window._state)
 }
 
+window._setSortBy = function(val) {
+  sortBy = val
+  renderCollection(window._state)
+}
+
 window.fuseSurvivorUI = function(id) {
   const S = window._state
   if (!S) return
@@ -262,10 +294,15 @@ window.showSurvivorModal = function(id) {
         <div class="sv-modal-desc">${sv.desc}</div>
 
         <div class="sv-modal-stats">
-          ${modalStat('HP',  sv.hp,  600, '#5AE05A')}
-          ${modalStat('ATK', sv.atk, 900, '#E05A4A')}
-          ${modalStat('DEF', sv.def, 300, '#4A8FE0')}
-          ${modalStat('SPD', sv.spd, 375, '#E0C44A')}
+          ${(() => {
+            const upLevel = (S.survivorUpgrades || {})[id] || 0
+            const m = 1 + upLevel * 0.15
+            return `
+              ${modalStat('HP',  Math.round(sv.hp  * m), 600, '#5AE05A', upLevel > 0)}
+              ${modalStat('ATK', Math.round(sv.atk * m), 900, '#E05A4A', upLevel > 0)}
+              ${modalStat('DEF', Math.round(sv.def * m), 300, '#4A8FE0', upLevel > 0)}
+              ${modalStat('SPD', sv.spd, 375, '#E0C44A', false)}`
+          })()}
         </div>
 
         <div class="sv-modal-meta">
@@ -322,7 +359,8 @@ function recycleSection(id, copies, rarity) {
             ×3 → +${dnaPerStack} 🧬
           </button>` : ''}
         ${stacks >= 2 ? `
-          <button class="sv-modal-recycle-btn" onclick="window.recycleSurvivorUI('${id}', ${stacks})">
+          <button class="sv-modal-recycle-btn sv-modal-recycle-btn--danger"
+            onclick="window.confirmRecycleAll('${id}', ${stacks}, ${totalDna})">
             Tout (×${stacks * 3}) → +${totalDna} 🧬
           </button>` : ''}
       </div>
@@ -357,7 +395,7 @@ function upgradeSection(id, S) {
     </div>`
 }
 
-function modalStat(label, value, max, color) {
+function modalStat(label, value, max, color, isUpgraded = false) {
   const pct = Math.min(100, Math.round(value / max * 100))
   return `
     <div class="sv-modal-stat-row">
@@ -366,6 +404,6 @@ function modalStat(label, value, max, color) {
       <div class="sv-modal-stat-track">
         <div class="sv-modal-stat-fill" style="width:${pct}%;background:${color}"></div>
       </div>
-      <span class="sv-modal-stat-val">${value}</span>
+      <span class="sv-modal-stat-val" style="${isUpgraded ? `color:${color};font-weight:700` : ''}">${value}${isUpgraded ? '▲' : ''}</span>
     </div>`
 }

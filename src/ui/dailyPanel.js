@@ -63,9 +63,12 @@ export function renderDaily(state) {
 
   missionsDiv.innerHTML = `
     <div class="card">
-      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
         <span>Missions de terrain</span>
-        ${pendingCount > 0 ? `<span class="streak-badge" style="background:#2A4A1A;color:#5AE05A">${pendingCount} à réclamer</span>` : ''}
+        <div style="display:flex;align-items:center;gap:6px">
+          ${pendingCount > 0 ? `<span class="streak-badge" style="background:#2A4A1A;color:#5AE05A">${pendingCount} à réclamer</span>` : ''}
+          ${pendingCount > 1 ? `<button class="mission-claim-all-btn" onclick="window.claimAllMissionsUI()">Tout réclamer</button>` : ''}
+        </div>
       </div>
       ${state.missions.map(m => {
         const pct      = Math.round(m.progress / m.target * 100)
@@ -101,6 +104,31 @@ export function renderDaily(state) {
       <div style="display:flex;gap:8px">
         <button onclick="window.collectOfflineUI(1)" style="flex:1">Collecter (×1)</button>
         <button class="btn-danger" onclick="window.collectOfflineUI(2)" style="flex:1">×2 — 5 ☢</button>
+      </div>
+    </div>
+
+    ${renderStats(state)}`
+}
+
+function renderStats(state) {
+  const st = state.stats || {}
+  const rows = [
+    { label: 'Vagues remportées',  val: st.totalWaves    || 0 },
+    { label: 'Ennemis éliminés',   val: st.totalKills    || 0 },
+    { label: 'Capsules gagnées',   val: st.totalCapsules || 0, suffix: '💊' },
+    { label: 'Signaux envoyés',    val: st.totalSignals  || 0 },
+    { label: 'Fusions réalisées',  val: st.totalFusions  || 0 },
+    { label: 'Prestiges',          val: st.totalPrestige || 0 },
+  ]
+  return `
+    <div class="card">
+      <div class="card-title">Statistiques de survie</div>
+      <div class="stats-grid">
+        ${rows.map(r => `
+          <div class="stats-row">
+            <span class="stats-label">${r.label}</span>
+            <span class="stats-val">${r.val.toLocaleString()}${r.suffix ? ' ' + r.suffix : ''}</span>
+          </div>`).join('')}
       </div>
     </div>`
 }

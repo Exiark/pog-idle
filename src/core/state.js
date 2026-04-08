@@ -55,6 +55,18 @@ export const DEFAULT_STATE = {
   missions:          [],
 
   stripeCustomerId: null,
+
+  // ── Statistiques de partie ──
+  stats: {
+    totalWaves:      0,
+    totalKills:      0,
+    totalCapsules:   0,
+    totalFusions:    0,
+    totalSignals:    0,
+    totalPrestige:   0,
+  },
+
+  shownNarrations: [],
 }
 
 export function loadState() {

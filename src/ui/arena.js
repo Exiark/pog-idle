@@ -157,7 +157,7 @@ export function renderCombatPanel(state, playerTeam, enemySquad, result, onDone)
                 <div class="fighter-hp-bar">
                   <div class="fighter-hp-fill" id="hp-${s.id}" style="width:100%;background:${r.color}"></div>
                 </div>
-                <div class="fighter-hp-text" id="hpv-${s.id}">${s.hp}</div>
+                <div class="fighter-hp-text" id="hpv-${s.id}">${s.maxHp}</div>
               </div>`
           }).join('')}
         </div>
@@ -212,6 +212,10 @@ export function renderCombatPanel(state, playerTeam, enemySquad, result, onDone)
 // ANIMATION ACTION PAR ACTION
 // ══════════════════════════════
 function animateCombat(result, playerTeam, enemySquad, onDone) {
+  // Remet les HP à leur valeur initiale (maxHp) pour l'animation
+  playerTeam.forEach(s => { s._animHp = s.maxHp })
+  enemySquad.forEach(e => { e._animHp = e.maxHp })
+
   // Aplatir tous les tours en une séquence d'actions individuelles
   const seq = []
   result.turns.forEach(t => {
@@ -264,14 +268,15 @@ function playAction(a, playerTeam, enemySquad, log, turnEl) {
     // Dégâts sur l'ennemi ciblé
     const enemy = enemySquad.find(e => e.name === a.target)
     if (enemy) {
+      if (!a.dodged) enemy._animHp = Math.max(0, (enemy._animHp ?? enemy.maxHp) - (a.dmg || 0))
       const card = document.getElementById('enemy-' + enemy.id)
-      updateHP('ehp-' + enemy.id, 'ehpv-' + enemy.id, enemy.hp, enemy.maxHp)
-      if (card && a.dmg) {
+      updateHP('ehp-' + enemy.id, 'ehpv-' + enemy.id, enemy._animHp, enemy.maxHp)
+      if (card && a.dmg && !a.dodged) {
         flashHit(card)
         spawnDmgFloat(card, a.dmg, a.isCrit || a.isDeathCrit)
         if (window.playHitSound) window.playHitSound()
       }
-      if (!enemy.alive && card) animateDeath(card)
+      if (enemy._animHp <= 0 && card) animateDeath(card)
     }
 
   } else if (a.side === 'heal') {
@@ -280,8 +285,9 @@ function playAction(a, playerTeam, enemySquad, log, turnEl) {
 
     const target = playerTeam.find(s => s.name === a.target)
     if (target) {
+      target._animHp = Math.min(target.maxHp, (target._animHp ?? target.maxHp) + (a.amount || 0))
       const card = document.getElementById('fighter-' + target.id)
-      updateHP('hp-' + target.id, 'hpv-' + target.id, target.hp, target.maxHp)
+      updateHP('hp-' + target.id, 'hpv-' + target.id, target._animHp, target.maxHp)
       if (card) {
         card.classList.add('healing')
         setTimeout(() => card.classList.remove('healing'), 600)
@@ -295,25 +301,27 @@ function playAction(a, playerTeam, enemySquad, log, turnEl) {
 
     const ally = playerTeam.find(s => s.name === a.target)
     if (ally) {
+      if (!a.dodged) ally._animHp = Math.max(0, (ally._animHp ?? ally.maxHp) - (a.dmg || 0))
       const card = document.getElementById('fighter-' + ally.id)
-      updateHP('hp-' + ally.id, 'hpv-' + ally.id, ally.hp, ally.maxHp)
-      if (card && a.dmg) {
+      updateHP('hp-' + ally.id, 'hpv-' + ally.id, ally._animHp, ally.maxHp)
+      if (card && a.dmg && !a.dodged) {
         flashHit(card, true)
         spawnDmgFloat(card, a.dmg, false, true)
       }
-      if (ally.hp <= 0 && card) animateDeath(card)
+      if (ally._animHp <= 0 && card) animateDeath(card)
     }
 
   } else if (a.side === 'turret') {
     const enemy = enemySquad.find(e => e.name === a.target)
     if (enemy) {
+      enemy._animHp = Math.max(0, (enemy._animHp ?? enemy.maxHp) - (a.dmg || 0))
       const card = document.getElementById('enemy-' + enemy.id)
-      updateHP('ehp-' + enemy.id, 'ehpv-' + enemy.id, enemy.hp, enemy.maxHp)
+      updateHP('ehp-' + enemy.id, 'ehpv-' + enemy.id, enemy._animHp, enemy.maxHp)
       if (card && a.dmg) {
         flashHit(card)
         spawnDmgFloat(card, a.dmg, false, false, false, true)
       }
-      if (!enemy.alive && card) card.classList.add('dead')
+      if (enemy._animHp <= 0 && card) card.classList.add('dead')
     }
   }
 
@@ -322,15 +330,19 @@ function playAction(a, playerTeam, enemySquad, log, turnEl) {
     if (a.dmg && a.target) {
       const ally = playerTeam.find(s => s.name === a.target)
       if (ally) {
+        ally._animHp = Math.max(0, (ally._animHp ?? ally.maxHp) - a.dmg)
         const card = document.getElementById('fighter-' + ally.id)
-        updateHP('hp-' + ally.id, 'hpv-' + ally.id, ally.hp, ally.maxHp)
-        if (ally.hp <= 0 && card) animateDeath(card)
-        if (card && a.dmg) spawnDmgFloat(card, a.dmg, false, true)
+        updateHP('hp-' + ally.id, 'hpv-' + ally.id, ally._animHp, ally.maxHp)
+        if (ally._animHp <= 0 && card) animateDeath(card)
+        if (card) spawnDmgFloat(card, a.dmg, false, true)
       }
     }
     if (a.amount && a.actor) {
       const enemy = enemySquad.find(e => e.name === a.actor)
-      if (enemy) updateHP('ehp-' + enemy.id, 'ehpv-' + enemy.id, enemy.hp, enemy.maxHp)
+      if (enemy) {
+        enemy._animHp = Math.min(enemy.maxHp, (enemy._animHp ?? enemy.maxHp) + a.amount)
+        updateHP('ehp-' + enemy.id, 'ehpv-' + enemy.id, enemy._animHp, enemy.maxHp)
+      }
     }
   }
 
@@ -375,29 +387,14 @@ function playAction(a, playerTeam, enemySquad, log, turnEl) {
 
 // ── Applique les états finaux HP en cas de skip ──
 function applyAllFinalStates(result, playerTeam, enemySquad) {
-  // Recalcule les HP finaux depuis les actions restantes
-  result.turns.forEach(t => {
-    t.actions.forEach(a => {
-      if (!a) return
-      if ((a.side === 'player' || a.side === 'turret') && a.target) {
-        const enemy = enemySquad.find(e => e.name === a.target)
-        if (enemy) {
-          updateHP('ehp-' + enemy.id, 'ehpv-' + enemy.id, enemy.hp, enemy.maxHp)
-          if (!enemy.alive) { const c = document.getElementById('enemy-' + enemy.id); if (c) c.classList.add('dead') }
-        }
-      }
-      if (a.side === 'enemy' && a.target) {
-        const ally = playerTeam.find(s => s.name === a.target)
-        if (ally) {
-          updateHP('hp-' + ally.id, 'hpv-' + ally.id, ally.hp, ally.maxHp)
-          if (ally.hp <= 0) document.getElementById('fighter-' + ally.id)?.classList.add('dead')
-        }
-      }
-      if (a.side === 'heal' && a.target) {
-        const target = playerTeam.find(s => s.name === a.target)
-        if (target) updateHP('hp-' + target.id, 'hpv-' + target.id, target.hp, target.maxHp)
-      }
-    })
+  // Affiche directement les HP finaux post-simulation (stockés dans les objets mutés)
+  playerTeam.forEach(s => {
+    updateHP('hp-' + s.id, 'hpv-' + s.id, Math.max(0, s.hp), s.maxHp)
+    if (s.hp <= 0) document.getElementById('fighter-' + s.id)?.classList.add('dead')
+  })
+  enemySquad.forEach(e => {
+    updateHP('ehp-' + e.id, 'ehpv-' + e.id, Math.max(0, e.hp), e.maxHp)
+    if (!e.alive) { const c = document.getElementById('enemy-' + e.id); if (c) c.classList.add('dead') }
   })
 }
 

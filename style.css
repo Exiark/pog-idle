@@ -348,6 +348,13 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   border-radius: var(--radius-lg); padding: 10px 12px; margin-top: 8px;
 }
 #team-slots { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+#team-info { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+.team-auto-btn {
+  font-size: 10px; font-weight: 700; padding: 3px 8px;
+  background: #1A2A3A; border: 1px solid var(--accent); color: var(--accent);
+  border-radius: 6px; cursor: pointer;
+}
+.team-auto-btn:hover { background: var(--accent); color: #000; }
 .team-slot {
   width: 100px; height: 132px; border-radius: 10px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -1405,9 +1412,43 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   border-radius: var(--radius-lg); padding: 24px; max-width: 320px; width: 90%;
   text-align: center;
 }
-.prestige-title { font-family: var(--pixel); font-size: 11px; color: var(--accent); margin-bottom: 12px; text-shadow: 2px 2px 0 #1A0C05; }
+.prestige-title { font-family: var(--pixel); font-size: 11px; color: var(--accent); margin-bottom: 8px; text-shadow: 2px 2px 0 #1A0C05; }
 .prestige-desc  { font-size: 12px; color: var(--text); line-height: 1.7; }
 .prestige-desc strong { color: var(--rarity-l); }
+
+.prestige-reward-banner {
+  background: linear-gradient(135deg, #2A1A05, #3A2A0A);
+  border: 1px solid var(--rarity-l);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--rarity-l);
+  margin-bottom: 14px;
+}
+.prestige-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+.prestige-col { background: var(--panel-bg2); border-radius: 8px; padding: 10px; }
+.prestige-col--keep  { border: 1px solid #3A6A1A; }
+.prestige-col--reset { border: 1px solid #6A2A1A; }
+.prestige-col-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; margin-bottom: 6px;
+}
+.prestige-col--keep  .prestige-col-title { color: #5AE05A; }
+.prestige-col--reset .prestige-col-title { color: #E05A4A; }
+.prestige-col-item { font-size: 11px; color: var(--text-muted); padding: 2px 0; }
+.prestige-warning {
+  font-size: 10px; color: #E05A4A; opacity: 0.8;
+  background: #1A0A0A; border: 1px solid #5A1A1A;
+  border-radius: 6px; padding: 6px 10px;
+  margin-bottom: 4px;
+}
 
 /* ══════════════════════════════
    GACHA FLIP CARDS
@@ -1903,6 +1944,24 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   animation: claim-glow 2s ease-in-out infinite;
 }
 .mission-claim-btn:hover { filter: brightness(1.2); }
+.stats-grid { display: flex; flex-direction: column; gap: 6px; }
+.stats-row  { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--gray-border); }
+.stats-row:last-child { border-bottom: none; }
+.stats-label { color: var(--text-muted); }
+.stats-val   { font-weight: 700; color: var(--accent); }
+
+.mission-claim-all-btn {
+  background: linear-gradient(135deg, #1A4A2A, #2A7A3A);
+  border: 1px solid #5AE05A;
+  color: #9AE09A;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mission-claim-all-btn:hover { filter: brightness(1.2); }
 @keyframes claim-glow {
   0%, 100% { box-shadow: 0 0 6px #5AE05A44; }
   50%       { box-shadow: 0 0 14px #5AE05A88; }
@@ -1969,6 +2028,19 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   border-color: var(--accent);
   color: #000;
 }
+
+.filter-sort {
+  background: var(--panel-bg2);
+  border: 1px solid var(--gray-border);
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 20px;
+  cursor: pointer;
+  margin-left: auto;
+  outline: none;
+}
+.filter-sort:focus { border-color: var(--accent); }
 
 /* ── Vitesse combat ── */
 .combat-speed-row {
@@ -2188,10 +2260,39 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   flex: 1;
   transition: all 0.15s;
 }
+.sv-modal-recycle-btn--danger { border-color: #8A3A1A !important; color: #E08A5A !important; }
+.recycle-confirm-box {
+  background: #1A0A0A;
+  border: 1px solid #8A3A1A;
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 8px;
+}
+.recycle-confirm-text { font-size: 12px; margin-bottom: 8px; text-align: center; }
+.recycle-confirm-btns { display: flex; gap: 8px; }
+.rcb-cancel { flex:1; padding:6px; background:#2A1A1A; border:1px solid #5A3A2A; color:var(--text-muted); border-radius:6px; cursor:pointer; font-size:11px; }
+.rcb-ok     { flex:1; padding:6px; background:#4A1A0A; border:1px solid #E05A2A; color:#E05A2A; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700; }
 .sv-modal-recycle-btn:hover {
   background: #2A5A2A;
   border-color: #5AE05A;
 }
+
+/* ── HUD ressources Tour Radio ── */
+.packs-hud {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  background: var(--panel-bg2);
+  border: 1px solid var(--gray-border);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.packs-hud-item { display: flex; align-items: center; gap: 5px; }
+.packs-hud-radium { color: #c0a030; }
 
 /* ── Hint source radium ── */
 .signal-radium-hint {

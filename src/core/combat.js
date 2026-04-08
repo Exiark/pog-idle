@@ -512,6 +512,8 @@ export function simulateFight(playerTeamIds, enemySquad, state) {
     killCount, stars,
     playerMaxHp: playerTeam.reduce((s, sv) => s + sv.maxHp, 0),
     enemyMaxHp:  enemySquad.reduce((s, e)  => s + e.maxHp,  0),
+    playerTeam,   // équipe avec stats upgradées + HP mutés après simulation
+    enemyTeam: enemies, // ennemis avec HP mutés
   }
 }
 

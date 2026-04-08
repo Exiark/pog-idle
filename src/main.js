@@ -222,16 +222,15 @@ window.startCombat = function() {
 function launchCombat(team) {
   enemySquad   = generateEnemySquad(S)
   currentPhase = PHASE.FIGHTING
-
-  const playerTeam = team.map(t => ({ ...survivorCombatStats(t.id) }))
   showPanel('combat-panel')
 
   const result = simulateFight(team.map(t => t.id), enemySquad, S)
   lastResult   = result
   window._isBossWave = isBossWave(S)
 
+  // Utilise le playerTeam de la simulation (stats upgradées + HP mutés) pour l'animation
   if (window.renderCombatPanel) {
-    window.renderCombatPanel(S, playerTeam, enemySquad, result, onCombatDone)
+    window.renderCombatPanel(S, result.playerTeam, result.enemyTeam, result, onCombatDone)
   }
 }
 
@@ -294,6 +293,14 @@ function onCombatDone() {
     radium:    baseReward.radium,
     accountXP: Math.round(baseReward.accountXP * starMult),
   } : null
+
+  // Incrément statistiques
+  if (!S.stats) S.stats = {}
+  if (lastResult.victory) {
+    S.stats.totalWaves    = (S.stats.totalWaves    || 0) + 1
+    S.stats.totalCapsules = (S.stats.totalCapsules || 0) + (reward?.capsules || 0)
+  }
+  S.stats.totalKills = (S.stats.totalKills || 0) + (lastResult.killCount || 0)
 
   if (lastResult.victory) {
     // Sauvegarde le meilleur score d'étoiles pour la zone
@@ -519,6 +526,9 @@ window.openSignalUI = function(type) {
     addLog(f.message, 'reward')
     showToast(`🔬 FUSION ! <strong>${f.from.name}</strong> ×3 → <strong>${f.to.name}</strong>`, 'fusion', 4000)
   })
+  if (!S.stats) S.stats = {}
+  S.stats.totalSignals  = (S.stats.totalSignals  || 0) + 1
+  S.stats.totalFusions  = (S.stats.totalFusions  || 0) + (result.fusionLogs?.length || 0)
   saveState(S); updateUI()
 
   // Narration premier Expert / Légendaire (après la fermeture du gacha)
@@ -539,6 +549,55 @@ window.toggleTeamUI = function(survivorId) {
   const result = toggleTeam(S, survivorId)
   if (result.error) { addLog(result.error, 'miss'); return }
   saveState(S); updateUI()
+}
+
+window.autoTeamUI = function() {
+  // Compose la meilleure équipe (max 6) depuis la collection
+  const TANK_ROLES    = ['Bouclier', 'Blindé']
+  const HEALER_ROLES  = ['Médic', 'Biologiste']
+  const DPS_ROLES     = ['Berserk', 'Lame', 'Ombre', 'Pistard', 'Tireur', 'Artificier']
+  const SUPP_ROLES    = ['Tacticien', 'Ingénieur']
+
+  // Unique survivants de la collection, triés par score (rareté + upgrade)
+  const seen = new Set()
+  const RARITY_W = { L: 100, E: 30, D: 5 }
+  const roster = S.collection
+    .filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true })
+    .map(p => {
+      const sv = SURVIVORS.find(x => x.id === p.id)
+      if (!sv || sv.boss) return null
+      const upLevel = (S.survivorUpgrades || {})[p.id] || 0
+      const score   = (RARITY_W[sv.rarity] || 0) + upLevel * 10 + sv.atk * 0.1
+      return { id: p.id, sv, score }
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score)
+
+  // Sélection rôle-consciente
+  const pick   = []
+  const pickId = new Set()
+  const tryPick = (roles, max = 1) => {
+    let picked = 0
+    for (const r of roster) {
+      if (pick.length >= 6) break
+      if (picked >= max) break
+      if (pickId.has(r.id)) continue
+      if (roles.includes(r.sv.role)) { pick.push(r); pickId.add(r.id); picked++ }
+    }
+  }
+  tryPick(TANK_ROLES,   1)
+  tryPick(HEALER_ROLES, 1)
+  tryPick(DPS_ROLES,    3)
+  tryPick(SUPP_ROLES,   1)
+  // Compléter avec les meilleurs restants
+  for (const r of roster) {
+    if (pick.length >= 6) break
+    if (!pickId.has(r.id)) { pick.push(r); pickId.add(r.id) }
+  }
+
+  S.team = pick.map(r => ({ id: r.id, rarity: r.sv.rarity }))
+  saveState(S); updateUI()
+  showToast(`⚡ Équipe optimale composée (${pick.length} survivants)`, 'levelup', 2500)
 }
 
 window.claimDailyUI = function() {
@@ -565,6 +624,25 @@ window.recycleSurvivorUI = function(survivorId, stacks) {
   if (window.showSurvivorModal) window.showSurvivorModal(survivorId)
 }
 
+window.confirmRecycleAll = function(survivorId, stacks, totalDna) {
+  // Mini-modale de confirmation inline dans la survivor-modal
+  const existing = document.getElementById('recycle-confirm-box')
+  if (existing) { existing.remove(); return }
+
+  const box = document.createElement('div')
+  box.id = 'recycle-confirm-box'
+  box.className = 'recycle-confirm-box'
+  box.innerHTML = `
+    <div class="recycle-confirm-text">Recycler ×${stacks * 3} copies → +${totalDna} 🧬 ?<br><span style="font-size:10px;color:var(--text-muted)">Action irréversible</span></div>
+    <div class="recycle-confirm-btns">
+      <button class="rcb-cancel" onclick="document.getElementById('recycle-confirm-box')?.remove()">Annuler</button>
+      <button class="rcb-ok" onclick="document.getElementById('recycle-confirm-box')?.remove();window.recycleSurvivorUI('${survivorId}',${stacks})">Confirmer</button>
+    </div>`
+
+  const modalBody = document.querySelector('.sv-modal-recycle')
+  if (modalBody) modalBody.appendChild(box)
+}
+
 window.claimMissionUI = function(missionId) {
   const reward = claimMission(S, missionId)
   if (!reward) return
@@ -573,6 +651,26 @@ window.claimMissionUI = function(missionId) {
   if (reward.dna)      parts.push(`+${reward.dna}🧬`)
   if (reward.radium)   parts.push(`+${reward.radium}☢`)
   showToast(`📋 Mission réclamée ! ${parts.join(' ')}`, 'levelup', 3000)
+  saveState(S); updateUI()
+}
+
+window.claimAllMissionsUI = function() {
+  const claimable = (S.missions || []).filter(m => m.done && !m.claimed)
+  if (!claimable.length) return
+  let totCaps = 0, totDna = 0, totRad = 0
+  claimable.forEach(m => {
+    const reward = claimMission(S, m.id)
+    if (reward) {
+      totCaps += reward.capsules || 0
+      totDna  += reward.dna     || 0
+      totRad  += reward.radium  || 0
+    }
+  })
+  const parts = []
+  if (totCaps) parts.push(`+${totCaps}💊`)
+  if (totDna)  parts.push(`+${totDna}🧬`)
+  if (totRad)  parts.push(`+${totRad}☢`)
+  showToast(`📋 ${claimable.length} missions réclamées ! ${parts.join(' ')}`, 'levelup', 3500)
   saveState(S); updateUI()
 }
 
@@ -590,17 +688,42 @@ window.collectOfflineUI = function(mult) {
 window.openPrestigeUI = function() {
   const modal = document.createElement('div')
   modal.id = 'prestige-modal'
+  const nextLevel  = (S.prestigeLevel || 0) + 1
+  const idleBonus  = nextLevel * 10
+  const collSize   = [...new Set(S.collection.map(p => p.id))].length
+  const teamCount  = S.team.filter(Boolean).length
+
   modal.innerHTML = `
     <div class="prestige-box">
-      <div class="prestige-title">☣ PRESTIGE</div>
-      <div class="prestige-desc">
-        Repartez de zéro avec un bonus permanent de
-        <strong>+${(((S.prestigeLevel || 0) + 1) * 10)}% de gains idle</strong>.<br><br>
-        Votre niveau de compte, vos talents et vos points sont conservés.
-        Tout le reste est réinitialisé.
+      <div class="prestige-title">☣ PRESTIGE ${nextLevel}</div>
+      <div class="prestige-reward-banner">
+        +${idleBonus}% gains idle permanent
+      </div>
+
+      <div class="prestige-cols">
+        <div class="prestige-col prestige-col--keep">
+          <div class="prestige-col-title">Conservé</div>
+          <div class="prestige-col-item">⭐ Niveau ${S.accountLevel}</div>
+          <div class="prestige-col-item">🎯 ${S.talentsUnlocked.length} talent${S.talentsUnlocked.length > 1 ? 's' : ''}</div>
+          <div class="prestige-col-item">⚔ Maîtrise rang ${S.masteryRank || 0}</div>
+          <div class="prestige-col-item">📚 Collection (${collSize} surv.)</div>
+          <div class="prestige-col-item">📊 Statistiques</div>
+        </div>
+        <div class="prestige-col prestige-col--reset">
+          <div class="prestige-col-title">Réinitialisé</div>
+          <div class="prestige-col-item">💊 Capsules (${Math.floor(S.capsules)})</div>
+          <div class="prestige-col-item">🗺 Zone ${S.currentZone}, Vague ${S.currentWave}</div>
+          <div class="prestige-col-item">👥 Équipe (${teamCount} membres)</div>
+          <div class="prestige-col-item">🧬 ADN (${Math.floor(S.dna)})</div>
+          <div class="prestige-col-item">🔥 Quêtes journalières</div>
+        </div>
+      </div>
+
+      <div class="prestige-warning">
+        Cette action est irréversible. Tous vos progrès de zone seront perdus.
       </div>
       <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
-        <button class="btn-danger" onclick="window.confirmPrestige()">Prestige !</button>
+        <button class="btn-danger" onclick="window.confirmPrestige()">☣ Confirmer le Prestige</button>
         <button onclick="document.getElementById('prestige-modal').remove()">Annuler</button>
       </div>
     </div>`
@@ -610,6 +733,8 @@ window.openPrestigeUI = function() {
 window.confirmPrestige = function() {
   document.getElementById('prestige-modal')?.remove()
   if (doPrestige(S)) {
+    if (!S.stats) S.stats = {}
+    S.stats.totalPrestige = (S.stats.totalPrestige || 0) + 1
     saveState(S)
     const narrP = getNarration('first_prestige', S)
     const afterPrestige = () => {
@@ -688,6 +813,15 @@ function updateTabBadges(state) {
   // Talents : points disponibles
   const hasPoints = (state.talentPoints || 0) > 0
   setBadge('talents', hasPoints)
+
+  // Collection : fusion disponible (3+ copies d'un même survivant non-L)
+  const grouped = {}
+  ;(state.collection || []).forEach(p => { grouped[p.id] = (grouped[p.id] || 0) + 1 })
+  const hasFusionReady = Object.entries(grouped).some(([id, count]) => {
+    const sv = SURVIVORS.find(x => x.id === id)
+    return sv && sv.rarity !== 'L' && !sv.boss && count >= 3
+  })
+  setBadge('survivors', hasFusionReady)
 }
 
 function setBadge(tab, show) {

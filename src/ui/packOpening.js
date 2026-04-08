@@ -17,6 +17,17 @@ export function renderPacks(state) {
   const ratesDiv = document.getElementById('drop-rates')
   if (!packsDiv) return
 
+  // Mini-HUD ressources
+  const resHud = document.getElementById('packs-resource-hud')
+  if (resHud) {
+    resHud.innerHTML = `
+      <div class="packs-hud">
+        <span class="packs-hud-item"><img class="res-icon" src="assets/icons/res-capsule.png" alt="💊"> <span id="phud-caps">${Math.floor(state.capsules)}</span></span>
+        <span class="packs-hud-item packs-hud-radium">☢ <span id="phud-rad">${Math.floor(state.radium)}</span></span>
+        <span class="packs-hud-item">🧬 <span id="phud-dna">${Math.floor(state.dna)}</span></span>
+      </div>`
+  }
+
   // Pity compact
   if (pityDiv) {
     pityDiv.innerHTML = `
