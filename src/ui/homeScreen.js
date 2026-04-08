@@ -31,7 +31,7 @@ export function renderHome(state) {
 
     <!-- Titre overlay -->
     <div class="home-header">
-      <div class="home-title">☣ SHELTER</div>
+      <div class="home-title"><span class="home-title-icon">☣</span>SHELTER</div>
       <div class="home-subtitle">Post-Apocalyptic Idle RPG</div>
     </div>
 

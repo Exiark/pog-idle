@@ -1,5 +1,5 @@
 // ── SHELTER SURVIVOR — Arène de combat ──
-import { SURVIVORS, RARITY, ROLE_META } from '../data/survivors.js'
+import { SURVIVORS, RARITY, ROLE_META, getSpriteUrl } from '../data/survivors.js'
 import { ZONES } from '../data/zones.js'
 
 // ── Rendu de l'écran de sélection d'équipe (avant combat) ──
@@ -32,12 +32,15 @@ export function renderPreCombat(state) {
           if (!s) return `<div class="precombat-slot empty">?</div>`
           const sv   = SURVIVORS.find(x => x.id === s.id)
           if (!sv) return ''
-          const r    = RARITY[sv.rarity] || RARITY['D']
-          const meta = ROLE_META[sv.role] || {}
+          const r      = RARITY[sv.rarity] || RARITY['D']
+          const meta   = ROLE_META[sv.role] || {}
+          const sprite = getSpriteUrl(sv)
           return `<div class="precombat-slot filled" style="background:${r.bg};border-color:${r.color}">
-            <div style="font-size:20px;color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>
-            <div style="font-size:8px;color:${r.color}">${sv.role}</div>
-            <div style="font-size:8px;font-weight:700;color:${r.text}">${sv.name}</div>
+            ${sprite
+              ? `<img style="height:52px;width:auto;image-rendering:pixelated" src="${sprite}" alt="${sv.name}">`
+              : `<div style="font-size:26px;color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>`}
+            <div style="font-size:9px;color:${r.color};font-weight:600">${meta.globalClass || sv.role}</div>
+            <div style="font-size:9px;font-weight:700;color:${r.text};text-align:center;line-height:1.1">${sv.name}</div>
           </div>`
         }).join('')}
       </div>
