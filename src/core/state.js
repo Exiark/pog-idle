@@ -36,6 +36,10 @@ export const DEFAULT_STATE = {
   // ── Talents ──
   talentPoints:    0,
   talentsUnlocked: [],
+  masteryRank:     0,   // rangs de Maîtrise répétables
+
+  // ── Upgrades survivants (ADN) ──
+  survivorUpgrades: {},  // { [survivorId]: level 1-5 }
 
   // ── Compte ──
   accountXP:    0,
@@ -134,8 +138,9 @@ export function calcIdleRate(state) {
 // ── Calcul des capsules gagnées hors-ligne ──
 export function calcOfflineCapsules(state) {
   const rate = calcIdleRate(state)
-  if (rate <= 0) return 0
+  if (rate <= 0 || !state.lastSeen) return 0
   const elapsed = (Date.now() - state.lastSeen) / 1000
-  const capped  = Math.min(elapsed, 8 * 3600)
+  if (elapsed < 60) return 0   // Ignore les absences < 1 minute
+  const capped = Math.min(elapsed, 8 * 3600)
   return Math.floor(rate * capped)
 }

@@ -2,6 +2,7 @@ import { ZONES }      from '../data/zones.js'
 import { SURVIVORS }  from '../data/survivors.js'
 import { hasTalent, getTeam } from './state.js'
 import { updateMission } from './economy.js'
+import { MASTERY_BONUS_PER_RANK } from '../data/talents.js'
 
 export const PHASE = {
   IDLE:       'idle',       // au camp, sélection équipe
@@ -32,19 +33,19 @@ export function survivorCombatStats(survivorId) {
 export function generateEnemySquad(state) {
   const zone    = ZONES[state.activeZone - 1]
   const count   = Math.floor(Math.random() * (zone.enemyCount.max - zone.enemyCount.min + 1)) + zone.enemyCount.min
-  const scaling = zone.resistanceBase * (1 + state.currentWave * 0.08)
+  const scaling = zone.resistanceBase * (1 + state.currentWave * 0.20) * (1 + (state.activeZone - 1) * 0.15)
 
   return Array.from({ length: count }, (_, i) => {
-    const hp = Math.round((20 + scaling * 15) * (1 + Math.random() * 0.3))
+    const hp = Math.round((25 + scaling * 18) * (1 + Math.random() * 0.25))
     return {
       id:      i,
       name:    randomZombieName(),
       icon:    randomZombieIcon(),
       hp,
       maxHp:   hp,
-      atk:     Math.round((8 + scaling * 4)  * (1 + Math.random() * 0.3)),
-      def:     Math.round((4 + scaling * 2)  * (1 + Math.random() * 0.2)),
-      spd:     Math.round((10 + scaling * 3) * (1 + Math.random() * 0.2)),
+      atk:     Math.round((10 + scaling * 5)   * (1 + Math.random() * 0.25)),
+      def:     Math.round((5  + scaling * 2.5) * (1 + Math.random() * 0.2)),
+      spd:     Math.round((12 + scaling * 3)   * (1 + Math.random() * 0.2)),
       alive:   true,
       effects: [],  // statuts : poison, bleed, stun...
     }
@@ -194,7 +195,15 @@ function enemyAttack(enemy, playerTeam) {
   const armor = extractVal(target.effect, 'armor+')
   const dmgReduction = armor || 0
   const raw  = Math.max(1, enemy.atk - Math.floor(target.def * 0.5))
-  const dmg  = Math.max(1, Math.round(raw * (1 - dmgReduction)))
+  let   dmg  = Math.max(1, Math.round(raw * (1 - dmgReduction)))
+
+  // Bouclier (Bastion) : absorbe 30% des dégâts reçus par n'importe quel allié vivant
+  const shield = alive.find(s => s !== target && s.shield && s.hp > 0)
+  if (shield) {
+    const absorbed = Math.round(dmg * 0.3)
+    shield.hp = Math.max(0, shield.hp - absorbed)
+    dmg = dmg - absorbed
+  }
 
   target.hp -= dmg
   if (target.hp < 0) target.hp = 0
@@ -284,13 +293,18 @@ function extractVal(effect, prefix) {
 
 // ── Calcule les bonus de talents applicables au combat ──
 export function calcTalentBonuses(state) {
+  const rank = state.masteryRank || 0
+  const m    = MASTERY_BONUS_PER_RANK
+
   return {
-    crit:    hasTalent(state, 't2') ? 0.10 : 0,   // +10% crit
-    atkMult: hasTalent(state, 't2') ? 0.10 : 0,   // +10% ATK (Coup Précis)
-    defMult: hasTalent(state, 't7') ? 0.20 : 0,   // +20% DEF (Collectionneur)
-    synergy: hasTalent(state, 't8') ? 0.20 : 0,   // +20% ATK par synergie (Synergiste)
-    resist:  hasTalent(state, 't3') ? 0.20 : 0,   // -20% résistance ennemie (Briseur)
-    speed:   hasTalent(state, 't1') ? 0.10 : 0,   // +10% vitesse (déjà dans calcTeamSpeed)
+    crit:    hasTalent(state, 't2') ? 0.10 : 0,
+    atkMult: (hasTalent(state, 't2') ? 0.10 : 0) + rank * m.atkMult,
+    defMult: (hasTalent(state, 't7') ? 0.20 : 0) + rank * m.defMult,
+    hpMult:  rank * m.hpMult,
+    synergy: hasTalent(state, 't8') ? 0.20 : 0,
+    resist:  hasTalent(state, 't3') ? 0.20 : 0,
+    speed:   hasTalent(state, 't1') ? 0.10 : 0,
+    idleFlat: rank * m.idleFlat,
   }
 }
 
@@ -305,12 +319,22 @@ export function simulateFight(playerTeamIds, enemySquad, state) {
   }))
   if (bonuses.synergy && roles.size >= 3) bonuses.atkMult += bonuses.synergy
 
-  // Instancie les stats avec bonus de défense (t7)
+  // Instancie les stats avec bonus de défense (t7) + effets passifs + upgrades ADN
   const playerTeam = playerTeamIds.map(id => {
-    const stats = survivorCombatStats(id)
+    const stats     = survivorCombatStats(id)
+    const upLevel   = (state.survivorUpgrades || {})[id] || 0
+    const upMult    = 1 + upLevel * 0.15                    // +15% stats par niveau
+    const hpBonus   = extractVal(stats.effect, 'hp+')
+    const hpEffMult = hpBonus ? (1 + hpBonus) : 1
+    const maxHp     = Math.round(stats.maxHp * hpEffMult * upMult * (1 + bonuses.hpMult))
     return {
       ...stats,
-      def: Math.round(stats.def * (1 + bonuses.defMult)),
+      hp:     maxHp,
+      maxHp,
+      atk:    Math.round(stats.atk * upMult),
+      def:    Math.round(stats.def * upMult * (1 + bonuses.defMult)),
+      shield: stats.effect?.includes('taunt+shield'),
+      upLevel,
     }
   })
 
@@ -371,9 +395,10 @@ export function calcWaveReward(state) {
 
   if (hasTalent(state, 't4')) capMult += 0.15
 
+  const baseDna = 1 + Math.floor(state.currentWave / 3)  // 1 dès vague 1, +1 tous les 3 niveaux
   return {
     capsules:  Math.floor(baseCap * capMult),
-    dna:       Math.floor((2 + (hasTalent(state, 't6') ? 2 : 0)) * farming),
+    dna:       Math.floor((baseDna + (hasTalent(state, 't6') ? 2 : 0)) * farming),
     radium:    hasTalent(state, 't7') ? 1 : 0,
     accountXP: Math.floor((10 + state.currentWave * 2) * farming),
   }
@@ -413,12 +438,38 @@ export function defeatBoss(state, zoneId) {
   return { survivor: zone.boss.reward.survivor, nextZone }
 }
 
+// ── Prestige ──
+export function canPrestige(state) {
+  return state.bossesDefeated.includes('z7') || state.bossesDefeated.length >= 7
+}
+
+export function doPrestige(state) {
+  if (!canPrestige(state)) return false
+  state.prestigeLevel = (state.prestigeLevel || 0) + 1
+
+  // Reset progression mais garde prestige + account + talents
+  state.capsules     = 250
+  state.radium       = 5
+  state.dna          = 0
+  state.collection   = []
+  state.team         = Array(6).fill(null)
+  state.currentZone  = 1
+  state.currentWave  = 1
+  state.activeZone   = 1
+  state.unlockedZones = [1]
+  state.bossesDefeated = []
+  state.zoneSurvivors  = []
+  state.pityE = 0
+  state.pityL = 0
+  return true
+}
+
 // ── XP de compte ──
 export function gainAccountXP(state, amount) {
   state.accountXP += amount
   const level  = state.accountLevel
   const needed = (level + 1) * 100
-  if (state.accountXP >= needed && level < 5) {
+  if (state.accountXP >= needed) {
     state.accountXP   -= needed
     state.accountLevel++
     state.talentPoints++

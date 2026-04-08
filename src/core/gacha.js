@@ -1,5 +1,6 @@
 import { SURVIVORS, RARITY_ORDER } from '../data/survivors.js'
 import { SIGNAL_CONFIG, updateMission } from './economy.js'
+import { hasTalent } from './state.js'
 
 function rollRarity(weights) {
   const total = Object.values(weights).reduce((a, b) => a + b, 0)
@@ -72,7 +73,7 @@ export function checkFusion(state, survivorId) {
     return true
   })
 
-  state.dna += 10
+  state.dna += hasTalent(state, 't9') ? 15 : 10
 
   const survivor     = SURVIVORS.find(x => x.id === survivorId)
   const currentIdx   = RARITY_ORDER.indexOf(survivor.rarity)

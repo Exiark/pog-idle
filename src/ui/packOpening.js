@@ -123,31 +123,43 @@ export function playSignalAnim(survivors) {
     disc.style.display = 'none'
     reveal.innerHTML = survivors.map((_, i) => `
       <div class="rev-item" id="ri${i}">
-        <div class="rev-disc" id="rd${i}">?</div>
-        <div class="rev-rarity" id="rr${i}"></div>
-        <div class="rev-name" id="rn${i}"></div>
+        <div class="rev-card-wrap" id="rw${i}">
+          <div class="rev-card-front">?</div>
+          <div class="rev-card-back" id="rd${i}">
+            <div class="rev-rarity" id="rr${i}"></div>
+            <div class="rev-name" id="rn${i}"></div>
+          </div>
+        </div>
       </div>`).join('')
 
     survivors.forEach((sv, i) => {
       const r = RARITY[sv.rarity]
       setTimeout(() => {
-        const rd = document.getElementById('rd' + i)
-        const rr = document.getElementById('rr' + i)
-        const rn = document.getElementById('rn' + i)
-        if (!rd) return
-        rd.style.background  = r.bg
-        rd.style.borderColor = r.color
-        rd.style.color       = r.text
-        rd.innerHTML         = `<span style="font-size:20px">${sv.icon}</span>`
-        rr.textContent       = r.label
-        rr.style.background  = r.bg
-        rr.style.color       = r.text
-        rn.textContent       = sv.name
+        const wrap = document.getElementById('rw' + i)
+        const rd   = document.getElementById('rd' + i)
+        const rr   = document.getElementById('rr' + i)
+        const rn   = document.getElementById('rn' + i)
+        if (!wrap) return
+
+        // Prépare le dos avant le flip
+        if (rd) {
+          rd.style.background  = r.bg
+          rd.style.borderColor = r.color
+        }
+        if (rr) { rr.textContent = r.label; rr.style.color = r.color }
+        if (rn) { rn.textContent = sv.name; rn.style.color = r.text }
+
+        wrap.classList.add('flipped')
         document.getElementById('ri' + i)?.classList.add('show')
-      }, i * 280)
+
+        // Glow légende/expert
+        if (sv.rarity === 'L' || sv.rarity === 'E') {
+          setTimeout(() => wrap?.classList.add('reveal-glow-' + sv.rarity), 300)
+        }
+      }, i * 350)
     })
 
-    setTimeout(() => { closeBtn.style.display = 'block' }, survivors.length * 280 + 400)
+    setTimeout(() => { closeBtn.style.display = 'block' }, survivors.length * 350 + 400)
   }, 2100)
 }
 

@@ -1,6 +1,8 @@
 // ── SHELTER SURVIVOR — Collection de survivants ──
-import { SURVIVORS, RARITY, RARITY_ORDER, ROLE_META } from '../data/survivors.js'
+import { SURVIVORS, RARITY, RARITY_ORDER, ROLE_META, getSpriteUrl } from '../data/survivors.js'
 import { getCollectionStats } from '../core/gacha.js'
+import { UPGRADE_COST, UPGRADE_MAX, upgradeSurvivor } from '../core/economy.js'
+import { saveState } from '../core/state.js'
 
 const IDLE_RATE = { D: 0.05, E: 0.15, L: 0.4 }
 
@@ -67,10 +69,11 @@ export function renderCollection(state) {
 function survivorCard(id, copies, state) {
   const sv = SURVIVORS.find(x => x.id === id)
   if (!sv) return ''
-  const r      = RARITY[sv.rarity] || RARITY['D']
-  const meta   = ROLE_META[sv.role] || {}
-  const inTeam = state.team.some(e => e && e.id === id)
-  const isBoss = sv.boss
+  const r       = RARITY[sv.rarity] || RARITY['D']
+  const meta    = ROLE_META[sv.role] || {}
+  const inTeam  = state.team.some(e => e && e.id === id)
+  const isBoss  = sv.boss
+  const sprite  = getSpriteUrl(sv)
 
   return `
     <div class="survivor-card ${inTeam ? 'in-team' : ''}"
@@ -81,8 +84,12 @@ function survivorCard(id, copies, state) {
       <!-- Rareté -->
       <div class="sc-rarity" style="color:${r.color}">${r.label}</div>
 
-      <!-- Icône de sur-classe + sous-classe dessous -->
-      <div class="sc-class-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>
+      <!-- Sprite ou icône fallback -->
+      <div class="sc-sprite-wrap">
+        ${sprite
+          ? `<img class="sc-sprite" src="${sprite}" alt="${sv.name}">`
+          : `<div class="sc-class-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>`}
+      </div>
       <div class="sc-subclass" style="color:${r.color}">${sv.role}</div>
 
       <!-- Mini stats -->
@@ -100,6 +107,7 @@ function survivorCard(id, copies, state) {
       ${copies > 1 ? `<div class="survivor-card-copies">${copies}</div>` : ''}
       ${inTeam      ? `<div class="survivor-card-check">✓</div>` : ''}
       ${isBoss      ? `<div class="survivor-card-boss">BOSS</div>` : ''}
+      ${(() => { const lv = (state.survivorUpgrades || {})[id] || 0; return lv > 0 ? `<div class="survivor-card-upgrade">+${lv}</div>` : '' })()}
     </div>`
 }
 
@@ -113,6 +121,20 @@ function statBar(label, value, max, color) {
 
 window.renderCollection = renderCollection
 
+window.upgradeSurvivorUI = function(id) {
+  const S = window._state
+  if (!S) return
+  const result = upgradeSurvivor(S, id)
+  if (result.error) {
+    if (window.showToast) window.showToast(result.error, 'info')
+    return
+  }
+  saveState(S)
+  if (window.showToast) window.showToast(`🧬 ${SURVIVORS.find(x => x.id === id)?.name} → Niv. ${result.newLevel} !`, 'fusion', 3000)
+  window.showSurvivorModal(id)
+  renderCollection(S)
+}
+
 // ── Modal fiche survivant ──
 window.showSurvivorModal = function(id) {
   const S   = window._state
@@ -124,6 +146,7 @@ window.showSurvivorModal = function(id) {
   const inTeam = S.team.some(e => e && e.id === id)
   const idle   = IDLE_RATE[sv.rarity] || 0
 
+  const sprite = getSpriteUrl(sv)
   const modal = document.getElementById('survivor-modal')
   if (!modal) return
 
@@ -132,7 +155,9 @@ window.showSurvivorModal = function(id) {
       <button class="sv-modal-close" onclick="document.getElementById('survivor-modal').style.display='none'">✕</button>
 
       <div class="sv-modal-header" style="background:${r.bg}">
-        <div class="sv-modal-class-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>
+        ${sprite
+          ? `<div class="sv-modal-sprite-wrap"><img class="sv-modal-sprite" src="${sprite}" alt="${sv.name}"></div>`
+          : `<div class="sv-modal-class-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>`}
         <div>
           <div class="sv-modal-name" style="color:${r.text}">${sv.name}</div>
           <div class="sv-modal-role" style="color:${r.color}">${meta.globalClass || ''} · ${sv.role}</div>
@@ -165,6 +190,8 @@ window.showSurvivorModal = function(id) {
           </div>
         </div>
 
+        ${!sv.boss ? upgradeSection(id, S) : ''}
+
         ${!sv.boss ? `
           <button class="btn-danger sv-modal-equip"
             onclick="window.toggleTeamUI('${id}');window.renderCollection(window._state);document.getElementById('survivor-modal').style.display='none'">
@@ -177,6 +204,34 @@ window.showSurvivorModal = function(id) {
     </div>`
 
   modal.style.display = 'flex'
+}
+
+function upgradeSection(id, S) {
+  const level   = (S.survivorUpgrades || {})[id] || 0
+  const maxed   = level >= UPGRADE_MAX
+  const cost    = maxed ? null : UPGRADE_COST[level]
+  const canBuy  = !maxed && S.dna >= cost
+  const statBonus = `+${level * 15}%`
+
+  return `
+    <div class="sv-modal-upgrade">
+      <div class="sv-modal-upgrade-header">
+        <span>Amélioration ADN</span>
+        <span class="sv-modal-upgrade-level">Niv. ${level}/${UPGRADE_MAX}</span>
+      </div>
+      <div class="sv-modal-upgrade-bars">
+        ${Array.from({ length: UPGRADE_MAX }, (_, i) => `
+          <div class="sv-upgrade-pip ${i < level ? 'filled' : ''}"></div>`).join('')}
+      </div>
+      ${level > 0 ? `<div class="sv-modal-upgrade-bonus">Stats actuelles : <strong>${statBonus}</strong></div>` : ''}
+      ${maxed
+        ? `<div class="sv-modal-upgrade-maxed">★ Niveau maximum atteint</div>`
+        : `<button class="sv-modal-upgrade-btn ${canBuy ? '' : 'disabled'}"
+             onclick="window.upgradeSurvivorUI('${id}')">
+             🧬 Améliorer — ${cost} ADN
+             ${!canBuy ? `<span style="font-size:10px;opacity:0.6">(${S.dna}/${cost})</span>` : ''}
+           </button>`}
+    </div>`
 }
 
 function modalStat(label, value, max, color) {

@@ -298,6 +298,25 @@ export const ROLE_META = {
   'Pistard':    { globalClass: 'Assassin',  classIcon: '🗡', classColor: '#A0C8FF' },
 }
 
+// ── Sprite mapping (6 classes × 3 raretés) ──
+const GLOBAL_CLASS_TO_SPRITE = {
+  'Tank':     'tank',
+  'Mêlée':   'melee',
+  'Distance': 'sniper',
+  'Médecin':  'medic',
+  'Soutien':  'engineer',
+  'Assassin': 'assassin',
+}
+
+export function getSpriteUrl(survivor) {
+  if (survivor.boss) return null
+  const meta = ROLE_META[survivor.role]
+  if (!meta) return null
+  const key = GLOBAL_CLASS_TO_SPRITE[meta.globalClass]
+  if (!key) return null
+  return `assets/sprites/${survivor.rarity.toLowerCase()}/${key}.png`
+}
+
 // ── Helpers ──
 export function getSurvivorById(id) {
   return SURVIVORS.find(s => s.id === id) || null

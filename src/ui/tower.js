@@ -19,7 +19,17 @@ export function renderTower(state) {
 
     <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--text-muted)">
       Appuyez sur une zone déverrouillée pour y envoyer votre équipe
-    </div>`
+    </div>
+
+    ${state.bossesDefeated?.length >= 7 || state.bossesDefeated?.includes('z7') ? `
+      <div class="prestige-panel">
+        <div class="prestige-panel-title">☣ Toutes les zones sécurisées !</div>
+        <div class="prestige-panel-sub">Prestige ${state.prestigeLevel || 0} — Bonus idle actuel : ×${1 + (state.prestigeLevel || 0) * 0.1}</div>
+        <button class="btn-danger" style="width:100%;margin-top:8px" onclick="window.openPrestigeUI()">
+          ☣ Lancer un nouveau cycle
+        </button>
+      </div>` : ''}
+  `
 }
 
 function zoneNode(zone, state) {

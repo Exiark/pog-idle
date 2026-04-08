@@ -1,10 +1,10 @@
 import { loadState, saveState, calcOfflineCapsules } from './core/state.js'
-import { collectOffline, claimDaily, updateMission, applyReward } from './core/economy.js'
+import { collectOffline, claimDaily, updateMission, applyReward, checkMissionsReset } from './core/economy.js'
 import { openSignal, toggleTeam } from './core/gacha.js'
 import {
   generateEnemySquad, simulateFight, survivorCombatStats,
   calcWaveReward, advanceWave, isBossWave, defeatBoss,
-  gainAccountXP, PHASE,
+  gainAccountXP, doPrestige, PHASE,
 } from './core/combat.js'
 import { ZONES } from './data/zones.js'
 
@@ -30,6 +30,8 @@ let bossMaxHP    = 0
 
 // ── Init ──
 function init() {
+  checkMissionsReset(S)
+  checkOnboarding()
   checkOfflineReward()
   updateUI()
   setTab('combat')
@@ -37,18 +39,46 @@ function init() {
 
   setInterval(() => saveState(S), 15000)
 
-  // Tick idle capsules
+  // Tick idle capsules (basé sur la collection)
+  const IDLE_RATE = { D: 0.05, E: 0.15, L: 0.4 }
   setInterval(() => {
-    let rate = 0
-    if (S.team) S.team.forEach(s => {
-      if (s?.effect?.startsWith('idle+')) rate += parseFloat(s.effect.split('+')[1])
-    })
+    const rate = calcIdleRate(S, IDLE_RATE)
     if (rate > 0) {
       S.capsules += Math.round(rate * 10) / 10
       const el = document.getElementById('d-capsules')
       if (el) el.textContent = Math.floor(S.capsules)
     }
   }, 1000)
+}
+
+// ── Onboarding (premier lancement) ──
+function checkOnboarding() {
+  if (S.onboardingDone) return
+  import('../data/survivors.js').then(({ SURVIVORS }) => {
+    const dTier = SURVIVORS.filter(sv => sv.rarity === 'D' && !sv.boss).slice(0, 3)
+    dTier.forEach(sv => S.collection.push({ id: sv.id, rarity: sv.rarity }))
+    S.onboardingDone = true
+    saveState(S)
+    updateUI()
+    showOnboardingMessage()
+  })
+}
+
+function showOnboardingMessage() {
+  const panel = document.getElementById('precombat-panel')
+  const banner = document.createElement('div')
+  banner.className = 'onboarding-banner'
+  banner.innerHTML = `
+    <div class="onboarding-icon">☣</div>
+    <div class="onboarding-text">
+      <strong>Bienvenue au Shelter !</strong><br>
+      3 survivants vous ont rejoint. Allez dans <strong>Équipe</strong> pour les ajouter à votre groupe,
+      puis lancez votre première mission !
+    </div>
+    <button class="onboarding-dismiss" onclick="this.parentElement.remove()">✕</button>
+  `
+  if (panel) panel.prepend(banner)
+  else document.body.prepend(banner)
 }
 
 // ── Offline ──
@@ -128,7 +158,10 @@ function onCombatDone() {
 
   if (lastResult.victory) {
     applyReward(S, reward)
-    gainAccountXP(S, reward.accountXP)
+    const leveledUp = gainAccountXP(S, reward.accountXP)
+    if (leveledUp) {
+      showToast(`⭐ Niveau ${S.accountLevel} atteint ! +1 point de talent`, 'levelup', 4000)
+    }
     updateMission(S, 'capsules_earned', reward.capsules)
     addLog(`Vague ${S.currentWave} terminée ! +${reward.capsules} capsules`, 'reward')
   } else {
@@ -137,6 +170,7 @@ function onCombatDone() {
 
   showPanel('result-panel')
   if (window.renderResult) window.renderResult(S, lastResult, reward || {})
+  if (lastResult.victory && window.playVictorySound) window.playVictorySound()
 
   // Branche le bouton résultat
   const btn = document.getElementById('result-btn')
@@ -198,11 +232,50 @@ function handleBossVictory() {
   hideBossPanel()
   const result = defeatBoss(S, S.activeZone)
   if (result) addLog(`Boss éliminé ! Zone ${result.nextZone} déverrouillée !`, 'reward')
+  showBossVictoryScreen(result)
   advanceWave(S)
   saveState(S)
-  currentPhase = PHASE.IDLE
-  renderCombatView()
-  updateUI()
+}
+
+function showBossVictoryScreen(defeatResult) {
+  const panel = document.getElementById('result-panel')
+  if (!panel) return
+
+  const zone = ZONES[S.activeZone - 2] || ZONES[0]  // zone qu'on vient de finir
+  const bossName = zone.boss?.name || 'Boss'
+  const nextZone = defeatResult?.nextZone
+  const nextZoneData = nextZone ? ZONES[nextZone - 1] : null
+
+  panel.innerHTML = `
+    <div class="boss-victory-screen">
+      <div class="boss-victory-icon">☠</div>
+      <div class="boss-victory-title">Boss éliminé !</div>
+      <div class="boss-victory-name">${bossName}</div>
+
+      ${nextZoneData ? `
+        <div class="boss-victory-unlock">
+          <div class="boss-victory-unlock-label">Zone déverrouillée</div>
+          <div class="boss-victory-unlock-zone">Zone ${nextZone} — ${nextZoneData.name}</div>
+          <div class="boss-victory-unlock-desc">${nextZoneData.desc || ''}</div>
+        </div>` : `
+        <div class="boss-victory-unlock">
+          <div class="boss-victory-unlock-label">Vous avez conquis toutes les zones !</div>
+        </div>`}
+
+      <button class="btn-danger result-btn" onclick="window._onBossVictoryContinue()">
+        ${nextZoneData ? `Explorer Zone ${nextZone} →` : 'Continuer'}
+      </button>
+    </div>
+  `
+
+  playVictorySound()
+  showPanel('result-panel')
+
+  window._onBossVictoryContinue = function() {
+    currentPhase = PHASE.IDLE
+    renderCombatView()
+    updateUI()
+  }
 }
 
 // ── Frise de vagues ──
@@ -273,7 +346,13 @@ function addLog(msg, cls) {
 window.openSignalUI = function(type) {
   const result = openSignal(S, type)
   if (result.error) { addLog(result.error, 'miss'); return }
-  result.fusionLogs?.forEach(f => addLog(f.message, 'reward'))
+  result.fusionLogs?.forEach(f => {
+    addLog(f.message, 'reward')
+    showToast(
+      `🔬 FUSION ! <strong>${f.from.name}</strong> ×3 → <strong>${f.to.name}</strong>`,
+      'fusion', 4000
+    )
+  })
   saveState(S); updateUI()
   if (window.playPackAnim) window.playPackAnim(result.obtained)
   if (window.setTab) window.setTab('packs')
@@ -289,6 +368,7 @@ window.claimDailyUI = function() {
   const reward = claimDaily(S)
   if (!reward) { addLog('Déjà réclamé aujourd\'hui !', 'miss'); return }
   addLog('Rapport journalier réclamé !', 'reward')
+  checkMissionsReset(S)
   saveState(S); updateUI()
 }
 
@@ -300,6 +380,38 @@ window.collectOfflineUI = function(mult) {
   const notif = document.getElementById('offline-notif')
   if (notif) notif.style.display = 'none'
   saveState(S); updateUI()
+}
+
+// ── Prestige ──
+window.openPrestigeUI = function() {
+  const modal = document.createElement('div')
+  modal.id = 'prestige-modal'
+  modal.innerHTML = `
+    <div class="prestige-box">
+      <div class="prestige-title">☣ PRESTIGE</div>
+      <div class="prestige-desc">
+        Repartez de zéro avec un bonus permanent de
+        <strong>+${(((S.prestigeLevel || 0) + 1) * 10)}% de gains idle</strong>.<br><br>
+        Votre niveau de compte, vos talents et vos points sont conservés.
+        Tout le reste est réinitialisé.
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+        <button class="btn-danger" onclick="window.confirmPrestige()">Prestige !</button>
+        <button onclick="document.getElementById('prestige-modal').remove()">Annuler</button>
+      </div>
+    </div>`
+  document.body.appendChild(modal)
+}
+
+window.confirmPrestige = function() {
+  document.getElementById('prestige-modal')?.remove()
+  if (doPrestige(S)) {
+    showToast(`☣ Prestige ${S.prestigeLevel} ! Gains idle ×${1 + S.prestigeLevel * 0.1}`, 'fusion', 5000)
+    saveState(S)
+    currentPhase = PHASE.IDLE
+    renderCombatView()
+    updateUI()
+  }
 }
 
 window.setTab = setTab
@@ -335,11 +447,9 @@ function updateUI() {
   if (el('acc-lvl-badge')) el('acc-lvl-badge').textContent = lvl + 1
   if (el('acc-xp-fill'))   el('acc-xp-fill').style.width   = Math.round(S.accountXP / xpMax * 100) + '%'
 
-  let idleRate = 0
-  if (S.team) S.team.forEach(s => {
-    if (s?.effect?.startsWith('idle+')) idleRate += parseFloat(s.effect.split('+')[1])
-  })
-  if (el('idle-display')) el('idle-display').textContent = `Idle: +${Math.round(idleRate * 10) / 10} caps/s`
+  const IDLE_R = { D: 0.05, E: 0.15, L: 0.4 }
+  const idleRate = calcIdleRate(S, IDLE_R)
+  if (el('idle-display')) el('idle-display').textContent = `Idle: +${Math.round(idleRate * 100) / 100} caps/s`
 
   window._state = S
   if (window.renderTeam)       window.renderTeam(S)
@@ -352,5 +462,87 @@ function updateUI() {
   // Re-rend le précombat si on est en phase IDLE (ex: après ajout d'un survivant à l'équipe)
   if (currentPhase === PHASE.IDLE && window.renderPreCombat) window.renderPreCombat(S)
 }
+
+// ── Calcul taux idle (collection + maîtrise + prestige + t5) ──
+function calcIdleRate(state, IDLE_RATE) {
+  let rate = 0
+  if (state.collection?.length) {
+    const ids = [...new Set(state.collection.map(p => p.id))]
+    ids.forEach(id => {
+      const sv = state.collection.find(p => p.id === id)
+      if (sv) rate += IDLE_RATE[sv.rarity] || 0
+    })
+  }
+  // t5 : +50% idle
+  if (state.talentsUnlocked?.includes('t5')) rate *= 1.5
+  // Maîtrise : bonus flat par rang
+  rate += (state.masteryRank || 0) * 0.02
+  // Prestige multiplicateur
+  rate *= 1 + (state.prestigeLevel || 0) * 0.1
+  return Math.round(rate * 100) / 100
+}
+
+// ── Toasts ──
+function showToast(msg, type = 'info', duration = 3000) {
+  let container = document.getElementById('toast-container')
+  if (!container) {
+    container = document.createElement('div')
+    container.id = 'toast-container'
+    document.body.appendChild(container)
+  }
+  const t = document.createElement('div')
+  t.className = `toast toast-${type}`
+  t.innerHTML = msg
+  container.appendChild(t)
+  requestAnimationFrame(() => t.classList.add('show'))
+  setTimeout(() => {
+    t.classList.remove('show')
+    setTimeout(() => t.remove(), 400)
+  }, duration)
+}
+window.showToast = showToast
+
+// ── Audio (Web Audio API, aucun fichier externe) ──
+let _audioCtx = null
+function getAudio() {
+  if (!_audioCtx) _audioCtx = new AudioContext()
+  return _audioCtx
+}
+
+function playHitSound() {
+  try {
+    const ctx = getAudio()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain); gain.connect(ctx.destination)
+    osc.type = 'square'
+    osc.frequency.setValueAtTime(180, ctx.currentTime)
+    osc.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.08)
+    gain.gain.setValueAtTime(0.15, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1)
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.1)
+  } catch (_) {}
+}
+
+function playVictorySound() {
+  try {
+    const ctx = getAudio()
+    const notes = [330, 392, 494, 659]
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.type = 'triangle'
+      const t = ctx.currentTime + i * 0.12
+      osc.frequency.setValueAtTime(freq, t)
+      gain.gain.setValueAtTime(0.2, t)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18)
+      osc.start(t); osc.stop(t + 0.2)
+    })
+  } catch (_) {}
+}
+
+window.playHitSound    = playHitSound
+window.playVictorySound = playVictorySound
 
 document.addEventListener('DOMContentLoaded', init)

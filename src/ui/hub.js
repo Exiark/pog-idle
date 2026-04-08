@@ -1,5 +1,5 @@
 // ── SHELTER SURVIVOR — Hub (camp de base) ──
-import { SURVIVORS, RARITY, ROLE_META } from '../data/survivors.js'
+import { SURVIVORS, RARITY, ROLE_META, getSpriteUrl } from '../data/survivors.js'
 import { ZONES } from '../data/zones.js'
 
 export function renderHub(state) {
@@ -37,16 +37,19 @@ export function renderTeam(state) {
   slotsDiv.innerHTML = Array.from({ length: 6 }, (_, i) => {
     const s = state.team[i]
     if (!s) return `<div class="team-slot empty" onclick="window.setTab('survivors')" title="Ajouter un survivant">+</div>`
-    const sv   = SURVIVORS.find(x => x.id === s.id)
+    const sv     = SURVIVORS.find(x => x.id === s.id)
     if (!sv) return ''
-    const r    = RARITY[sv.rarity] || RARITY['D']
-    const meta = ROLE_META[sv.role] || {}
+    const r      = RARITY[sv.rarity] || RARITY['D']
+    const meta   = ROLE_META[sv.role] || {}
+    const sprite = getSpriteUrl(sv)
     return `
       <div class="team-slot filled"
         style="background:${r.bg};border-color:${r.color}"
         onclick="window.toggleTeamUI('${s.id}')"
         title="${sv.name} — ${sv.role}\n${sv.desc}">
-        <div class="ts-class-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>
+        ${sprite
+          ? `<div class="ts-sprite-wrap"><img class="ts-sprite" src="${sprite}" alt="${sv.name}"></div>`
+          : `<div class="ts-class-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>`}
         <div class="ts-subclass" style="color:${r.color}">${sv.role}</div>
         <div class="ts-stats">
           <div class="ts-stat"><span style="color:#E05A4A">⚔</span>${sv.atk}</div>

@@ -46,7 +46,27 @@ export function renderPreCombat(state) {
       <button class="btn-danger launch-btn" onclick="window.startCombat()">
         ☣ Partir en mission
       </button>`}
+
+    ${nextObjective(state)}
   `
+}
+
+function nextObjective(state) {
+  const team = state.team.filter(Boolean)
+  if (team.length === 0) return ''
+
+  let text = ''
+  if (state.currentWave < 11) {
+    text = `Prochain objectif : Vague ${state.currentWave + 1}/11`
+  } else if (!state.bossesDefeated?.includes(`z${state.activeZone}`)) {
+    text = `Prochain objectif : Vaincre le boss de Zone ${state.activeZone}`
+  } else if (state.currentZone < 7) {
+    text = `Prochain objectif : Débloquer Zone ${state.currentZone + 1}`
+  } else {
+    text = `Toutes les zones sont sécurisées — pensez au Prestige !`
+  }
+
+  return `<div class="precombat-objective">${text}</div>`
 }
 
 // ── Rendu du combat animé ──
@@ -104,6 +124,22 @@ export function renderCombatPanel(state, playerTeam, enemySquad, result, onDone)
   animateCombat(result, playerTeam, enemySquad, onDone)
 }
 
+function flashHit(card, isAlly = false) {
+  card.classList.remove('hit-flash', 'hit-flash-ally')
+  void card.offsetWidth  // force reflow to restart animation
+  card.classList.add(isAlly ? 'hit-flash-ally' : 'hit-flash')
+  setTimeout(() => card.classList.remove('hit-flash', 'hit-flash-ally'), 300)
+}
+
+function spawnDmgFloat(card, dmg, isCrit = false, isAlly = false) {
+  const el = document.createElement('div')
+  el.className = 'dmg-float' + (isCrit ? ' crit' : '') + (isAlly ? ' ally' : '')
+  el.textContent = (isAlly ? '-' : '-') + dmg
+  card.style.position = 'relative'
+  card.appendChild(el)
+  setTimeout(() => el.remove(), 700)
+}
+
 function animateCombat(result, playerTeam, enemySquad, onDone) {
   const log    = document.getElementById('combat-log')
   const turnEl = document.getElementById('combat-turn')
@@ -125,28 +161,33 @@ function animateCombat(result, playerTeam, enemySquad, onDone) {
       if (a.side === 'player') {
         const enemy = enemySquad.find(e => e.name === a.target)
         if (enemy) {
-          const pct = Math.round(Math.max(0, enemy.hp) / enemy.maxHp * 100)
+          const pct  = Math.round(Math.max(0, enemy.hp) / enemy.maxHp * 100)
           const bar  = document.getElementById('ehp-' + enemy.id)
           const val  = document.getElementById('ehpv-' + enemy.id)
+          const card = document.getElementById('enemy-' + enemy.id)
           if (bar) bar.style.width = pct + '%'
           if (val) val.textContent = Math.max(0, enemy.hp)
-          if (!enemy.alive) {
-            const card = document.getElementById('enemy-' + enemy.id)
-            if (card) card.classList.add('dead')
+          if (card && a.dmg) {
+            flashHit(card)
+            spawnDmgFloat(card, a.dmg, a.isCrit)
+            if (window.playHitSound) window.playHitSound()
           }
+          if (!enemy.alive && card) card.classList.add('dead')
         }
       } else if (a.side === 'enemy') {
         const ally = playerTeam.find(s => s.name === a.target)
         if (ally) {
-          const pct = Math.round(Math.max(0, ally.hp) / ally.maxHp * 100)
+          const pct  = Math.round(Math.max(0, ally.hp) / ally.maxHp * 100)
           const bar  = document.getElementById('hp-' + ally.id)
           const val  = document.getElementById('hpv-' + ally.id)
+          const card = document.getElementById('fighter-' + ally.id)
           if (bar) bar.style.width = pct + '%'
           if (val) val.textContent = Math.max(0, ally.hp)
-          if (ally.hp <= 0) {
-            const card = document.getElementById('fighter-' + ally.id)
-            if (card) card.classList.add('dead')
+          if (card && a.dmg) {
+            flashHit(card, true)
+            spawnDmgFloat(card, a.dmg, false, true)
           }
+          if (ally.hp <= 0 && card) card.classList.add('dead')
         }
       }
     })

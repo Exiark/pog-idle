@@ -1,97 +1,101 @@
 export const TALENTS = [
-  // ── RANGÉE 1 — Offensif ──
+  // ── RANGÉE 1 — Combat ──
   {
     id: 't1',
-    name: 'Frappe Rapide',
-    desc: '+10% vitesse de kini',
+    name: 'Réflexes',
+    desc: '+10% vitesse d\'attaque de l\'équipe',
     icon: '⚡',
     cost: 1,
     row: 1,
-    effect: 'kini_speed+0.1',
     requires: null,
   },
   {
     id: 't2',
     name: 'Coup Précis',
-    desc: '+10% chance de critique',
+    desc: '+10% chance critique et +10% ATK',
     icon: '🎯',
     cost: 1,
     row: 1,
-    effect: 'crit+0.1',
     requires: null,
   },
   {
     id: 't3',
     name: 'Briseur',
-    desc: '-20% résistance ennemie',
-    icon: '⚔',
+    desc: '-20% ATK ennemie reçue',
+    icon: '🛡',
     cost: 1,
     row: 1,
-    effect: 'resist_red+0.2',
     requires: null,
   },
 
   // ── RANGÉE 2 — Économie ──
   {
     id: 't4',
-    name: 'Économe',
-    desc: '+15% or gagné',
-    icon: '💰',
+    name: 'Pilleur',
+    desc: '+15% capsules par vague',
+    icon: '💊',
     cost: 2,
     row: 2,
-    effect: 'gold_mult+0.15',
     requires: 't1',
   },
   {
     id: 't5',
     name: 'Veilleur',
-    desc: '+50% gains offline',
+    desc: '+50% gains idle au repos',
     icon: '🌙',
     cost: 2,
     row: 2,
-    effect: 'idle_mult+0.5',
     requires: 't2',
   },
   {
     id: 't6',
-    name: 'Aimant',
-    desc: '+2 fragments par vague',
-    icon: '🧲',
+    name: 'Biologiste',
+    desc: '+2 ADN par vague remportée',
+    icon: '🧬',
     cost: 2,
     row: 2,
-    effect: 'frags_per_wave+2',
     requires: 't3',
   },
 
-  // ── RANGÉE 3 — Avancé ──
+  // ── RANGÉE 3 — Maîtrise ──
   {
     id: 't7',
     name: 'Collectionneur',
-    desc: '+1 gemme par vague',
-    icon: '💎',
+    desc: '+1 radium par vague · +20% DEF équipe',
+    icon: '☢',
     cost: 3,
     row: 3,
-    effect: 'gems_per_wave+1',
     requires: 't4',
   },
   {
     id: 't8',
     name: 'Synergiste',
-    desc: 'Synergies de pogs +20%',
+    desc: '+20% ATK si ≥3 rôles différents',
     icon: '🔗',
     cost: 3,
     row: 3,
-    effect: 'syn_mult+0.2',
     requires: 't5',
   },
   {
     id: 't9',
-    name: 'Maître des Pogs',
-    desc: '+1 slot d\'équipement',
-    icon: '🌟',
-    cost: 5,
+    name: 'Chercheur',
+    desc: '+50% ADN issu des fusions',
+    icon: '🔬',
+    cost: 3,
     row: 3,
-    effect: 'slot+1',
     requires: 't6',
   },
 ]
+
+// ── Coût et bonus des rangs de Maîtrise (répétables) ──
+export function masteryCost(rank) {
+  return 1 + Math.floor(rank / 3)   // 1pt rangs 0-2, 2pts rangs 3-5, etc.
+}
+
+// Bonus cumulés par rang (appliqués dans calcTalentBonuses)
+export const MASTERY_BONUS_PER_RANK = {
+  atkMult:  0.01,   // +1% ATK
+  defMult:  0.01,   // +1% DEF
+  hpMult:   0.01,   // +1% HP max
+  idleFlat: 0.02,   // +0.02 caps/s idle
+}

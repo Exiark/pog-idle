@@ -1,6 +1,7 @@
 // ── SHELTER SURVIVOR — Arbre de talents ──
 import { TALENTS } from '../data/talents.js'
 import { saveState } from '../core/state.js'
+import { unlockMastery } from '../core/economy.js'
 
 export function renderTalents(state) {
   const pointsDiv = document.getElementById('talent-points-display')
@@ -30,7 +31,7 @@ export function renderTalents(state) {
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
         ${talents.map(t => talentNode(t, state)).join('')}
       </div>
-    </div>`).join('')
+    </div>`).join('') + masteryBlock(state)
 }
 
 function talentNode(t, state) {
@@ -59,12 +60,49 @@ function talentNode(t, state) {
     </div>`
 }
 
+function masteryBlock(state) {
+  const rank = state.masteryRank || 0
+  const cost = 1 + Math.floor(rank / 3)
+  const canBuy = state.talentPoints >= cost
+  const bonusAtk = (rank * 1).toFixed(0)
+  const bonusDef = (rank * 1).toFixed(0)
+  const bonusHp  = (rank * 1).toFixed(0)
+  const bonusIdle = (rank * 0.02).toFixed(2)
+
+  return `
+    <div class="mastery-block">
+      <div class="mastery-title">⚔ Maîtrise — Rang ${rank}</div>
+      <div class="mastery-desc">
+        Bonus cumulés : <strong>+${bonusAtk}% ATK</strong> · <strong>+${bonusDef}% DEF</strong> ·
+        <strong>+${bonusHp}% HP</strong> · <strong>+${bonusIdle} caps/s idle</strong>
+      </div>
+      <button class="mastery-btn ${canBuy ? '' : 'disabled'}"
+        onclick="window.unlockMasteryUI()">
+        Rang ${rank + 1} — ${cost} point${cost > 1 ? 's' : ''}
+        ${!canBuy ? `<span style="font-size:10px;opacity:0.6">(${state.talentPoints}/${cost})</span>` : ''}
+      </button>
+    </div>`
+}
+
 function getTalentName(id) {
   const t = TALENTS.find(x => x.id === id)
   return t ? t.name : id
 }
 
 window.renderTalents = renderTalents
+
+window.unlockMasteryUI = function() {
+  const S = window._state
+  if (!S) return
+  const result = unlockMastery(S)
+  if (result.error) {
+    if (window.showToast) window.showToast(result.error, 'info')
+    return
+  }
+  saveState(S)
+  if (window.showToast) window.showToast(`⚔ Maîtrise rang ${result.newRank} atteint !`, 'levelup', 3000)
+  renderTalents(S)
+}
 
 window.unlockTalentUI = function(id) {
   const S = window._state
