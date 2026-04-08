@@ -1125,6 +1125,51 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
+/* ══════════════════════════════
+   SECTION BANNERS (illustrations de menu)
+   ══════════════════════════════ */
+.section-banner {
+  position: relative;
+  width: 100%;
+  height: 130px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 10px;
+  background: var(--panel-bg2);
+}
+.section-banner-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  image-rendering: pixelated;
+  opacity: 0.6;
+}
+.section-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(14,9,4,0.85) 0%, rgba(14,9,4,0.3) 60%, transparent 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 20px;
+}
+.section-banner-title {
+  font-family: var(--pixel);
+  font-size: 11px;
+  color: var(--accent);
+  text-shadow: 1px 1px 0 #000, 0 0 12px rgba(245,166,35,0.5);
+  margin-bottom: 5px;
+  letter-spacing: 1px;
+}
+.section-banner-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-shadow: 1px 1px 0 #000;
+}
+
 /* ── Responsive ── */
 @media (max-width: 500px) {
   .tab { padding: 6px 7px; font-size: 9px; }

@@ -24,28 +24,6 @@ export function renderPreCombat(state) {
       </div>
     </div>
 
-    <div class="precombat-team">
-      <div class="precombat-label">Équipe sélectionnée (${team.length}/6)</div>
-      <div class="precombat-slots">
-        ${Array.from({ length: 6 }, (_, i) => {
-          const s = state.team[i]
-          if (!s) return `<div class="precombat-slot empty">?</div>`
-          const sv   = SURVIVORS.find(x => x.id === s.id)
-          if (!sv) return ''
-          const r      = RARITY[sv.rarity] || RARITY['D']
-          const meta   = ROLE_META[sv.role] || {}
-          const sprite = getSpriteUrl(sv)
-          return `<div class="precombat-slot filled" style="background:${r.bg};border-color:${r.color}">
-            ${sprite
-              ? `<img style="height:52px;width:auto;image-rendering:pixelated" src="${sprite}" alt="${sv.name}">`
-              : `<div style="font-size:26px;color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>`}
-            <div style="font-size:9px;color:${r.color};font-weight:600">${meta.globalClass || sv.role}</div>
-            <div style="font-size:9px;font-weight:700;color:${r.text};text-align:center;line-height:1.1">${sv.name}</div>
-          </div>`
-        }).join('')}
-      </div>
-    </div>
-
     ${team.length === 0 ? `
       <div class="precombat-warning">
         Aucun survivant dans l'équipe !<br>
