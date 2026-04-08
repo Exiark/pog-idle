@@ -472,6 +472,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   position: fixed; inset: 0; z-index: 200;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; user-select: none;
+  background: #080502; /* fond solide — masque complètement l'UI en dessous */
 }
 
 /* Backdrop */
@@ -481,11 +482,17 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .pm-bg-img {
   position: absolute; inset: 0; width: 100%; height: 100%;
   object-fit: cover; image-rendering: pixelated;
-  opacity: 0.35; filter: blur(1px);
+  opacity: 0.55;
 }
 .pm-bg-overlay {
   position: absolute; inset: 0;
-  background: radial-gradient(ellipse at center, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.85) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(8,5,2,0.55) 0%,
+    rgba(8,5,2,0.25) 35%,
+    rgba(8,5,2,0.25) 65%,
+    rgba(8,5,2,0.75) 100%
+  );
 }
 
 /* UI container */
