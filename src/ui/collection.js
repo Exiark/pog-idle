@@ -90,7 +90,7 @@ function survivorCard(id, copies, state) {
   const sprite  = getSpriteUrl(sv)
 
   return `
-    <div class="survivor-card ${inTeam ? 'in-team' : ''}"
+    <div class="survivor-card sc-rarity--${sv.rarity.toLowerCase()} ${inTeam ? 'in-team' : ''}"
       style="background:${r.bg};border-color:${inTeam ? r.color : r.color + '44'}"
       onclick="window.showSurvivorModal('${id}')"
       title="${sv.name} — ${sv.role}\n${sv.desc}${copies > 1 ? `\n×${copies} copies` : ''}">
@@ -130,22 +130,25 @@ function silhouetteCard(id) {
   if (!sv) return ''
   const r    = RARITY[sv.rarity] || RARITY['D']
   const meta = ROLE_META[sv.role] || {}
+  // Utilise le sprite existant en silhouette CSS (grayscale + très sombre)
+  const sprite = getSpriteUrl(sv)
   return `
-    <div class="survivor-card silhouette" title="Inconnu — Envoyez des signaux pour le découvrir">
-      <div class="sc-rarity" style="color:${r.color};opacity:0.4">${r.label}</div>
-      <div class="sc-sprite-wrap sc-silhouette-icon">
-        <div class="sc-class-icon" style="opacity:0.25;filter:brightness(0)">
-          ${classIconHtml(meta, 40, '#888') || `<span style="font-size:28px">?</span>`}
-        </div>
+    <div class="survivor-card silhouette sc-rarity--${sv.rarity.toLowerCase()}" title="Inconnu — Envoyez des signaux pour le découvrir">
+      <div class="sc-rarity" style="color:${r.color};opacity:0.5">${r.label}</div>
+      <div class="sc-sprite-wrap">
+        ${sprite
+          ? `<img class="sc-sprite sc-sprite-silhouette" src="${sprite}" alt="???">`
+          : `<div class="sc-silhouette-placeholder" style="color:${r.color}40">?</div>`}
       </div>
-      <div class="sc-name" style="color:var(--text-muted);font-size:10px">???</div>
-      <div class="sc-subclass" style="color:${r.color};opacity:0.35">${meta.globalClass || sv.role}</div>
+      <div class="sc-subclass" style="color:${r.color};opacity:0.4">${meta.globalClass || sv.role}</div>
+      <div class="sc-name" style="color:#ffffff22;font-size:10px">???</div>
     </div>`
 }
 
 function statBar(label, value, max, color) {
   const pct = Math.min(100, Math.round(value / max * 100))
   return `<div class="sc-stat-row">
+    <span class="sc-stat-dot" style="background:${color}"></span>
     <span class="sc-stat-label">${label}</span>
     <div class="sc-stat-track"><div class="sc-stat-fill" style="width:${pct}%;background:${color}"></div></div>
   </div>`
@@ -213,10 +216,10 @@ window.showSurvivorModal = function(id) {
         <div class="sv-modal-desc">${sv.desc}</div>
 
         <div class="sv-modal-stats">
-          ${modalStat('♥ HP',  sv.hp,  600, '#5AE05A')}
-          ${modalStat('⚔ ATK', sv.atk, 900, '#E05A4A')}
-          ${modalStat('🛡 DEF', sv.def, 300, '#4A8FE0')}
-          ${modalStat('⚡ SPD', sv.spd, 375, '#E0C44A')}
+          ${modalStat('HP',  sv.hp,  600, '#5AE05A')}
+          ${modalStat('ATK', sv.atk, 900, '#E05A4A')}
+          ${modalStat('DEF', sv.def, 300, '#4A8FE0')}
+          ${modalStat('SPD', sv.spd, 375, '#E0C44A')}
         </div>
 
         <div class="sv-modal-meta">
@@ -287,6 +290,7 @@ function modalStat(label, value, max, color) {
   const pct = Math.min(100, Math.round(value / max * 100))
   return `
     <div class="sv-modal-stat-row">
+      <span class="sv-modal-stat-dot" style="background:${color}"></span>
       <span class="sv-modal-stat-label">${label}</span>
       <div class="sv-modal-stat-track">
         <div class="sv-modal-stat-fill" style="width:${pct}%;background:${color}"></div>

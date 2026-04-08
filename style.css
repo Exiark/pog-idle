@@ -385,30 +385,58 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .sc-rarity     { font-family: var(--pixel); font-size: 7px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .sc-class-icon { font-size: 36px; line-height: 1; margin: 6px 0 3px; }
-.sc-sprite-wrap { height: 80px; display: flex; align-items: flex-end; justify-content: center; margin: 4px 0; }
-.sc-sprite      { height: 80px; width: auto; image-rendering: pixelated; }
+.sc-sprite-wrap { height: 80px; display: flex; align-items: flex-end; justify-content: center; margin: 4px 0; overflow: visible; }
+.sc-sprite      { height: 72px; width: auto; image-rendering: pixelated; }
+.sc-rarity--e .sc-sprite-wrap { height: 88px; }
+.sc-rarity--l .sc-sprite-wrap { height: 100px; }
 .sc-subclass   { font-size: 11px; opacity: 0.85; font-weight: 600; }
 .sc-stats      { width: 100%; display: flex; flex-direction: column; gap: 4px; margin: 5px 0 3px; }
-.sc-stat-row   { display: flex; align-items: center; gap: 4px; }
-.sc-stat-label { font-size: 9px; color: var(--text-muted); width: 22px; flex-shrink: 0; font-weight: 600; }
-.sc-stat-track { flex: 1; height: 5px; background: var(--panel-bg2); border-radius: 3px; overflow: hidden; }
+.sc-stat-row   { display: flex; align-items: center; gap: 3px; }
+.sc-stat-dot   { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.sc-stat-label { font-size: 8px; color: var(--text-muted); width: 18px; flex-shrink: 0; font-weight: 700; text-transform: uppercase; }
+.sc-stat-track { flex: 1; height: 4px; background: var(--panel-bg2); border-radius: 3px; overflow: hidden; }
 .sc-stat-fill  { height: 100%; border-radius: 3px; }
 .sc-name       { font-size: 12px; font-weight: 700; text-align: center; line-height: 1.2; margin-top: 3px; max-width: 108px; }
 
+/* ── Hiérarchie visuelle D < E < L ── */
+.sc-rarity--e {
+  min-width: 100px;
+  border-width: 1.5px !important;
+}
+.sc-rarity--e .sc-sprite { height: 88px; }
+.sc-rarity--l {
+  min-width: 110px;
+  border-width: 2px !important;
+  box-shadow: 0 0 12px var(--rarity-l, #EF9F27)22;
+}
+.sc-rarity--l .sc-sprite { height: 100px; }
+.sc-rarity--l .sc-name { font-size: 13px; }
+.sc-rarity--l .sc-rarity { font-weight: 700; }
+.sc-rarity--l::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, #EF9F2714 0%, transparent 70%);
+  pointer-events: none;
+}
+
 /* ── Silhouette survivants manquants ── */
 .survivor-card.silhouette {
-  background: #161210 !important;
+  background: #0E0C0A !important;
   border-color: #2A2420 !important;
   cursor: default;
-  filter: grayscale(0.8);
 }
 .survivor-card.silhouette:hover {
-  border-color: #3A3430 !important;
+  border-color: #3A3230 !important;
   transform: none;
 }
-.sc-silhouette-icon {
-  filter: brightness(0);
-  opacity: 0.2;
+.sc-sprite-silhouette {
+  filter: brightness(0) contrast(0.3);
+  opacity: 0.45;
+}
+.sc-silhouette-placeholder {
+  font-size: 32px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  height: 80px;
 }
 
 .survivor-card-copies {
@@ -819,8 +847,16 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .sv-modal-desc   { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5; }
 
 .sv-modal-stats  { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-.sv-modal-stat-row { display: flex; align-items: center; gap: 8px; }
-.sv-modal-stat-label { font-size: 11px; width: 52px; flex-shrink: 0; color: var(--text-muted); }
+.sv-modal-stat-row { display: flex; align-items: center; gap: 6px; }
+.sv-modal-stat-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.sv-modal-stat-label {
+  font-size: 10px; width: 28px; flex-shrink: 0;
+  color: var(--text-muted); font-weight: 700;
+  letter-spacing: 0.5px; text-transform: uppercase;
+  font-family: var(--body);
+}
 .sv-modal-stat-track { flex: 1; height: 7px; background: var(--panel-bg2); border-radius: 4px; overflow: hidden; border: 1px solid var(--gray-border); }
 .sv-modal-stat-fill  { height: 100%; border-radius: 4px; transition: width 0.4s; }
 .sv-modal-stat-val   { font-family: var(--pixel); font-size: 9px; font-weight: 700; width: 30px; text-align: right; }
