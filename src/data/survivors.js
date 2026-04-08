@@ -326,9 +326,9 @@ export function classIconHtml(meta, size = 28, color) {
 const GLOBAL_CLASS_TO_SPRITE = {
   'Tank':     'tank',
   'Mêlée':   'melee',
-  'Distance': 'sniper',
-  'Médecin':  'medic',
-  'Soutien':  'engineer',
+  'Distance': 'distance',
+  'Médecin':  'medecin',
+  'Soutien':  'soutien',
   'Assassin': 'assassin',
 }
 

@@ -15,11 +15,18 @@ export function renderCollection(state) {
   state.collection.forEach(p => { grouped[p.id] = (grouped[p.id] || 0) + 1 })
   const uniqueIds = [...new Set(state.collection.map(p => p.id))]
 
+  // Séparation recrutés / manquants (non-boss uniquement)
+  const allRoster   = SURVIVORS.filter(sv => !sv.boss)
+  const missingIds  = allRoster.filter(sv => !uniqueIds.includes(sv.id)).map(sv => sv.id)
+
   if (!uniqueIds.length) {
     collDiv.innerHTML = `
       <div class="card">
         <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px">
           Aucun survivant.<br>Envoyez des signaux de détresse pour les recruter !
+        </div>
+        <div class="survivor-grid">
+          ${missingIds.map(id => silhouetteCard(id)).join('')}
         </div>
       </div>`
   } else {
@@ -32,7 +39,14 @@ export function renderCollection(state) {
         <div style="font-size:11px;color:var(--text-muted);margin-top:8px">
           Appuyez pour ajouter/retirer de l'équipe. 3 copies = fusion automatique.
         </div>
-      </div>`
+      </div>
+      ${missingIds.length ? `
+      <div class="card" style="margin-top:8px">
+        <div class="card-title" style="color:var(--text-muted)">À découvrir — ${missingIds.length} survivants</div>
+        <div class="survivor-grid">
+          ${missingIds.map(id => silhouetteCard(id)).join('')}
+        </div>
+      </div>` : ''}`
   }
 
   if (!albumDiv) return
@@ -108,6 +122,24 @@ function survivorCard(id, copies, state) {
       ${inTeam      ? `<div class="survivor-card-check">✓</div>` : ''}
       ${isBoss      ? `<div class="survivor-card-boss">BOSS</div>` : ''}
       ${(() => { const lv = (state.survivorUpgrades || {})[id] || 0; return lv > 0 ? `<div class="survivor-card-upgrade">+${lv}</div>` : '' })()}
+    </div>`
+}
+
+function silhouetteCard(id) {
+  const sv   = SURVIVORS.find(x => x.id === id)
+  if (!sv) return ''
+  const r    = RARITY[sv.rarity] || RARITY['D']
+  const meta = ROLE_META[sv.role] || {}
+  return `
+    <div class="survivor-card silhouette" title="Inconnu — Envoyez des signaux pour le découvrir">
+      <div class="sc-rarity" style="color:${r.color};opacity:0.4">${r.label}</div>
+      <div class="sc-sprite-wrap sc-silhouette-icon">
+        <div class="sc-class-icon" style="opacity:0.25;filter:brightness(0)">
+          ${classIconHtml(meta, 40, '#888') || `<span style="font-size:28px">?</span>`}
+        </div>
+      </div>
+      <div class="sc-name" style="color:var(--text-muted);font-size:10px">???</div>
+      <div class="sc-subclass" style="color:${r.color};opacity:0.35">${meta.globalClass || sv.role}</div>
     </div>`
 }
 

@@ -1,8 +1,13 @@
 // ── SHELTER SURVIVOR — Arène de combat ──
 import { SURVIVORS, RARITY, ROLE_META, getSpriteUrl, classIconHtml } from '../data/survivors.js'
 import { ZONES } from '../data/zones.js'
+import { calcWaveReward } from '../core/combat.js'
 
-// ── Rendu de l'écran de sélection d'équipe (avant combat) ──
+let combatSkipped = false
+
+// ══════════════════════════════
+// PRÉ-COMBAT
+// ══════════════════════════════
 export function renderPreCombat(state) {
   const panel = document.getElementById('precombat-panel')
   if (!panel) return
@@ -29,6 +34,7 @@ export function renderPreCombat(state) {
         Aucun survivant dans l'équipe !<br>
         <button onclick="window.setTab('survivors')" style="margin-top:8px">Recruter des survivants</button>
       </div>` : `
+      ${precombatRewardPreview(state)}
       <button class="btn-danger launch-btn" onclick="window.startCombat()">
         ☣ Partir en mission
       </button>`}
@@ -37,28 +43,54 @@ export function renderPreCombat(state) {
   `
 }
 
+function precombatRewardPreview(state) {
+  const reward   = calcWaveReward(state)
+  const isBoss   = state.currentWave === 11
+  const diffLabel = state.currentWave <= 3 ? 'Facile'
+                  : state.currentWave <= 7 ? 'Modérée'
+                  : state.currentWave <= 10 ? 'Difficile'
+                  : '☠ Boss'
+  const diffColor = state.currentWave <= 3 ? '#5AE05A'
+                  : state.currentWave <= 7 ? '#E0C44A'
+                  : state.currentWave <= 10 ? '#E08A4A'
+                  : '#E05A4A'
+  return `
+    <div class="precombat-reward-card">
+      <div class="pcr-header">
+        <span class="pcr-diff" style="color:${diffColor}">${diffLabel}</span>
+        <span class="pcr-label">Récompenses estimées</span>
+      </div>
+      <div class="pcr-rewards">
+        <div class="pcr-item"><img class="res-icon" src="assets/icons/res-capsule.png" alt="💊"> ~${reward.capsules}</div>
+        <div class="pcr-item"><img class="res-icon" src="assets/icons/res-dna.png" alt="🧬"> ~${reward.dna} ADN</div>
+        <div class="pcr-item">⭐ ~${reward.accountXP} XP</div>
+        ${isBoss ? '<div class="pcr-item pcr-boss">☠ Nouveau survivant possible !</div>' : ''}
+      </div>
+    </div>`
+}
+
 function nextObjective(state) {
   const team = state.team.filter(Boolean)
   if (team.length === 0) return ''
-
   let text = ''
-  if (state.currentWave < 11) {
+  if (state.currentWave < 11)
     text = `Prochain objectif : Vague ${state.currentWave + 1}/11`
-  } else if (!state.bossesDefeated?.includes(`z${state.activeZone}`)) {
+  else if (!state.bossesDefeated?.includes(`z${state.activeZone}`))
     text = `Prochain objectif : Vaincre le boss de Zone ${state.activeZone}`
-  } else if (state.currentZone < 7) {
+  else if (state.currentZone < 7)
     text = `Prochain objectif : Débloquer Zone ${state.currentZone + 1}`
-  } else {
+  else
     text = `Toutes les zones sont sécurisées — pensez au Prestige !`
-  }
-
   return `<div class="precombat-objective">${text}</div>`
 }
 
-// ── Rendu du combat animé ──
+// ══════════════════════════════
+// COMBAT PANEL — TOUR PAR TOUR
+// ══════════════════════════════
 export function renderCombatPanel(state, playerTeam, enemySquad, result, onDone) {
   const panel = document.getElementById('combat-panel')
   if (!panel) return
+  combatSkipped = false
 
   panel.innerHTML = `
     <div class="combat-header">
@@ -80,10 +112,11 @@ export function renderCombatPanel(state, playerTeam, enemySquad, result, onDone)
                 style="background:${r.bg};border-color:${r.color}">
                 <div class="fighter-icon">
                   ${sprite
-                    ? `<img src="${sprite}" style="height:36px;image-rendering:pixelated;object-fit:contain" onerror="this.outerHTML='${s.icon}'">`
+                    ? `<img src="${sprite}" style="height:36px;image-rendering:pixelated;object-fit:contain" onerror="this.style.display='none'">`
                     : classIconHtml(meta, 32, r.color) || s.icon}
                 </div>
                 <div class="fighter-name">${s.name}</div>
+                <div class="fighter-role-badge" style="color:${meta.classColor||r.color}">${meta.globalClass||s.role}</div>
                 <div class="fighter-hp-bar">
                   <div class="fighter-hp-fill" id="hp-${s.id}" style="width:100%;background:${r.color}"></div>
                 </div>
@@ -102,7 +135,7 @@ export function renderCombatPanel(state, playerTeam, enemySquad, result, onDone)
             <div class="fighter-card enemy" id="enemy-${e.id}">
               <div class="fighter-icon">
                 ${e.spriteUrl
-                  ? `<img src="${e.spriteUrl}" style="height:36px;image-rendering:pixelated;object-fit:contain" onerror="this.outerHTML='${e.icon}'">`
+                  ? `<img src="${e.spriteUrl}" style="height:36px;image-rendering:pixelated;object-fit:contain" onerror="this.outerHTML='<span>${e.icon}</span>'">`
                   : e.icon}
               </div>
               <div class="fighter-name">${e.name}</div>
@@ -116,106 +149,223 @@ export function renderCombatPanel(state, playerTeam, enemySquad, result, onDone)
     </div>
 
     <div class="combat-log" id="combat-log"></div>
+    <button class="combat-skip-btn" id="combat-skip-btn">⏩ Passer</button>
   `
+
+  document.getElementById('combat-skip-btn')?.addEventListener('click', () => {
+    combatSkipped = true
+    applyAllFinalStates(result, playerTeam, enemySquad)
+    document.getElementById('combat-skip-btn')?.remove()
+    setTimeout(onDone, 300)
+  })
 
   animateCombat(result, playerTeam, enemySquad, onDone)
 }
 
+// ══════════════════════════════
+// ANIMATION ACTION PAR ACTION
+// ══════════════════════════════
+function animateCombat(result, playerTeam, enemySquad, onDone) {
+  // Aplatir tous les tours en une séquence d'actions individuelles
+  const seq = []
+  result.turns.forEach(t => {
+    t.actions.forEach(a => { if (a) seq.push({ ...a, turnNum: t.turn, totalTurns: result.totalTurns }) })
+  })
+
+  const log    = document.getElementById('combat-log')
+  const turnEl = document.getElementById('combat-turn')
+  let idx = 0
+
+  function getDelay(a) {
+    if (a.isDeathCrit)              return 1300
+    if (a.isCrit || a.killed)       return 1000
+    if (a.side === 'heal')          return 750
+    if (a.side === 'turret' || a.side === 'hot') return 350
+    return 750
+  }
+
+  function playNext() {
+    if (combatSkipped || idx >= seq.length) {
+      if (!combatSkipped) setTimeout(onDone, 500)
+      return
+    }
+    const a = seq[idx++]
+    playAction(a, playerTeam, enemySquad, log, turnEl)
+    setTimeout(playNext, getDelay(a))
+  }
+
+  setTimeout(playNext, 400)
+}
+
+// ── Joue une action individuelle ──
+function playAction(a, playerTeam, enemySquad, log, turnEl) {
+  // Mise à jour de l'indicateur de tour
+  if (turnEl) {
+    const who = a.side === 'player' ? `⚔ ${a.actor}`
+               : a.side === 'heal'   ? `💊 ${a.actor}`
+               : a.side === 'turret' ? `🔧 Tourelle`
+               : `🧟 ${a.actor}`
+    turnEl.textContent = `${who} — Tour ${a.turnNum}/${a.totalTurns}`
+  }
+
+  if (a.side === 'player') {
+    // Highlight de l'attaquant
+    const actorSv = playerTeam.find(s => s.name === a.actor)
+    if (actorSv) setActing(document.getElementById('fighter-' + actorSv.id), 'player')
+
+    // Dégâts sur l'ennemi ciblé
+    const enemy = enemySquad.find(e => e.name === a.target)
+    if (enemy) {
+      const card = document.getElementById('enemy-' + enemy.id)
+      updateHP('ehp-' + enemy.id, 'ehpv-' + enemy.id, enemy.hp, enemy.maxHp)
+      if (card && a.dmg) {
+        flashHit(card)
+        spawnDmgFloat(card, a.dmg, a.isCrit || a.isDeathCrit)
+        if (window.playHitSound) window.playHitSound()
+      }
+      if (!enemy.alive && card) card.classList.add('dead')
+    }
+
+  } else if (a.side === 'heal') {
+    const actorSv = playerTeam.find(s => s.name === a.actor)
+    if (actorSv) setActing(document.getElementById('fighter-' + actorSv.id), 'heal')
+
+    const target = playerTeam.find(s => s.name === a.target)
+    if (target) {
+      const card = document.getElementById('fighter-' + target.id)
+      updateHP('hp-' + target.id, 'hpv-' + target.id, target.hp, target.maxHp)
+      if (card) {
+        card.classList.add('healing')
+        setTimeout(() => card.classList.remove('healing'), 600)
+        spawnDmgFloat(card, a.amount, false, false, true)
+      }
+    }
+
+  } else if (a.side === 'enemy') {
+    const actorEnemy = enemySquad.find(e => e.name === a.actor)
+    if (actorEnemy) setActing(document.getElementById('enemy-' + actorEnemy.id), 'enemy')
+
+    const ally = playerTeam.find(s => s.name === a.target)
+    if (ally) {
+      const card = document.getElementById('fighter-' + ally.id)
+      updateHP('hp-' + ally.id, 'hpv-' + ally.id, ally.hp, ally.maxHp)
+      if (card && a.dmg) {
+        flashHit(card, true)
+        spawnDmgFloat(card, a.dmg, false, true)
+      }
+      if (ally.hp <= 0 && card) card.classList.add('dead')
+    }
+
+  } else if (a.side === 'turret') {
+    const enemy = enemySquad.find(e => e.name === a.target)
+    if (enemy) {
+      const card = document.getElementById('enemy-' + enemy.id)
+      updateHP('ehp-' + enemy.id, 'ehpv-' + enemy.id, enemy.hp, enemy.maxHp)
+      if (card && a.dmg) {
+        flashHit(card)
+        spawnDmgFloat(card, a.dmg, false, false, false, true)
+      }
+      if (!enemy.alive && card) card.classList.add('dead')
+    }
+  }
+
+  // Log de combat
+  if (log) {
+    const div = document.createElement('div')
+    if (a.side === 'heal') {
+      div.className   = 'combat-log-entry heal'
+      div.textContent = `💊 ${a.actor} soigne ${a.target} +${a.amount} PV`
+    } else if (a.dodged) {
+      div.className   = 'combat-log-entry'
+      div.textContent = `${a.target} esquive l'attaque de ${a.actor} !`
+    } else if (a.isDeathCrit) {
+      div.className   = 'combat-log-entry crit atk'
+      div.textContent = `☠ EXÉCUTION — ${a.actor} → ${a.target} : ${a.dmg} dégâts !`
+    } else if (a.isCrit) {
+      div.className   = 'combat-log-entry crit ' + (a.side === 'player' ? 'atk' : 'dmg')
+      div.textContent = `★ CRITIQUE — ${a.actor} → ${a.target} : ${a.dmg} dégâts !`
+    } else if (a.side === 'turret') {
+      div.className   = 'combat-log-entry atk'
+      div.textContent = `🔧 Tourelle → ${a.target} : ${a.dmg} dégâts`
+    } else if (a.side === 'hot') {
+      div.className   = 'combat-log-entry heal'
+      div.textContent = `🧬 Régénération +${a.amount} PV à l'équipe`
+    } else {
+      div.className   = 'combat-log-entry ' + (a.side === 'player' ? 'atk' : 'dmg')
+      div.textContent = `${a.actor} → ${a.target} : ${a.dmg} dégâts${a.killed ? ' ☠' : ''}`
+    }
+    log.insertBefore(div, log.firstChild)
+    while (log.children.length > 8) log.removeChild(log.lastChild)
+  }
+}
+
+// ── Applique les états finaux HP en cas de skip ──
+function applyAllFinalStates(result, playerTeam, enemySquad) {
+  // Recalcule les HP finaux depuis les actions restantes
+  result.turns.forEach(t => {
+    t.actions.forEach(a => {
+      if (!a) return
+      if ((a.side === 'player' || a.side === 'turret') && a.target) {
+        const enemy = enemySquad.find(e => e.name === a.target)
+        if (enemy) {
+          updateHP('ehp-' + enemy.id, 'ehpv-' + enemy.id, enemy.hp, enemy.maxHp)
+          if (!enemy.alive) document.getElementById('enemy-' + enemy.id)?.classList.add('dead')
+        }
+      }
+      if (a.side === 'enemy' && a.target) {
+        const ally = playerTeam.find(s => s.name === a.target)
+        if (ally) {
+          updateHP('hp-' + ally.id, 'hpv-' + ally.id, ally.hp, ally.maxHp)
+          if (ally.hp <= 0) document.getElementById('fighter-' + ally.id)?.classList.add('dead')
+        }
+      }
+      if (a.side === 'heal' && a.target) {
+        const target = playerTeam.find(s => s.name === a.target)
+        if (target) updateHP('hp-' + target.id, 'hpv-' + target.id, target.hp, target.maxHp)
+      }
+    })
+  })
+}
+
+// ── Helpers visuels ──
+function updateHP(barId, valId, hp, maxHp) {
+  const bar = document.getElementById(barId)
+  const val = document.getElementById(valId)
+  const pct = Math.round(Math.max(0, hp) / maxHp * 100)
+  if (bar) bar.style.width = pct + '%'
+  if (val) val.textContent = Math.max(0, hp)
+}
+
+function setActing(card, type = 'player') {
+  if (!card) return
+  card.classList.remove('acting', 'acting-enemy', 'acting-heal')
+  card.classList.add(type === 'enemy' ? 'acting-enemy' : type === 'heal' ? 'acting-heal' : 'acting')
+  setTimeout(() => card.classList.remove('acting', 'acting-enemy', 'acting-heal'), 650)
+}
+
 function flashHit(card, isAlly = false) {
   card.classList.remove('hit-flash', 'hit-flash-ally')
-  void card.offsetWidth  // force reflow to restart animation
+  void card.offsetWidth
   card.classList.add(isAlly ? 'hit-flash-ally' : 'hit-flash')
   setTimeout(() => card.classList.remove('hit-flash', 'hit-flash-ally'), 300)
 }
 
-function spawnDmgFloat(card, dmg, isCrit = false, isAlly = false) {
+function spawnDmgFloat(card, dmg, isCrit = false, isAlly = false, isHeal = false, isTurret = false) {
   const el = document.createElement('div')
-  el.className = 'dmg-float' + (isCrit ? ' crit' : '') + (isAlly ? ' ally' : '')
-  el.textContent = (isAlly ? '-' : '-') + dmg
+  el.className = 'dmg-float'
+  if (isCrit)   el.classList.add('crit')
+  if (isAlly)   el.classList.add('ally')
+  if (isHeal)   el.classList.add('heal-float')
+  if (isTurret) el.classList.add('turret-float')
+  el.textContent = (isHeal ? '+' : '-') + dmg
   card.style.position = 'relative'
   card.appendChild(el)
-  setTimeout(() => el.remove(), 700)
+  setTimeout(() => el.remove(), 800)
 }
 
-function animateCombat(result, playerTeam, enemySquad, onDone) {
-  const log    = document.getElementById('combat-log')
-  const turnEl = document.getElementById('combat-turn')
-  let turnIdx  = 0
-
-  const interval = setInterval(() => {
-    if (turnIdx >= result.turns.length) {
-      clearInterval(interval)
-      setTimeout(onDone, 600)
-      return
-    }
-
-    const turn = result.turns[turnIdx]
-    if (turnEl) turnEl.textContent = `Tour ${turn.turn} / ${result.totalTurns}`
-
-    // Met à jour les barres HP depuis les actions
-    turn.actions.forEach(a => {
-      if (!a) return
-      if (a.side === 'player') {
-        const enemy = enemySquad.find(e => e.name === a.target)
-        if (enemy) {
-          const pct  = Math.round(Math.max(0, enemy.hp) / enemy.maxHp * 100)
-          const bar  = document.getElementById('ehp-' + enemy.id)
-          const val  = document.getElementById('ehpv-' + enemy.id)
-          const card = document.getElementById('enemy-' + enemy.id)
-          if (bar) bar.style.width = pct + '%'
-          if (val) val.textContent = Math.max(0, enemy.hp)
-          if (card && a.dmg) {
-            flashHit(card)
-            spawnDmgFloat(card, a.dmg, a.isCrit)
-            if (window.playHitSound) window.playHitSound()
-          }
-          if (!enemy.alive && card) card.classList.add('dead')
-        }
-      } else if (a.side === 'enemy') {
-        const ally = playerTeam.find(s => s.name === a.target)
-        if (ally) {
-          const pct  = Math.round(Math.max(0, ally.hp) / ally.maxHp * 100)
-          const bar  = document.getElementById('hp-' + ally.id)
-          const val  = document.getElementById('hpv-' + ally.id)
-          const card = document.getElementById('fighter-' + ally.id)
-          if (bar) bar.style.width = pct + '%'
-          if (val) val.textContent = Math.max(0, ally.hp)
-          if (card && a.dmg) {
-            flashHit(card, true)
-            spawnDmgFloat(card, a.dmg, false, true)
-          }
-          if (ally.hp <= 0 && card) card.classList.add('dead')
-        }
-      }
-    })
-
-    // Log des actions importantes
-    if (log && turn.actions.length > 0) {
-      turn.actions.slice(0, 2).forEach(a => {
-        if (!a || a.side === 'hot' || a.side === 'turret') return
-        const div = document.createElement('div')
-        div.className = 'combat-log-entry ' + (a.side === 'player' ? 'atk' : 'dmg')
-        if (a.side === 'heal') {
-          div.className = 'combat-log-entry heal'
-          div.textContent = `💊 ${a.actor} soigne ${a.target} +${a.amount}`
-        } else if (a.dodged) {
-          div.textContent = `${a.target} esquive l'attaque de ${a.actor} !`
-        } else if (a.isCrit) {
-          div.className += ' crit'
-          div.textContent = `★ ${a.actor} CRIT ${a.target} — ${a.dmg} dégâts !`
-        } else {
-          div.textContent = `${a.actor} → ${a.target} : ${a.dmg} dégâts${a.killed ? ' ☠' : ''}`
-        }
-        log.insertBefore(div, log.firstChild)
-      })
-      while (log.children.length > 12) log.removeChild(log.lastChild)
-    }
-
-    turnIdx++
-  }, 400)
-}
-
-// ── Rendu du résultat ──
+// ══════════════════════════════
+// RÉSULTAT
+// ══════════════════════════════
 export function renderResult(state, result, reward) {
   const panel = document.getElementById('result-panel')
   if (!panel) return
@@ -225,8 +375,16 @@ export function renderResult(state, result, reward) {
     ? result.fallen.map(n => `<span class="result-fallen-name">${n}</span>`).join('')
     : ''
 
+  // Étoiles obtenues
+  const stars     = result.stars || 0
+  const starsHtml = Array.from({ length: 3 }, (_, i) =>
+    `<div class="result-star ${i < stars ? 'filled' : ''}">★</div>`
+  ).join('')
+
   panel.innerHTML = `
-    <div class="result-icon">${result.victory ? '🏆' : '☠'}</div>
+    <div class="result-stars ${result.victory ? 'anim' : ''}">
+      ${result.victory ? starsHtml : '<div class="result-skull">☠</div>'}
+    </div>
     <div class="result-title ${result.victory ? 'win' : 'lose'}">
       ${result.victory ? 'Mission réussie !' : 'Équipe éliminée...'}
     </div>
@@ -254,12 +412,9 @@ export function renderResult(state, result, reward) {
       </div>
     </div>
 
-    ${fallenStr ? `
-      <div class="result-fallen">
-        ☠ Tombés au combat : ${fallenStr}
-      </div>` : ''}
+    ${fallenStr ? `<div class="result-fallen">☠ Tombés : ${fallenStr}</div>` : ''}
 
-    ${result.victory && reward ? `
+    ${result.victory && reward?.capsules ? `
       <div class="result-reward">
         <span>💊 +${reward.capsules}</span>
         <span>🧬 +${reward.dna}</span>
@@ -267,10 +422,7 @@ export function renderResult(state, result, reward) {
         ${reward.radium > 0 ? `<span>☢ +${reward.radium}</span>` : ''}
       </div>` : ''}
 
-    ${!result.victory ? `
-      <div class="result-tip">
-        Conseil : ${getTip(result)}
-      </div>` : ''}
+    ${!result.victory ? `<div class="result-tip">Conseil : ${getTip(result)}</div>` : ''}
 
     <button class="btn-danger result-btn" id="result-btn">
       ${result.victory
@@ -287,6 +439,6 @@ function getTip(result) {
   return 'Améliorez vos survivants ou ouvrez des signaux pour en recruter de meilleurs.'
 }
 
-window.renderPreCombat  = renderPreCombat
+window.renderPreCombat   = renderPreCombat
 window.renderCombatPanel = renderCombatPanel
-window.renderResult     = renderResult
+window.renderResult      = renderResult

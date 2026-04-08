@@ -213,6 +213,28 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   gap: 3px; color: var(--text-muted); font-size: 24px;
 }
 .precombat-slot.filled { border-style: solid; }
+/* ── Aperçu récompenses pré-combat ── */
+.precombat-reward-card {
+  background: #12100E; border: 1px solid var(--gray-border);
+  border-radius: var(--radius); padding: 10px 12px; margin-bottom: 8px;
+}
+.pcr-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px;
+}
+.pcr-diff   { font-size: 12px; font-weight: 700; }
+.pcr-label  { font-size: 10px; color: var(--text-muted); }
+.pcr-rewards {
+  display: flex; flex-wrap: wrap; gap: 6px 12px;
+}
+.pcr-item {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--text);
+}
+.pcr-boss {
+  width: 100%; color: #EF9F27; font-weight: 600;
+}
+
 .precombat-warning {
   background: #2A1005; border: 2px solid var(--red);
   border-radius: var(--radius); padding: 12px; text-align: center;
@@ -372,6 +394,22 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .sc-stat-track { flex: 1; height: 5px; background: var(--panel-bg2); border-radius: 3px; overflow: hidden; }
 .sc-stat-fill  { height: 100%; border-radius: 3px; }
 .sc-name       { font-size: 12px; font-weight: 700; text-align: center; line-height: 1.2; margin-top: 3px; max-width: 108px; }
+
+/* ── Silhouette survivants manquants ── */
+.survivor-card.silhouette {
+  background: #161210 !important;
+  border-color: #2A2420 !important;
+  cursor: default;
+  filter: grayscale(0.8);
+}
+.survivor-card.silhouette:hover {
+  border-color: #3A3430 !important;
+  transform: none;
+}
+.sc-silhouette-icon {
+  filter: brightness(0);
+  opacity: 0.2;
+}
 
 .survivor-card-copies {
   position: absolute; top: -4px; right: -4px;
@@ -857,6 +895,66 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .mastery-btn.disabled { opacity: 0.45; cursor: default; }
 
 /* ══════════════════════════════
+   NARRATION
+   ══════════════════════════════ */
+#narration-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(8, 5, 2, 0.82);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end;
+  padding: 0 0 80px;
+  animation: narr-in 0.3s ease;
+  cursor: pointer;
+}
+@keyframes narr-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+#narration-overlay.narr-fadeout {
+  animation: narr-out 0.35s ease forwards;
+}
+@keyframes narr-out {
+  to { opacity: 0; }
+}
+.narr-box {
+  display: flex; align-items: flex-end; gap: 12px;
+  max-width: 480px; width: 90%;
+  background: #12100E; border: 1px solid var(--accent);
+  border-radius: 10px; padding: 14px 16px;
+}
+.narr-portrait {
+  width: 72px; height: 72px; flex-shrink: 0;
+  border-radius: 8px; overflow: hidden;
+  border: 1px solid var(--gray-border);
+  background: #1A1510;
+}
+.narr-portrait img {
+  width: 100%; height: 100%; object-fit: contain;
+  image-rendering: pixelated;
+}
+.narr-portrait-fallback {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+}
+.narr-content { flex: 1; }
+.narr-speaker {
+  font-size: 11px; font-weight: 700; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 5px;
+}
+.narr-line {
+  font-size: 14px; line-height: 1.5; color: var(--text);
+  min-height: 40px;
+}
+.narr-hint {
+  margin-top: 10px; font-size: 10px; color: var(--text-muted);
+  animation: blink 1.2s ease infinite;
+}
+@keyframes blink {
+  0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+}
+
+/*  ══════════════════════════════
    ONBOARDING
    ══════════════════════════════ */
 .onboarding-banner {
@@ -922,8 +1020,72 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   text-shadow: 1px 1px 0 #1A0C05;
   white-space: nowrap;
 }
-.dmg-float.crit { font-size: 12px; color: var(--accent); }
-.dmg-float.ally { color: #FF9090; }
+.dmg-float.crit         { font-size: 12px; color: var(--accent); }
+.dmg-float.ally         { color: #FF9090; }
+.dmg-float.heal-float   { color: #5AE05A; }
+.dmg-float.turret-float { font-size: 9px; color: #E0C44A; }
+
+/* ── Highlight de l'attaquant actif ── */
+@keyframes card-act {
+  0%   { transform: translateY(0)   scale(1);    }
+  35%  { transform: translateY(-5px) scale(1.06); }
+  100% { transform: translateY(0)   scale(1);    }
+}
+@keyframes heal-pulse {
+  0%,100% { box-shadow: none; }
+  50%     { box-shadow: 0 0 18px #5AE05A88; }
+}
+.fighter-card.acting {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 14px var(--accent)66;
+  animation: card-act 0.6s ease;
+  z-index: 2; position: relative;
+}
+.fighter-card.acting-enemy {
+  border-color: #D85A30 !important;
+  box-shadow: 0 0 14px #D85A3066;
+  animation: card-act 0.6s ease;
+  z-index: 2; position: relative;
+}
+.fighter-card.acting-heal {
+  border-color: #5AE05A !important;
+  box-shadow: 0 0 14px #5AE05A66;
+  z-index: 2; position: relative;
+}
+.fighter-card.healing { animation: heal-pulse 0.6s ease; }
+
+/* ── Badge rôle sur les cartes de combat ── */
+.fighter-role-badge {
+  font-size: 9px; font-weight: 600; letter-spacing: 0.5px;
+  text-transform: uppercase; opacity: 0.8;
+  margin-bottom: 3px;
+}
+
+/* ── Bouton skip ── */
+.combat-skip-btn {
+  display: block; margin: 6px auto 0;
+  background: transparent; border: 1px solid var(--gray-border);
+  color: var(--text-muted); font-size: 11px; padding: 4px 14px;
+  border-radius: 6px; cursor: pointer; font-family: var(--body);
+}
+.combat-skip-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Étoiles résultat ── */
+.result-stars {
+  display: flex; justify-content: center; gap: 6px;
+  margin: 0 0 10px; font-size: 28px;
+}
+.result-star { color: var(--gray-border); transition: color 0.3s, transform 0.3s; }
+.result-star.filled { color: #EF9F27; text-shadow: 0 0 12px #EF9F2788; }
+.result-stars.anim .result-star.filled:nth-child(1) { animation: star-pop 0.4s 0.1s ease both; }
+.result-stars.anim .result-star.filled:nth-child(2) { animation: star-pop 0.4s 0.3s ease both; }
+.result-stars.anim .result-star.filled:nth-child(3) { animation: star-pop 0.4s 0.5s ease both; }
+@keyframes star-pop {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.result-skull { font-size: 36px; text-align: center; }
 
 .fighter-card.dead {
   opacity: 0.3; filter: grayscale(1) brightness(0.5);

@@ -7,6 +7,7 @@ import {
   gainAccountXP, doPrestige, PHASE,
 } from './core/combat.js'
 import { ZONES } from './data/zones.js'
+import { getNarration, markNarrationShown } from './data/narration.js'
 
 import './ui/hub.js'
 import './ui/homeScreen.js'
@@ -128,20 +129,31 @@ function showPanel(id) {
   })
 }
 
-// ── Démarre un combat ──
+// ── Démarre un combat (avec narration si applicable) ──
 window.startCombat = function() {
   const team = S.team.filter(Boolean)
   if (team.length === 0) return
 
-  enemySquad = generateEnemySquad(S)
+  // Narration avant le combat (boss ou début de zone)
+  const isBoss = isBossWave(S)
+  const trigger = isBoss
+    ? `boss_z${S.activeZone}`
+    : (S.currentWave === 1 ? `zone_${S.activeZone}_start` : null)
+
+  const narr = trigger ? getNarration(trigger, S) : null
+  if (narr) {
+    markNarrationShown(trigger, S)
+    showNarration(narr, () => launchCombat(team))
+  } else {
+    launchCombat(team)
+  }
+}
+
+function launchCombat(team) {
+  enemySquad   = generateEnemySquad(S)
   currentPhase = PHASE.FIGHTING
 
-  // Instancie les stats joueur
-  const playerTeam = team.map(t => {
-    const stats = survivorCombatStats(t.id)
-    return { ...stats }
-  })
-
+  const playerTeam = team.map(t => ({ ...survivorCombatStats(t.id) }))
   showPanel('combat-panel')
 
   const result = simulateFight(team.map(t => t.id), enemySquad, S)
@@ -151,6 +163,51 @@ window.startCombat = function() {
   if (window.renderCombatPanel) {
     window.renderCombatPanel(S, playerTeam, enemySquad, result, onCombatDone)
   }
+}
+
+// ── Affiche une narration avec portrait pixel art ──
+function showNarration(narr, onDone) {
+  const overlay = document.createElement('div')
+  overlay.id = 'narration-overlay'
+  const line = narr.lines[Math.floor(Math.random() * narr.lines.length)]
+  const speaker = narr.speaker || 'Survivant'
+
+  overlay.innerHTML = `
+    <div class="narr-box">
+      <div class="narr-portrait">
+        <img src="assets/portraits/${narr.role ? narr.role.toLowerCase().replace(/[éèê]/g, 'e') : 'default'}.png"
+          alt="${speaker}"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="narr-portrait-fallback" style="display:none">
+          <span style="font-size:32px">☣</span>
+        </div>
+      </div>
+      <div class="narr-content">
+        <div class="narr-speaker">${speaker}</div>
+        <div class="narr-line" id="narr-line"></div>
+      </div>
+    </div>
+    <div class="narr-hint">Appuyez pour continuer</div>
+  `
+
+  document.body.appendChild(overlay)
+
+  // Effet machine à écrire
+  const lineEl = overlay.querySelector('#narr-line')
+  let i = 0
+  const typeInterval = setInterval(() => {
+    if (i >= line.length) { clearInterval(typeInterval); return }
+    lineEl.textContent += line[i++]
+  }, 28)
+
+  const close = () => {
+    clearInterval(typeInterval)
+    overlay.classList.add('narr-fadeout')
+    setTimeout(() => { overlay.remove(); onDone() }, 350)
+  }
+
+  overlay.addEventListener('click', close)
+  setTimeout(close, 5000) // auto-skip après 5s
 }
 
 function onCombatDone() {
