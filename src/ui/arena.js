@@ -11,6 +11,11 @@ export function renderPreCombat(state) {
   const team = state.team.filter(Boolean)
 
   panel.innerHTML = `
+    <img class="zone-combat-bg"
+      src="assets/backgrounds/zone${state.activeZone}.png"
+      alt="${zone.name}"
+      onerror="this.style.display='none'">
+
     <div class="precombat-zone">
       <div class="precombat-zone-icon">☣</div>
       <div>

@@ -9,6 +9,7 @@ import {
 import { ZONES } from './data/zones.js'
 
 import './ui/hub.js'
+import './ui/homeScreen.js'
 import './ui/arena.js'
 import './ui/collection.js'
 import './ui/packOpening.js'
@@ -34,7 +35,7 @@ function init() {
   checkOnboarding()
   checkOfflineReward()
   updateUI()
-  setTab('combat')
+  setTab('home')
   renderCombatView()
 
   setInterval(() => saveState(S), 15000)
@@ -452,6 +453,7 @@ function updateUI() {
   if (el('idle-display')) el('idle-display').textContent = `Idle: +${Math.round(idleRate * 100) / 100} caps/s`
 
   window._state = S
+  if (window.renderHome)       window.renderHome(S)
   if (window.renderTeam)       window.renderTeam(S)
   if (window.renderCollection) window.renderCollection(S)
   if (window.renderTalents)    window.renderTalents(S)
