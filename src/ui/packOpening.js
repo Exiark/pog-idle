@@ -1,5 +1,5 @@
 // ── SHELTER SURVIVOR — Tour Radio : Signal de détresse (gacha rework) ──
-import { SURVIVORS, RARITY, RARITY_ORDER, ROLE_META, getSpriteUrl } from '../data/survivors.js'
+import { SURVIVORS, RARITY, RARITY_ORDER, ROLE_META, getSpriteUrl, classIconHtml } from '../data/survivors.js'
 import { SIGNAL_CONFIG } from '../core/economy.js'
 
 let animRunning  = false
@@ -204,7 +204,7 @@ function advanceReveal() {
       <div class="pm-card-rarity" style="color:${r.color}">${r.label}</div>
       ${sprite
         ? `<img class="pm-card-sprite" src="${sprite}" alt="${sv_data.name}">`
-        : `<div class="pm-card-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || sv_data.icon || '?'}</div>`}
+        : `<div class="pm-card-icon">${classIconHtml(meta, 64, meta.classColor || r.color)}</div>`}
       <div class="pm-card-name" style="color:${r.text}">${sv_data.name}</div>
       <div class="pm-card-role" style="color:${r.color}">${meta.globalClass || sv_data.role}</div>
       <div class="pm-card-stats">
@@ -317,7 +317,7 @@ function showSummary() {
         <div class="pm-summary-card" style="background:${r.bg};border-color:${r.color}">
           ${sprite
             ? `<img class="pm-summary-sprite" src="${sprite}" alt="${sv_data.name}">`
-            : `<div class="pm-summary-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || sv_data.icon}</div>`}
+            : `<div class="pm-summary-icon">${classIconHtml(meta, 40, meta.classColor || r.color)}</div>`}
           <div class="pm-summary-name" style="color:${r.text}">${sv_data.name}</div>
           <div class="pm-summary-rarity" style="color:${r.color}">${r.label}</div>
         </div>`

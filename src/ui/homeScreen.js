@@ -1,5 +1,5 @@
 // ── SHELTER SURVIVOR — Écran d'accueil (Hub) ──
-import { SURVIVORS, RARITY, ROLE_META, getSpriteUrl } from '../data/survivors.js'
+import { SURVIVORS, RARITY, ROLE_META, getSpriteUrl, classIconHtml } from '../data/survivors.js'
 import { ZONES } from '../data/zones.js'
 
 const IDLE_RATE = { D: 0.05, E: 0.15, L: 0.4 }
@@ -140,7 +140,7 @@ function homeTeamSlot(slot, state) {
       onclick="window.showSurvivorModal('${sv.id}')">
       ${sprite
         ? `<img class="home-team-sprite" src="${sprite}" alt="${sv.name}">`
-        : `<div class="home-team-class-icon" style="color:${meta.classColor||r.color}">${meta.classIcon||''}</div>`}
+        : `<div class="home-team-class-icon">${classIconHtml(meta, 48, meta.classColor||r.color)}</div>`}
       <div class="home-team-name" style="color:${r.text}">${sv.name}</div>
       ${lv > 0 ? `<div class="home-team-lv">+${lv}</div>` : ''}
     </div>`

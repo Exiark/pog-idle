@@ -1,5 +1,5 @@
 // ── SHELTER SURVIVOR — Hub (camp de base) ──
-import { SURVIVORS, RARITY, ROLE_META, getSpriteUrl } from '../data/survivors.js'
+import { SURVIVORS, RARITY, ROLE_META, getSpriteUrl, classIconHtml } from '../data/survivors.js'
 import { ZONES } from '../data/zones.js'
 
 export function renderHub(state) {
@@ -49,7 +49,7 @@ export function renderTeam(state) {
         title="${sv.name} — ${sv.role}\n${sv.desc}">
         ${sprite
           ? `<div class="ts-sprite-wrap"><img class="ts-sprite" src="${sprite}" alt="${sv.name}"></div>`
-          : `<div class="ts-class-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>`}
+          : `<div class="ts-class-icon">${classIconHtml(meta, 36, meta.classColor || r.color)}</div>`}
         <div class="ts-subclass" style="color:${r.color}">${meta.globalClass || sv.role}</div>
         <div class="ts-stats">
           <div class="ts-stat"><span style="color:#E05A4A">⚔</span>${sv.atk}</div>

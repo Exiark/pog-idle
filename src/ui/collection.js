@@ -1,5 +1,5 @@
 // ── SHELTER SURVIVOR — Collection de survivants ──
-import { SURVIVORS, RARITY, RARITY_ORDER, ROLE_META, getSpriteUrl } from '../data/survivors.js'
+import { SURVIVORS, RARITY, RARITY_ORDER, ROLE_META, getSpriteUrl, classIconHtml } from '../data/survivors.js'
 import { getCollectionStats, checkFusion } from '../core/gacha.js'
 import { UPGRADE_COST, UPGRADE_MAX, upgradeSurvivor } from '../core/economy.js'
 import { saveState } from '../core/state.js'
@@ -88,7 +88,7 @@ function survivorCard(id, copies, state) {
       <div class="sc-sprite-wrap">
         ${sprite
           ? `<img class="sc-sprite" src="${sprite}" alt="${sv.name}">`
-          : `<div class="sc-class-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>`}
+          : `<div class="sc-class-icon">${classIconHtml(meta, 40, meta.classColor || r.color)}</div>`}
       </div>
       <div class="sc-subclass" style="color:${r.color}">${meta.globalClass || sv.role}</div>
 
@@ -169,7 +169,7 @@ window.showSurvivorModal = function(id) {
       <div class="sv-modal-header" style="background:${r.bg}">
         ${sprite
           ? `<div class="sv-modal-sprite-wrap"><img class="sv-modal-sprite" src="${sprite}" alt="${sv.name}"></div>`
-          : `<div class="sv-modal-class-icon" style="color:${meta.classColor || r.color}">${meta.classIcon || ''}</div>`}
+          : `<div class="sv-modal-class-icon">${classIconHtml(meta, 56, meta.classColor || r.color)}</div>`}
         <div>
           <div class="sv-modal-name" style="color:${r.text}">${sv.name}</div>
           <div class="sv-modal-role" style="color:${r.color}">${meta.globalClass || ''} · ${sv.role}</div>

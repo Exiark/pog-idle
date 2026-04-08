@@ -283,19 +283,43 @@ export const RARITY = {
 export const RARITY_ORDER = ['D', 'E', 'L']
 
 // ── Méta des rôles (icône de classe + catégorie globale) ──
+// classIconUrl pointe vers assets/icons/class-{slug}.png (pixel art custom)
+// classIcon est le fallback emoji si l'image est absente
+const CLASS_ICON = {
+  'Tank':     { url: 'assets/icons/class-tank.png',     emoji: '🛡', color: '#4A8FE0' },
+  'Mêlée':   { url: 'assets/icons/class-melee.png',    emoji: '👊', color: '#E05A4A' },
+  'Distance': { url: 'assets/icons/class-distance.png', emoji: '🏹', color: '#E0C44A' },
+  'Médecin':  { url: 'assets/icons/class-medic.png',    emoji: '✚',  color: '#5AE05A' },
+  'Soutien':  { url: 'assets/icons/class-support.png',  emoji: '🔧', color: '#C8A0FF' },
+  'Assassin': { url: 'assets/icons/class-assassin.png', emoji: '🗡', color: '#A0C8FF' },
+}
+
 export const ROLE_META = {
-  'Bouclier':   { globalClass: 'Tank',      classIcon: '🛡', classColor: '#4A8FE0' },
-  'Blindé':     { globalClass: 'Tank',      classIcon: '🛡', classColor: '#4A8FE0' },
-  'Berserk':    { globalClass: 'Mêlée',     classIcon: '👊', classColor: '#E05A4A' },
-  'Lame':       { globalClass: 'Mêlée',     classIcon: '👊', classColor: '#E05A4A' },
-  'Tireur':     { globalClass: 'Distance',  classIcon: '🏹', classColor: '#E0C44A' },
-  'Artificier': { globalClass: 'Distance',  classIcon: '🏹', classColor: '#E0C44A' },
-  'Médic':      { globalClass: 'Médecin',   classIcon: '✚',  classColor: '#5AE05A' },
-  'Biologiste': { globalClass: 'Médecin',   classIcon: '✚',  classColor: '#5AE05A' },
-  'Ingénieur':  { globalClass: 'Soutien',   classIcon: '🔧', classColor: '#C8A0FF' },
-  'Tacticien':  { globalClass: 'Soutien',   classIcon: '🔧', classColor: '#C8A0FF' },
-  'Ombre':      { globalClass: 'Assassin',  classIcon: '🗡', classColor: '#A0C8FF' },
-  'Pistard':    { globalClass: 'Assassin',  classIcon: '🗡', classColor: '#A0C8FF' },
+  'Bouclier':   { globalClass: 'Tank',      classIcon: '🛡', classColor: '#4A8FE0', classIconUrl: CLASS_ICON['Tank'].url },
+  'Blindé':     { globalClass: 'Tank',      classIcon: '🛡', classColor: '#4A8FE0', classIconUrl: CLASS_ICON['Tank'].url },
+  'Berserk':    { globalClass: 'Mêlée',     classIcon: '👊', classColor: '#E05A4A', classIconUrl: CLASS_ICON['Mêlée'].url },
+  'Lame':       { globalClass: 'Mêlée',     classIcon: '👊', classColor: '#E05A4A', classIconUrl: CLASS_ICON['Mêlée'].url },
+  'Tireur':     { globalClass: 'Distance',  classIcon: '🏹', classColor: '#E0C44A', classIconUrl: CLASS_ICON['Distance'].url },
+  'Artificier': { globalClass: 'Distance',  classIcon: '🏹', classColor: '#E0C44A', classIconUrl: CLASS_ICON['Distance'].url },
+  'Médic':      { globalClass: 'Médecin',   classIcon: '✚',  classColor: '#5AE05A', classIconUrl: CLASS_ICON['Médecin'].url },
+  'Biologiste': { globalClass: 'Médecin',   classIcon: '✚',  classColor: '#5AE05A', classIconUrl: CLASS_ICON['Médecin'].url },
+  'Ingénieur':  { globalClass: 'Soutien',   classIcon: '🔧', classColor: '#C8A0FF', classIconUrl: CLASS_ICON['Soutien'].url },
+  'Tacticien':  { globalClass: 'Soutien',   classIcon: '🔧', classColor: '#C8A0FF', classIconUrl: CLASS_ICON['Soutien'].url },
+  'Ombre':      { globalClass: 'Assassin',  classIcon: '🗡', classColor: '#A0C8FF', classIconUrl: CLASS_ICON['Assassin'].url },
+  'Pistard':    { globalClass: 'Assassin',  classIcon: '🗡', classColor: '#A0C8FF', classIconUrl: CLASS_ICON['Assassin'].url },
+}
+
+// Helper : renvoie le HTML d'une icône de classe (img custom ou emoji fallback)
+export function classIconHtml(meta, size = 28, color) {
+  if (!meta) return ''
+  const c = color || meta.classColor || '#888'
+  if (meta.classIconUrl) {
+    return `<img class="class-icon-img" src="${meta.classIconUrl}" alt="${meta.globalClass}"
+      style="width:${size}px;height:${size}px;image-rendering:pixelated;filter:drop-shadow(0 0 2px ${c}44)"
+      onerror="this.style.display='none';this.nextSibling&&(this.nextSibling.style.display='block')">`
+      + `<span class="class-icon-fallback" style="display:none;color:${c};font-size:${size * 0.6}px">${meta.classIcon}</span>`
+  }
+  return `<span style="color:${c};font-size:${size * 0.6}px">${meta.classIcon}</span>`
 }
 
 // ── Sprite mapping (6 classes × 3 raretés) ──
