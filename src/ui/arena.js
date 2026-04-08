@@ -65,6 +65,16 @@ function precombatTeamPreview(team) {
     </div>`
 }
 
+const BOSS_EFFECT_LABELS = {
+  boss_horde:      '💀 Invoque des renforts au tour 3',
+  boss_poison:     '☣ Empoisonne votre équipe chaque 3 tours',
+  boss_radiation:  '☢ Réduit la DEF de votre équipe de 30%',
+  boss_order:      '⚔ Attaque deux fois par tour',
+  boss_swarm:      '🌪 30% d\'esquive sur vos attaques',
+  boss_mutate:     '🧬 Gagne +5% DEF à chaque tour',
+  boss_apocalypse: '💚 Régénère 50 PV par tour',
+}
+
 function precombatRewardPreview(state) {
   const reward   = calcWaveReward(state)
   const isBoss   = state.currentWave === 11
@@ -76,12 +86,17 @@ function precombatRewardPreview(state) {
                   : state.currentWave <= 7 ? '#E0C44A'
                   : state.currentWave <= 10 ? '#E08A4A'
                   : '#E05A4A'
+
+  const bossEffect = isBoss ? ZONES[state.activeZone - 1]?.boss?.effect : null
+  const bossEffectLabel = bossEffect ? BOSS_EFFECT_LABELS[bossEffect] : null
+
   return `
     <div class="precombat-reward-card">
       <div class="pcr-header">
         <span class="pcr-diff" style="color:${diffColor}">${diffLabel}</span>
         <span class="pcr-label">Récompenses estimées</span>
       </div>
+      ${bossEffectLabel ? `<div class="pcr-boss-effect">⚠ Effet spécial : ${bossEffectLabel}</div>` : ''}
       <div class="pcr-rewards">
         <div class="pcr-item"><img class="res-icon" src="assets/icons/res-capsule.png" alt="💊"> ~${reward.capsules}</div>
         <div class="pcr-item"><img class="res-icon" src="assets/icons/res-dna.png" alt="🧬"> ~${reward.dna} ADN</div>
@@ -302,10 +317,36 @@ function playAction(a, playerTeam, enemySquad, log, turnEl) {
     }
   }
 
+  // Effets boss — mise à jour HP si poison/regen
+  if (a.side === 'boss_effect') {
+    if (a.dmg && a.target) {
+      const ally = playerTeam.find(s => s.name === a.target)
+      if (ally) {
+        const card = document.getElementById('fighter-' + ally.id)
+        updateHP('hp-' + ally.id, 'hpv-' + ally.id, ally.hp, ally.maxHp)
+        if (ally.hp <= 0 && card) animateDeath(card)
+        if (card && a.dmg) spawnDmgFloat(card, a.dmg, false, true)
+      }
+    }
+    if (a.amount && a.actor) {
+      const enemy = enemySquad.find(e => e.name === a.actor)
+      if (enemy) updateHP('ehp-' + enemy.id, 'ehpv-' + enemy.id, enemy.hp, enemy.maxHp)
+    }
+  }
+
   // Log de combat
   if (log) {
     const div = document.createElement('div')
-    if (a.side === 'heal') {
+    if (a.side === 'boss_effect') {
+      div.className   = 'combat-log-entry boss-fx'
+      div.textContent = a.msg
+        || (a.effect === 'poison'   ? `☣ ${a.actor} empoisonne ${a.target} — ${a.dmg} dégâts !`
+          : a.effect === 'regen'    ? `💚 ${a.actor} régénère +${a.amount} PV`
+          : a.effect === 'mutate'   ? `🧬 ${a.actor} mute — DEF renforcée !`
+          : a.effect === 'horde'    ? `💀 ${a.actor} invoque des renforts !`
+          : a.effect === 'radiation'? `☢ Radiation — DEF équipe affaiblie !`
+          : '')
+    } else if (a.side === 'heal') {
       div.className   = 'combat-log-entry heal'
       div.textContent = `💊 ${a.actor} soigne ${a.target} +${a.amount} PV`
     } else if (a.dodged) {

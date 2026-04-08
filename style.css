@@ -292,10 +292,11 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   font-size: 11px; padding: 2px 4px; border-radius: 4px;
   animation: log-appear 0.2s ease-out;
 }
-.combat-log-entry.atk  { color: var(--green); }
-.combat-log-entry.dmg  { color: #E08080; }
-.combat-log-entry.heal { color: #80C4FF; }
-.combat-log-entry.crit { color: var(--accent); font-weight: 700; }
+.combat-log-entry.atk     { color: var(--green); }
+.combat-log-entry.dmg     { color: #E08080; }
+.combat-log-entry.heal    { color: #80C4FF; }
+.combat-log-entry.crit    { color: var(--accent); font-weight: 700; }
+.combat-log-entry.boss-fx { color: #E05A4A; font-weight: 600; font-style: italic; }
 
 /* ══════════════════════════════
    RÉSULTAT
@@ -400,18 +401,20 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── Hiérarchie visuelle D < E < L ── */
 .sc-rarity--e {
-  min-width: 100px;
+  width: 118px;
   border-width: 1.5px !important;
 }
 .sc-rarity--e .sc-sprite { height: 88px; }
 .sc-rarity--l {
-  min-width: 110px;
+  width: 130px;
+  padding: 12px 10px 10px;
   border-width: 2px !important;
-  box-shadow: 0 0 12px var(--rarity-l, #EF9F27)22;
+  box-shadow: 0 0 18px var(--rarity-l, #EF9F27)33, 0 4px 12px #00000066;
 }
-.sc-rarity--l .sc-sprite { height: 100px; }
-.sc-rarity--l .sc-name { font-size: 13px; }
-.sc-rarity--l .sc-rarity { font-weight: 700; }
+.sc-rarity--l .sc-sprite { height: 108px; }
+.sc-rarity--l .sc-sprite-wrap { height: 112px; }
+.sc-rarity--l .sc-name { font-size: 13px; font-weight: 800; }
+.sc-rarity--l .sc-rarity { font-weight: 700; font-size: 12px; }
 .sc-rarity--l::after {
   content: '';
   position: absolute; inset: 0;
@@ -1898,6 +1901,71 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   margin-top: 2px;
 }
 .pity-item { flex-direction: column; gap: 2px; }
+
+/* ── Effet spécial boss dans précombat ── */
+.pcr-boss-effect {
+  font-size: 11px;
+  color: #E05A4A;
+  background: #2A0A0A;
+  border: 1px solid #5A1A1A;
+  border-radius: 6px;
+  padding: 5px 8px;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+/* ── Recyclage de doublons ── */
+.sv-modal-recycle {
+  background: #0A1A0A;
+  border: 1px solid #2A4A2A;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-top: 8px;
+}
+.sv-modal-recycle-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #5AE05A;
+  margin-bottom: 4px;
+}
+.sv-modal-recycle-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+.sv-modal-recycle-row {
+  display: flex;
+  gap: 6px;
+}
+.sv-modal-recycle-btn {
+  background: #1A3A1A;
+  border: 1px solid #3A6A3A;
+  color: #5AE05A;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  flex: 1;
+  transition: all 0.15s;
+}
+.sv-modal-recycle-btn:hover {
+  background: #2A5A2A;
+  border-color: #5AE05A;
+}
+
+/* ── Hint source radium ── */
+.signal-radium-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: #1A0A0A;
+  border: 1px solid #5A2A0A;
+  border-radius: 6px;
+  padding: 5px 8px;
+  margin: 6px 0;
+  line-height: 1.4;
+}
 
 /* ── Récompenses résultat animées ── */
 .result-reward span {

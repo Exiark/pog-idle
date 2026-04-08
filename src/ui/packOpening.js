@@ -51,6 +51,9 @@ export function renderPacks(state) {
     const meta  = SIGNAL_META[key]
     const costIcon = cfg.currency === 'capsules' ? '💊' : '☢'
     const wD = cfg.weights.D, wE = cfg.weights.E, wL = cfg.weights.L
+    const radiumHint = cfg.currency === 'radium'
+      ? `<div class="signal-radium-hint">Obtenir du radium ☢ : missions journalières · boss de zone · talent t7</div>`
+      : ''
     return `
       <div class="signal-card signal-card--${meta.theme}" onclick="window.openSignalUI('${key}')">
         <div class="signal-card-bg"></div>
@@ -63,6 +66,7 @@ export function renderPacks(state) {
               <div class="signal-card-count">${cfg.count} survivants recrutés</div>
             </div>
           </div>
+          ${radiumHint}
           <div class="signal-card-rates">
             <div class="signal-rate-bar">
               <span class="signal-rate-label" style="color:var(--rarity-d)">D</span>

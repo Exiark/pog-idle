@@ -224,6 +224,8 @@ window.upgradeSurvivorUI = function(id) {
   renderCollection(S)
 }
 
+const RECYCLE_DNA = { D: 10, E: 30, L: 100 }
+
 // ── Modal fiche survivant ──
 window.showSurvivorModal = function(id) {
   const S   = window._state
@@ -286,6 +288,8 @@ window.showSurvivorModal = function(id) {
             ⚡ Fusionner ×3 → ${RARITY_ORDER[RARITY_ORDER.indexOf(sv.rarity) + 1] || '?'}
           </button>` : ''}
 
+        ${!sv.boss && copies >= 3 ? recycleSection(id, copies, sv.rarity) : ''}
+
         ${!sv.boss ? `
           <button class="btn-danger sv-modal-equip"
             onclick="window.toggleTeamUI('${id}');window.renderCollection(window._state);document.getElementById('survivor-modal').style.display='none'">
@@ -298,6 +302,29 @@ window.showSurvivorModal = function(id) {
     </div>`
 
   modal.style.display = 'flex'
+}
+
+function recycleSection(id, copies, rarity) {
+  const stacks   = Math.floor(copies / 3)
+  const dnaPerStack = RECYCLE_DNA[rarity] || 10
+  const totalDna = stacks * dnaPerStack
+  return `
+    <div class="sv-modal-recycle">
+      <div class="sv-modal-recycle-title">♻ Recyclage</div>
+      <div class="sv-modal-recycle-desc">
+        Convertit ×3 copies en <strong>${dnaPerStack} ADN</strong>. Vous avez <strong>${stacks} lot${stacks > 1 ? 's' : ''}</strong> disponible${stacks > 1 ? 's' : ''}.
+      </div>
+      <div class="sv-modal-recycle-row">
+        ${stacks >= 1 ? `
+          <button class="sv-modal-recycle-btn" onclick="window.recycleSurvivorUI('${id}', 1)">
+            ×3 → +${dnaPerStack} 🧬
+          </button>` : ''}
+        ${stacks >= 2 ? `
+          <button class="sv-modal-recycle-btn" onclick="window.recycleSurvivorUI('${id}', ${stacks})">
+            Tout (×${stacks * 3}) → +${totalDna} 🧬
+          </button>` : ''}
+      </div>
+    </div>`
 }
 
 function upgradeSection(id, S) {

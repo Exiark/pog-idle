@@ -40,12 +40,13 @@ export function generateEnemySquad(state) {
   const scaling = zone.resistanceBase * (1 + state.currentWave * 0.20) * (1 + (state.activeZone - 1) * 0.15)
 
   return Array.from({ length: count }, (_, i) => {
-    const hp = Math.round((25 + scaling * 18) * (1 + Math.random() * 0.25))
+    const type = randomZombieType()
+    const hp   = Math.round((25 + scaling * 18) * (1 + Math.random() * 0.25))
     return {
       id:        i,
-      name:      randomZombieName(),
-      icon:      randomZombieIcon(),
-      spriteUrl: randomZombieSprite(),
+      name:      type.name,
+      icon:      type.icon,
+      spriteUrl: type.sprite,
       hp,
       maxHp:   hp,
       atk:     Math.round((10 + scaling * 5)   * (1 + Math.random() * 0.25)),
@@ -57,12 +58,18 @@ export function generateEnemySquad(state) {
   })
 }
 
-const ZOMBIE_NAMES   = ['Rôdeur','Grognard','Charognard','Mutant','Infecté','Zombie','Ravageur','Déviant']
-const ZOMBIE_ICONS   = ['🧟','💀','🦷','🩸','☣','🕷','🦴','👁']
-const ZOMBIE_SPRITES = ['assets/sprites/enemies/walker.png','assets/sprites/enemies/brute.png','assets/sprites/enemies/soldier.png']
-function randomZombieName()   { return ZOMBIE_NAMES[Math.floor(Math.random() * ZOMBIE_NAMES.length)] }
-function randomZombieIcon()   { return ZOMBIE_ICONS[Math.floor(Math.random() * ZOMBIE_ICONS.length)] }
-function randomZombieSprite() { return ZOMBIE_SPRITES[Math.floor(Math.random() * ZOMBIE_SPRITES.length)] }
+// Chaque type d'ennemi a un nom, une icône et un sprite cohérents
+const ZOMBIE_TYPES = [
+  { name: 'Rôdeur',    icon: '🧟', sprite: 'assets/sprites/enemies/walker.png'  },
+  { name: 'Infecté',   icon: '🧟', sprite: 'assets/sprites/enemies/walker.png'  },
+  { name: 'Zombie',    icon: '💀', sprite: 'assets/sprites/enemies/walker.png'  },
+  { name: 'Grognard',  icon: '🦴', sprite: 'assets/sprites/enemies/brute.png'   },
+  { name: 'Ravageur',  icon: '🩸', sprite: 'assets/sprites/enemies/brute.png'   },
+  { name: 'Déviant',   icon: '🕷', sprite: 'assets/sprites/enemies/brute.png'   },
+  { name: 'Mutant',    icon: '☣',  sprite: 'assets/sprites/enemies/soldier.png' },
+  { name: 'Charognard',icon: '👁', sprite: 'assets/sprites/enemies/soldier.png' },
+]
+function randomZombieType() { return ZOMBIE_TYPES[Math.floor(Math.random() * ZOMBIE_TYPES.length)] }
 
 // ── Vitesse équipe ──
 export function calcTeamSpeed(state) {
@@ -101,8 +108,15 @@ export function doFightTurn(playerTeam, enemySquad, bonuses = {}) {
     } else {
       const log = enemyAttack(actor, playerTeam)
       if (log) logs.push(log)
+      // boss_order : double attaque
+      if (actor._doubleAttack && playerTeam.some(s => s.hp > 0)) {
+        const log2 = enemyAttack(actor, playerTeam)
+        if (log2) logs.push({ ...log2, isDoubleAttack: true })
+      }
     }
   }
+  // Nettoyer les flags de double attaque après le tour
+  enemySquad.forEach(e => { e._doubleAttack = false })
 
   tickEffects(playerTeam, enemySquad, logs)
   return logs
@@ -149,6 +163,12 @@ function playerAttack(survivor, enemySquad, bonuses = {}, playerTeam = []) {
   const hasSynergy  = survivor.effect?.includes('synergy')
   const aliveAllies = playerTeam.filter(s => s.hp > 0 && s.id !== survivor.id).length
   const synergyBonus = hasSynergy ? aliveAllies * 0.05 : 0
+
+  // ── Esquive boss_swarm ──
+  const swarmEffect = target.effects?.find(ef => ef.type === 'swarm')
+  if (swarmEffect && Math.random() < swarmEffect.dodge) {
+    return { side: 'player', actor: survivor.name, target: target.name, dmg: 0, dodged: true }
+  }
 
   // ── CALCUL DES DÉGÂTS ──
   const isCrit      = Math.random() < critChance(survivor, bonuses)
@@ -214,6 +234,8 @@ function playerAttack(survivor, enemySquad, bonuses = {}, playerTeam = []) {
 // ── Attaque d'un ennemi ──
 function enemyAttack(enemy, playerTeam) {
   if (enemy.effects?.some(e => e.type === 'stun')) return null
+  // Esquive boss_swarm : 30% chance que l'attaque du joueur rate (géré côté joueur via enemy.effects)
+  // Ici on vérifie si l'ennemi a le flag de double attaque et on le laisse agir une deuxième fois (géré dans doFightTurn)
 
   const alive = playerTeam.filter(s => s.hp > 0)
   if (alive.length === 0) return null
@@ -326,9 +348,91 @@ export function calcTalentBonuses(state) {
   }
 }
 
+// ── Effets de boss — applique le modificateur de boss à chaque tour ──
+function applyBossEffect(boss, enemies, playerTeam, turn, logs) {
+  if (!boss?.effect) return
+
+  switch (boss.effect) {
+    case 'boss_poison':
+      // Applique poison au tour 1 et tous les 3 tours : -8 HP à chaque allié vivant
+      if (turn === 1 || turn % 3 === 0) {
+        playerTeam.filter(s => s.hp > 0).forEach(s => {
+          const dmg = 8
+          s.hp = Math.max(0, s.hp - dmg)
+          logs.push({ side: 'boss_effect', actor: boss.name, target: s.name, dmg, effect: 'poison' })
+        })
+      }
+      break
+
+    case 'boss_radiation':
+      // Réduit la DEF de l'équipe de 30% au tour 1 (une seule fois)
+      if (turn === 1) {
+        playerTeam.forEach(s => { s.def = Math.round(s.def * 0.7) })
+        logs.push({ side: 'boss_effect', actor: boss.name, effect: 'radiation', msg: 'Radiation — DEF équipe -30%' })
+      }
+      break
+
+    case 'boss_mutate':
+      // Gagne +5% DEF par tour
+      enemies.filter(e => e.alive).forEach(e => {
+        e.def = Math.round(e.def * 1.05)
+      })
+      if (turn <= 3) logs.push({ side: 'boss_effect', actor: boss.name, effect: 'mutate', msg: `Mutation — DEF boss +5%` })
+      break
+
+    case 'boss_apocalypse':
+      // Régénère 50 HP par tour
+      enemies.filter(e => e.alive).forEach(e => {
+        if (e.hp < e.maxHp) {
+          const regen = Math.min(50, e.maxHp - e.hp)
+          e.hp += regen
+          logs.push({ side: 'boss_effect', actor: e.name, effect: 'regen', amount: regen })
+        }
+      })
+      break
+
+    case 'boss_order':
+      // Ennemi attaque une deuxième fois (géré dans doFightTurn via flag)
+      // On marque les ennemis vivants pour double attaque
+      enemies.filter(e => e.alive).forEach(e => { e._doubleAttack = true })
+      break
+
+    case 'boss_swarm':
+      // 30% d'esquive sur le boss (appliqué via effet sur l'ennemi)
+      enemies.filter(e => e.alive).forEach(e => {
+        if (!e.effects) e.effects = []
+        if (!e.effects.some(ef => ef.type === 'swarm')) {
+          e.effects.push({ type: 'swarm', dodge: 0.30 })
+        }
+      })
+      break
+
+    case 'boss_horde':
+      // Au tour 3 : invoque un ennemi supplémentaire (Rôdeur faible)
+      if (turn === 3) {
+        const spawn = {
+          id:      enemies.length,
+          name:    'Rôdeur Invoqué',
+          icon:    '🧟',
+          spriteUrl: 'assets/sprites/enemies/walker.png',
+          hp:      60, maxHp: 60,
+          atk:     20, def: 5, spd: 30,
+          alive:   true, effects: [],
+        }
+        enemies.push(spawn)
+        logs.push({ side: 'boss_effect', actor: boss.name, effect: 'horde', msg: 'Horde — Un Rôdeur invoqué !' })
+      }
+      break
+  }
+}
+
 // ── Simule un combat complet ──
 export function simulateFight(playerTeamIds, enemySquad, state) {
-  const bonuses = calcTalentBonuses(state)
+  const bonuses  = calcTalentBonuses(state)
+  // Détecte si c'est un combat de boss (vague 11 sur la zone active courante)
+  const isBoss   = state.currentWave === 11 && state.activeZone === state.currentZone
+  const zone     = isBoss ? ZONES[state.activeZone - 1] : null
+  const bossData = isBoss && zone ? zone.boss : null
 
   const roles = new Set(playerTeamIds.map(id => {
     const sv = SURVIVORS.find(x => x.id === id)
@@ -367,7 +471,11 @@ export function simulateFight(playerTeamIds, enemySquad, state) {
 
   while (turns < MAX_TURNS) {
     turns++
-    const turnLogs = doFightTurn(playerTeam, enemies, bonuses)
+    // Effets de boss avant le tour
+    const bossEffectLogs = []
+    if (bossData) applyBossEffect(bossData, enemies, playerTeam, turns, bossEffectLogs)
+
+    const turnLogs = [...bossEffectLogs, ...doFightTurn(playerTeam, enemies, bonuses)]
     allLogs.push({ turn: turns, actions: turnLogs })
 
     turnLogs.forEach(a => {

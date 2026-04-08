@@ -169,6 +169,46 @@ export function upgradeSurvivor(state, survivorId) {
   return { newLevel: current + 1, cost }
 }
 
+// ── Recyclage de doublons ──
+// Taux : 3× D → 10 ADN | 3× E → 30 ADN | 3× L → 100 ADN
+// Ou bien : 5× D → 1× E (fusion spéciale)
+const RECYCLE_DNA = { D: 10, E: 30, L: 100 }
+
+export function getRecyclableStacks(state) {
+  // Regroupe les copies par id et retourne ceux avec ≥ 3 copies
+  const counts = {}
+  state.collection.forEach(p => { counts[p.id] = (counts[p.id] || 0) + 1 })
+  return Object.entries(counts)
+    .filter(([, n]) => n >= 3)
+    .map(([id, count]) => {
+      const sv = SURVIVORS.find(x => x.id === id)
+      if (!sv) return null
+      const stacks = Math.floor(count / 3)
+      return { id, name: sv.name, rarity: sv.rarity, count, stacks, dnaGain: stacks * RECYCLE_DNA[sv.rarity] }
+    })
+    .filter(Boolean)
+}
+
+export function recycleSurvivor(state, survivorId, stacks = 1) {
+  const sv = SURVIVORS.find(x => x.id === survivorId)
+  if (!sv) return { error: 'Survivant inconnu' }
+
+  const copies = state.collection.filter(p => p.id === survivorId).length
+  const needed = stacks * 3
+  if (copies < needed) return { error: `Pas assez de copies (${copies}/${needed})` }
+
+  // Retire les copies
+  let removed = 0
+  state.collection = state.collection.filter(p => {
+    if (p.id === survivorId && removed < needed) { removed++; return false }
+    return true
+  })
+
+  const dna = stacks * RECYCLE_DNA[sv.rarity]
+  state.dna += dna
+  return { dna, stacks, survivorName: sv.name }
+}
+
 // ── Maîtrise répétable (points de talent excédentaires) ──
 export function unlockMastery(state) {
   const rank = state.masteryRank || 0

@@ -1,5 +1,5 @@
 import { loadState, saveState, calcOfflineCapsules, calcIdleRate } from './core/state.js'
-import { collectOffline, claimDaily, claimMission, updateMission, applyReward, checkMissionsReset } from './core/economy.js'
+import { collectOffline, claimDaily, claimMission, updateMission, applyReward, checkMissionsReset, recycleSurvivor } from './core/economy.js'
 import { openSignal, toggleTeam } from './core/gacha.js'
 import {
   generateEnemySquad, simulateFight, survivorCombatStats,
@@ -269,12 +269,14 @@ function onVictoryNext() {
   advanceWave(S)
   saveState(S)
   currentPhase = PHASE.IDLE
+  clearLog()
   renderCombatView()
   updateUI()
 }
 
 function onDefeatRetry() {
   currentPhase = PHASE.IDLE
+  clearLog()
   renderCombatView()
 }
 
@@ -320,7 +322,7 @@ function showBossVictoryScreen(defeatResult) {
   const panel = document.getElementById('result-panel')
   if (!panel) return
 
-  const zone = ZONES[S.activeZone - 2] || ZONES[0]  // zone qu'on vient de finir
+  const zone = ZONES[S.activeZone - 1] || ZONES[0]  // zone qu'on vient de finir
   const bossName = zone.boss?.name || 'Boss'
   const nextZone = defeatResult?.nextZone
   const nextZoneData = nextZone ? ZONES[nextZone - 1] : null
@@ -352,6 +354,7 @@ function showBossVictoryScreen(defeatResult) {
 
   window._onBossVictoryContinue = function() {
     currentPhase = PHASE.IDLE
+    clearLog()
     renderCombatView()
     updateUI()
   }
@@ -421,6 +424,11 @@ function addLog(msg, cls) {
   while (log.children.length > 20) log.removeChild(log.lastChild)
 }
 
+function clearLog() {
+  const log = document.getElementById('log')
+  if (log) log.innerHTML = ''
+}
+
 // ── Actions window ──
 window.openSignalUI = function(type) {
   const result = openSignal(S, type)
@@ -454,6 +462,14 @@ window.claimDailyUI = function() {
   if (streakBonus) showToast(`🔥 Streak x7 ! +${streakBonus.capsules} capsules +${streakBonus.radium} radium`, 'fusion', 5000)
   checkMissionsReset(S)
   saveState(S); updateUI()
+}
+
+window.recycleSurvivorUI = function(survivorId, stacks) {
+  const result = recycleSurvivor(S, survivorId, stacks)
+  if (result.error) { showToast(result.error, 'info'); return }
+  showToast(`♻ ${result.survivorName} ×${result.stacks * 3} → +${result.dna} 🧬 ADN`, 'fusion', 3000)
+  saveState(S); updateUI()
+  if (window.showSurvivorModal) window.showSurvivorModal(survivorId)
 }
 
 window.claimMissionUI = function(missionId) {

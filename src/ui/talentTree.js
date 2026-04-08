@@ -61,21 +61,24 @@ function talentNode(t, state) {
 }
 
 function masteryBlock(state) {
-  const rank = state.masteryRank || 0
-  const cost = 1 + Math.floor(rank / 3)
-  const canBuy = state.talentPoints >= cost
-  const bonusAtk = (rank * 1).toFixed(0)
-  const bonusDef = (rank * 1).toFixed(0)
-  const bonusHp  = (rank * 1).toFixed(0)
-  const bonusIdle = (rank * 0.02).toFixed(2)
+  const rank    = state.masteryRank || 0
+  const cost    = 1 + Math.floor(rank / 3)
+  const canBuy  = state.talentPoints >= cost
 
   return `
     <div class="mastery-block">
       <div class="mastery-title">⚔ Maîtrise — Rang ${rank}</div>
+      ${rank > 0 ? `
       <div class="mastery-desc">
-        Bonus cumulés : <strong>+${bonusAtk}% ATK</strong> · <strong>+${bonusDef}% DEF</strong> ·
-        <strong>+${bonusHp}% HP</strong> · <strong>+${bonusIdle} caps/s idle</strong>
-      </div>
+        Bonus cumulés :
+        <strong>+${rank}% ATK</strong> ·
+        <strong>+${rank}% DEF</strong> ·
+        <strong>+${rank}% HP</strong> ·
+        <strong>+${(rank * 0.02).toFixed(2)} caps/s idle</strong>
+      </div>` : `
+      <div class="mastery-desc" style="color:var(--text-muted)">
+        Débloque des bonus permanents cumulatifs sur tous vos survivants.
+      </div>`}
       <button class="mastery-btn ${canBuy ? '' : 'disabled'}"
         onclick="window.unlockMasteryUI()">
         Rang ${rank + 1} — ${cost} point${cost > 1 ? 's' : ''}
