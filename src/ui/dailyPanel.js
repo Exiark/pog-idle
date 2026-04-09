@@ -1,6 +1,7 @@
 // ── SHELTER SURVIVOR — Panel journalier ──
 import { DAILY_REWARDS, MISSIONS_DEFAULT } from '../core/economy.js'
 import { saveState } from '../core/state.js'
+import { ACHIEVEMENTS } from '../data/achievements.js'
 
 export function renderDaily(state) {
   const rewardsDiv  = document.getElementById('daily-rewards')
@@ -107,7 +108,8 @@ export function renderDaily(state) {
       </div>
     </div>
 
-    ${renderStats(state)}`
+    ${renderStats(state)}
+    ${renderAchievements(state)}`
 }
 
 function renderStats(state) {
@@ -129,6 +131,38 @@ function renderStats(state) {
             <span class="stats-label">${r.label}</span>
             <span class="stats-val">${r.val.toLocaleString()}${r.suffix ? ' ' + r.suffix : ''}</span>
           </div>`).join('')}
+      </div>
+    </div>`
+}
+
+function renderAchievements(state) {
+  const unlocked = state.achievements || {}
+  const doneCount = Object.keys(unlocked).length
+
+  return `
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span>Achèvements</span>
+        <span class="streak-badge" style="background:#1A2A3A;color:var(--accent)">${doneCount}/${ACHIEVEMENTS.length}</span>
+      </div>
+      <div class="ach-list">
+        ${ACHIEVEMENTS.map(ach => {
+          const done = !!unlocked[ach.id]
+          const rewardStr = [
+            ach.reward.capsules ? `+${ach.reward.capsules}💊` : '',
+            ach.reward.dna      ? `+${ach.reward.dna}🧬` : '',
+            ach.reward.radium   ? `+${ach.reward.radium}☢` : '',
+          ].filter(Boolean).join(' ')
+          return `
+            <div class="ach-row ${done ? 'ach-done' : ''}">
+              <div class="ach-icon">${ach.icon}</div>
+              <div class="ach-info">
+                <div class="ach-name">${ach.name}</div>
+                <div class="ach-desc">${ach.desc}</div>
+              </div>
+              <div class="ach-reward ${done ? 'ach-reward--done' : ''}">${done ? '✓' : rewardStr}</div>
+            </div>`
+        }).join('')}
       </div>
     </div>`
 }

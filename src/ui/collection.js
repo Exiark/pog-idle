@@ -311,14 +311,11 @@ window.showSurvivorModal = function(id) {
             <strong>${copies}</strong>
           </div>
           <div class="sv-modal-meta-row">
-            <span>Fusion dans</span>
-            <strong>${copies >= 3 ? '✓ Prête' : `${3 - copies} copie(s)`}</strong>
-          </div>
-          <div class="sv-modal-meta-row">
             <span>Idle au repos</span>
             <strong style="color:#E0C44A">+${idle} caps/s</strong>
           </div>
         </div>
+        ${sv.rarity !== 'L' && !sv.boss ? fusionProgressBar(copies) : ''}
 
         ${!sv.boss ? upgradeSection(id, S) : ''}
 
@@ -341,6 +338,29 @@ window.showSurvivorModal = function(id) {
     </div>`
 
   modal.style.display = 'flex'
+}
+
+function fusionProgressBar(copies) {
+  const needed   = 3
+  const current  = Math.min(copies % needed || (copies >= needed ? needed : copies % needed), needed)
+  const stacks   = Math.floor(copies / needed)
+  const progress = copies >= needed ? needed : copies
+  const pct      = Math.round(progress / needed * 100)
+  const ready    = copies >= needed
+
+  return `
+    <div class="sv-fusion-bar">
+      <div class="sv-fusion-bar-header">
+        <span class="sv-fusion-bar-label">⚡ Progression fusion</span>
+        <span class="sv-fusion-bar-count" style="color:${ready ? '#5AE05A' : 'var(--accent)'}">${Math.min(copies, needed)}/${needed}${stacks > 1 ? ` · ${stacks} fusions dispo` : ''}</span>
+      </div>
+      <div class="sv-fusion-track">
+        ${Array.from({length: needed}, (_, i) => `
+          <div class="sv-fusion-pip ${i < progress ? 'filled' : ''}" style="${i < progress ? 'background:var(--accent)' : ''}"></div>
+        `).join('')}
+      </div>
+      ${ready ? `<div class="sv-fusion-ready">✓ Fusion disponible !</div>` : `<div class="sv-fusion-hint">${needed - Math.min(copies, needed)} copie(s) manquante(s)</div>`}
+    </div>`
 }
 
 function recycleSection(id, copies, rarity) {

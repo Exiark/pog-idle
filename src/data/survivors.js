@@ -322,23 +322,21 @@ export function classIconHtml(meta, size = 28, color) {
   return `<span style="color:${c};font-size:${size * 0.6}px">${meta.classIcon}</span>`
 }
 
-// ── Sprite mapping (6 classes × 3 raretés) ──
+// ── Sprite mapping (globalClass → fichier PixelLab) ──
 const GLOBAL_CLASS_TO_SPRITE = {
-  'Tank':     'tank',
-  'Mêlée':   'melee',
-  'Distance': 'distance',
-  'Médecin':  'medecin',
-  'Soutien':  'soutien',
-  'Assassin': 'assassin',
+  'Tank':     'assets/sprites/survivors/s01.png',   // soldat générique
+  'Mêlée':   'assets/sprites/survivors/s03.png',   // berserk (à venir)
+  'Distance': 'assets/sprites/survivors/s01.png',   // soldat générique
+  'Médecin':  'assets/sprites/survivors/s02.png',   // medic
+  'Soutien':  'assets/sprites/survivors/s04.png',   // ingénieur (à venir)
+  'Assassin': 'assets/sprites/survivors/s01.png',   // soldat générique
 }
 
 export function getSpriteUrl(survivor) {
   if (survivor.boss) return null
   const meta = ROLE_META[survivor.role]
   if (!meta) return null
-  const key = GLOBAL_CLASS_TO_SPRITE[meta.globalClass]
-  if (!key) return null
-  return `assets/sprites/${survivor.rarity.toLowerCase()}/${key}.png`
+  return GLOBAL_CLASS_TO_SPRITE[meta.globalClass] || null
 }
 
 // ── Helpers ──

@@ -93,9 +93,13 @@ export function renderHome(state) {
 
     <!-- CTAs principaux -->
     <div class="home-cta-row">
-      <button class="home-cta-main" onclick="window.setTab('combat')">
-        ⚔ Continuer l'Exploration
-      </button>
+      ${state.bossesDefeated?.includes('z7') || state.bossesDefeated?.length >= 7
+        ? `<button class="home-cta-prestige" onclick="window.openPrestigeUI()">
+            ☣ Prestige disponible — Nouveau cycle !
+           </button>`
+        : `<button class="home-cta-main" onclick="window.setTab('combat')">
+            ⚔ Continuer l'Exploration
+           </button>`}
     </div>
 
     <div class="home-cta-secondary-row">

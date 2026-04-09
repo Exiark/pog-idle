@@ -241,6 +241,12 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   font-size: 12px; color: var(--text-muted); margin-bottom: 8px;
 }
 .launch-btn { width: 100%; padding: 14px; font-size: 13px; font-weight: 700; margin-top: 4px; letter-spacing: 0.04em; }
+.precombat-farming-warning {
+  background: #1A1A08; border: 1px solid #8A8A20; border-radius: var(--radius);
+  padding: 8px 12px; font-size: 11px; color: #C0C030; margin-bottom: 6px; text-align: center;
+  line-height: 1.5;
+}
+.precombat-farming-warning span { color: var(--text-muted); font-size: 10px; }
 .precombat-objective {
   font-size: 11px; color: var(--text-muted);
   border-top: 1px solid var(--gray-border);
@@ -1029,6 +1035,21 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   background: var(--panel-bg2); border: 2px solid var(--gray-border);
   border-radius: var(--radius); padding: 10px 12px; margin: 8px 0;
 }
+/* ── Fusion progress bar ── */
+.sv-fusion-bar { background: var(--panel-bg2); border-radius: 8px; padding: 10px 12px; margin: 8px 0; }
+.sv-fusion-bar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.sv-fusion-bar-label  { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+.sv-fusion-bar-count  { font-size: 12px; font-weight: 700; }
+.sv-fusion-track { display: flex; gap: 4px; margin-bottom: 6px; }
+.sv-fusion-pip {
+  flex: 1; height: 8px; border-radius: 4px;
+  background: var(--gray-border); border: 1px solid #3a3a3a;
+  transition: background 0.2s;
+}
+.sv-fusion-pip.filled { background: var(--accent); }
+.sv-fusion-ready { font-size: 10px; color: #5AE05A; font-weight: 700; text-align: center; }
+.sv-fusion-hint  { font-size: 10px; color: var(--text-muted); text-align: center; }
+
 .sv-modal-upgrade-header {
   display: flex; justify-content: space-between; align-items: center;
   font-size: 12px; font-weight: 600; margin-bottom: 6px;
@@ -1154,24 +1175,54 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 /* ══════════════════════════════
    BOSS VICTORY SCREEN
    ══════════════════════════════ */
+/* ── Old boss victory (kept for compat) ── */
 .boss-victory-screen {
   display: flex; flex-direction: column; align-items: center;
   gap: 12px; padding: 20px 16px; text-align: center;
 }
-.boss-victory-icon { font-size: 52px; animation: boss-pulse 1s ease-in-out infinite alternate; }
+
+/* ── New enriched boss victory ── */
+.bvs-flash {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(ellipse at center, #E0C44A44 0%, transparent 70%);
+  opacity: 0; transition: opacity 0.3s;
+}
+.bvs-flash--active { opacity: 1; animation: bvs-fade 1.5s ease-out forwards; }
+@keyframes bvs-fade { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+.bvs-skull { font-size: 56px; animation: boss-pulse 1.2s ease-in-out infinite alternate; position: relative; }
 @keyframes boss-pulse {
-  from { transform: scale(1);    opacity: 0.8; }
-  to   { transform: scale(1.12); opacity: 1;   }
+  from { transform: scale(1);    filter: drop-shadow(0 0 8px #E05A4A44); }
+  to   { transform: scale(1.12); filter: drop-shadow(0 0 20px #E05A4A); }
 }
-.boss-victory-title { font-family: var(--pixel); font-size: 11px; color: var(--accent); text-shadow: 2px 2px 0 #1A0C05; }
-.boss-victory-name  { font-size: 14px; color: var(--text-muted); }
-.boss-victory-unlock {
-  background: var(--panel-bg2); border: 2px solid var(--gray-border);
-  border-radius: var(--radius); padding: 12px 16px; width: 100%;
+.bvs-title  { font-family: var(--pixel); font-size: 12px; color: var(--accent); text-shadow: 2px 2px 0 #1A0C05; }
+.bvs-name   { font-size: 18px; font-weight: 700; margin-top: -4px; }
+.bvs-desc   { font-size: 11px; color: var(--text-muted); font-style: italic; margin-bottom: 4px; }
+
+.bvs-rewards { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+
+.bvs-survivor-card {
+  background: linear-gradient(135deg, #1A2A0A, #2A3A1A);
+  border: 2px solid; border-radius: var(--radius);
+  padding: 12px; text-align: center; position: relative;
+  animation: bvs-card-in 0.5s ease-out;
 }
-.boss-victory-unlock-label { font-family: var(--pixel); font-size: 6px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; }
-.boss-victory-unlock-zone  { font-size: 16px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
-.boss-victory-unlock-desc  { font-size: 11px; color: var(--text-muted); }
+@keyframes bvs-card-in { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.bvs-survivor-badge {
+  position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+  background: var(--accent); color: #000; font-size: 9px; font-weight: 700;
+  padding: 2px 8px; border-radius: 10px; white-space: nowrap;
+}
+.bvs-survivor-name { font-size: 16px; font-weight: 700; margin-top: 8px; }
+.bvs-survivor-role { font-size: 11px; color: var(--text-muted); }
+
+.bvs-unlock-card {
+  background: var(--panel-bg2); border: 1px solid; border-radius: var(--radius);
+  padding: 12px; text-align: center;
+}
+.bvs-unlock-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.bvs-unlock-zone  { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.bvs-unlock-desc  { font-size: 11px; color: var(--text-muted); }
 
 /* ══════════════════════════════
    COMBAT VISUAL FEEDBACK
@@ -1238,7 +1289,13 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .fighter-role-badge {
   font-size: 9px; font-weight: 600; letter-spacing: 0.5px;
   text-transform: uppercase; opacity: 0.8;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
+}
+.fighter-effect-badge {
+  font-size: 8px; font-weight: 600;
+  background: rgba(0,0,0,0.4); border-radius: 3px;
+  padding: 1px 4px; margin-bottom: 3px;
+  color: #E0C44A; letter-spacing: 0.3px;
 }
 
 /* ── Bouton skip ── */
@@ -1765,6 +1822,27 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   transform: translateY(-2px);
   box-shadow: 0 6px 24px rgba(245,166,35,0.45);
 }
+.home-cta-prestige {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #3A0A0A, #8A2020, #C03030);
+  color: #FFD0D0;
+  font-family: var(--body);
+  font-size: 14px;
+  font-weight: 700;
+  border: 2px solid #E05A4A;
+  border-radius: var(--radius);
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 20px rgba(200,50,50,0.4);
+  animation: prestige-pulse 2s ease-in-out infinite;
+}
+@keyframes prestige-pulse {
+  0%, 100% { box-shadow: 0 4px 20px rgba(200,50,50,0.4); }
+  50%       { box-shadow: 0 4px 32px rgba(200,50,50,0.75); }
+}
+.home-cta-prestige:hover { transform: translateY(-2px); filter: brightness(1.15); }
+
 .home-cta-secondary-row {
   display: flex;
   gap: 6px;
@@ -1944,6 +2022,22 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   animation: claim-glow 2s ease-in-out infinite;
 }
 .mission-claim-btn:hover { filter: brightness(1.2); }
+/* ── Achèvements ── */
+.ach-list { display: flex; flex-direction: column; gap: 6px; }
+.ach-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px; border-radius: 8px;
+  background: var(--panel-bg2); border: 1px solid var(--gray-border);
+  opacity: 0.55;
+}
+.ach-row.ach-done { opacity: 1; border-color: #3A5A1A; background: #1A3A0A22; }
+.ach-icon  { font-size: 20px; flex-shrink: 0; }
+.ach-info  { flex: 1; }
+.ach-name  { font-size: 12px; font-weight: 600; }
+.ach-desc  { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+.ach-reward { font-size: 10px; font-weight: 700; color: var(--accent); text-align: right; flex-shrink: 0; white-space: nowrap; }
+.ach-reward--done { color: #5AE05A; }
+
 .stats-grid { display: flex; flex-direction: column; gap: 6px; }
 .stats-row  { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--gray-border); }
 .stats-row:last-child { border-bottom: none; }

@@ -9,6 +9,7 @@ import {
 import { ZONES } from './data/zones.js'
 import { SURVIVORS } from './data/survivors.js'
 import { getNarration, markNarrationShown } from './data/narration.js'
+import { ACHIEVEMENTS, checkAchievements } from './data/achievements.js'
 
 import './ui/hub.js'
 import './ui/homeScreen.js'
@@ -411,34 +412,54 @@ function showBossVictoryScreen(defeatResult) {
   const panel = document.getElementById('result-panel')
   if (!panel) return
 
-  const zone = ZONES[S.activeZone - 1] || ZONES[0]  // zone qu'on vient de finir
-  const bossName = zone.boss?.name || 'Boss'
-  const nextZone = defeatResult?.nextZone
+  const zone        = ZONES[S.activeZone - 1] || ZONES[0]
+  const bossName    = zone.boss?.name || 'Boss'
+  const bossDesc    = zone.boss?.desc || ''
+  const nextZone    = defeatResult?.nextZone
   const nextZoneData = nextZone ? ZONES[nextZone - 1] : null
+
+  // Survivant boss recruté dans cette zone
+  const bossRewardId = zone.boss?.reward?.survivor
+  const bossRecrut   = bossRewardId ? SURVIVORS.find(x => x.id === bossRewardId) : null
+  const isNewRecrut  = defeatResult && bossRecrut && S.zoneSurvivors?.includes(bossRewardId)
 
   panel.innerHTML = `
     <div class="boss-victory-screen">
-      <div class="boss-victory-icon">☠</div>
-      <div class="boss-victory-title">Boss éliminé !</div>
-      <div class="boss-victory-name">${bossName}</div>
+      <div class="bvs-flash"></div>
+      <div class="bvs-skull">☠</div>
+      <div class="bvs-title">Boss éliminé !</div>
+      <div class="bvs-name" style="color:${zone.colors.primary}">${bossName}</div>
+      <div class="bvs-desc">${bossDesc}</div>
 
-      ${nextZoneData ? `
-        <div class="boss-victory-unlock">
-          <div class="boss-victory-unlock-label">Zone déverrouillée</div>
-          <div class="boss-victory-unlock-zone">Zone ${nextZone} — ${nextZoneData.name}</div>
-          <div class="boss-victory-unlock-desc">${nextZoneData.desc || ''}</div>
-        </div>` : `
-        <div class="boss-victory-unlock">
-          <div class="boss-victory-unlock-label">Vous avez conquis toutes les zones !</div>
-        </div>`}
+      <div class="bvs-rewards">
+        ${bossRecrut ? `
+          <div class="bvs-survivor-card" style="border-color:${zone.colors.primary}">
+            <div class="bvs-survivor-badge">${isNewRecrut ? 'RECRUTÉ' : 'DÉJÀ POSSÉDÉ'}</div>
+            <div class="bvs-survivor-name">${bossRecrut.name}</div>
+            <div class="bvs-survivor-role">${bossRecrut.role}</div>
+          </div>` : ''}
+
+        ${nextZoneData ? `
+          <div class="bvs-unlock-card" style="border-color:${nextZoneData.colors.primary}44">
+            <div class="bvs-unlock-label">🔓 Zone déverrouillée</div>
+            <div class="bvs-unlock-zone" style="color:${nextZoneData.colors.primary}">Zone ${nextZone} — ${nextZoneData.name}</div>
+            <div class="bvs-unlock-desc">${nextZoneData.desc}</div>
+          </div>` : `
+          <div class="bvs-unlock-card" style="border-color:#C03030">
+            <div class="bvs-unlock-label" style="color:#E05A5A">🌍 Toutes les zones sécurisées !</div>
+            <div class="bvs-unlock-desc">Le monde peut enfin respirer. Lancez un Prestige pour recommencer plus fort.</div>
+          </div>`}
+      </div>
 
       <button class="btn-danger result-btn" onclick="window._onBossVictoryContinue()">
-        ${nextZoneData ? `Explorer Zone ${nextZone} →` : 'Continuer'}
+        ${nextZoneData ? `⚔ Explorer Zone ${nextZone}` : '☣ Lancer un Prestige'}
       </button>
     </div>
   `
 
   playVictorySound()
+  // Flash d'effet spectaculaire
+  setTimeout(() => { panel.querySelector('.bvs-flash')?.classList.add('bvs-flash--active') }, 100)
   showPanel('result-panel')
 
   window._onBossVictoryContinue = function() {
@@ -770,7 +791,20 @@ document.addEventListener('zoneChanged', () => {
 })
 
 // ── UI globale ──
+function triggerAchievements() {
+  const unlocked = checkAchievements(S)
+  unlocked.forEach(ach => {
+    const parts = []
+    if (ach.reward.capsules) parts.push(`+${ach.reward.capsules}💊`)
+    if (ach.reward.dna)      parts.push(`+${ach.reward.dna}🧬`)
+    if (ach.reward.radium)   parts.push(`+${ach.reward.radium}☢`)
+    showToast(`${ach.icon} <strong>${ach.name}</strong> débloqué ! ${parts.join(' ')}`, 'fusion', 4500)
+  })
+  if (unlocked.length) saveState(S)
+}
+
 function updateUI() {
+  triggerAchievements()
   const zone = ZONES[S.activeZone - 1]
 
   const el = id => document.getElementById(id)

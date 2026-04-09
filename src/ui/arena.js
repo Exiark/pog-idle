@@ -36,6 +36,11 @@ export function renderPreCombat(state) {
         <button onclick="window.setTab('survivors')" style="margin-top:8px">Recruter des survivants</button>
       </div>` : `
       ${precombatTeamPreview(team)}
+      ${state.activeZone < state.currentZone ? `
+        <div class="precombat-farming-warning">
+          ⚠ Mode farming — Zone ${state.activeZone} (déjà sécurisée)<br>
+          <span>Récompenses ×0.4 · Passez en Zone ${state.currentZone} pour le plein tarif</span>
+        </div>` : ''}
       ${precombatRewardPreview(state)}
       <button class="btn-danger launch-btn" onclick="window.startCombat()">
         ☣ Partir en mission
@@ -63,6 +68,22 @@ function precombatTeamPreview(team) {
           </div>`
       }).join('')}
     </div>`
+}
+
+function effectBadge(effect) {
+  if (!effect) return ''
+  if (effect.includes('taunt'))    return `<div class="fighter-effect-badge">🛡 Taunt</div>`
+  if (effect.includes('heal+'))    return `<div class="fighter-effect-badge">💊 Heal</div>`
+  if (effect.includes('hot+'))     return `<div class="fighter-effect-badge">🧬 HoT</div>`
+  if (effect.includes('turret+'))  return `<div class="fighter-effect-badge">🔧 Tourelle</div>`
+  if (effect.includes('rage'))     return `<div class="fighter-effect-badge">😤 Rage</div>`
+  if (effect.includes('snipe'))    return `<div class="fighter-effect-badge">🎯 Snipe</div>`
+  if (effect.includes('dodge+'))   return `<div class="fighter-effect-badge">💨 Esquive</div>`
+  if (effect.includes('synergy'))  return `<div class="fighter-effect-badge">⚡ Synergy</div>`
+  if (effect.includes('armor+'))   return `<div class="fighter-effect-badge">🦾 Armure</div>`
+  if (effect.includes('aoe'))      return `<div class="fighter-effect-badge">💥 AoE</div>`
+  if (effect.includes('bleed'))    return `<div class="fighter-effect-badge">🩸 Saignement</div>`
+  return ''
 }
 
 const BOSS_EFFECT_LABELS = {
@@ -154,6 +175,7 @@ export function renderCombatPanel(state, playerTeam, enemySquad, result, onDone)
                 </div>
                 <div class="fighter-name">${s.name}</div>
                 <div class="fighter-role-badge" style="color:${meta.classColor||r.color}">${meta.globalClass||s.role}</div>
+              ${effectBadge(s.effect)}
                 <div class="fighter-hp-bar">
                   <div class="fighter-hp-fill" id="hp-${s.id}" style="width:100%;background:${r.color}"></div>
                 </div>

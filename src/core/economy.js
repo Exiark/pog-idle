@@ -29,6 +29,10 @@ export function checkMissionsReset(state) {
   if (state.missionsDay !== today) {
     refreshMissions(state)
   }
+  // Reset daily si nouveau jour
+  if (state.dailyClaimedDay && state.dailyClaimedDay !== today) {
+    state.dailyClaimed = false
+  }
 }
 
 function getTodayKey() {
