@@ -4,7 +4,8 @@ import { SURVIVORS } from '../data/survivors.js'
 // Capsules/s générées par un survivant au repos selon sa rareté
 const IDLE_RATE_BY_RARITY = { D: 0.05, E: 0.15, L: 0.4 }
 
-const SAVE_KEY = 'shelter_survivor_v1'
+const SAVE_KEY      = 'shelter_7_v1'
+const SAVE_KEY_OLD  = 'shelter_survivor_v1'
 
 export const DEFAULT_STATE = {
   version: '1.0.0',
@@ -71,6 +72,12 @@ export const DEFAULT_STATE = {
 
 export function loadState() {
   try {
+    // Migration transparente depuis l'ancienne clé shelter_survivor_v1
+    const rawOld = localStorage.getItem(SAVE_KEY_OLD)
+    if (rawOld && !localStorage.getItem(SAVE_KEY)) {
+      localStorage.setItem(SAVE_KEY, rawOld)
+      localStorage.removeItem(SAVE_KEY_OLD)
+    }
     const raw = localStorage.getItem(SAVE_KEY)
     if (!raw) return initState()
     const saved = JSON.parse(raw)

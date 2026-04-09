@@ -1,4 +1,4 @@
-// ── SHELTER SURVIVOR — Collection de survivants ──
+// ── SHELTER 7 — Collection de survivants ──
 import { SURVIVORS, RARITY, RARITY_ORDER, ROLE_META, getSpriteUrl, classIconHtml } from '../data/survivors.js'
 import { getCollectionStats, checkFusion } from '../core/gacha.js'
 import { UPGRADE_COST, UPGRADE_MAX, upgradeSurvivor } from '../core/economy.js'

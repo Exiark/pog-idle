@@ -1,4 +1,4 @@
-// ── SHELTER SURVIVOR — Achèvements ──
+// ── SHELTER 7 — Achèvements ──
 
 export const ACHIEVEMENTS = [
   {

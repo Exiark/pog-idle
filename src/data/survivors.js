@@ -1,4 +1,4 @@
-// ── SHELTER SURVIVOR — Données des survivants ──
+// ── SHELTER 7 — Données des survivants ──
 // 36 survivants (12 classes × 3 raretés) + 7 boss de zone
 // Raretés : D=Débutant ×1 · E=Expert ×2 · L=Légende ×5
 

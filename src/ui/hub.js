@@ -1,4 +1,4 @@
-// ── SHELTER SURVIVOR — Hub (camp de base) ──
+// ── SHELTER 7 — Hub (camp de base) ──
 import { SURVIVORS, RARITY, ROLE_META, getSpriteUrl, classIconHtml } from '../data/survivors.js'
 import { ZONES } from '../data/zones.js'
 import { calcIdleRate } from '../core/state.js'

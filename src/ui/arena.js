@@ -1,4 +1,4 @@
-// ── SHELTER SURVIVOR — Arène de combat ──
+// ── SHELTER 7 — Arène de combat ──
 import { SURVIVORS, RARITY, ROLE_META, getSpriteUrl, classIconHtml } from '../data/survivors.js'
 import { ZONES } from '../data/zones.js'
 import { calcWaveReward } from '../core/combat.js'

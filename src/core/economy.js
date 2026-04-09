@@ -1,4 +1,4 @@
-// ── SHELTER SURVIVOR — Économie ──
+// ── SHELTER 7 — Économie ──
 import { SURVIVORS } from '../data/survivors.js'
 
 // Missions quotidiennes (pool rotatif — 4 tirées chaque jour)

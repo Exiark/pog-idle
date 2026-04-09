@@ -1,4 +1,4 @@
-// ── SHELTER SURVIVOR — Arbre de talents visuel ──
+// ── SHELTER 7 — Arbre de talents visuel ──
 import { TALENTS } from '../data/talents.js'
 import { saveState } from '../core/state.js'
 import { unlockMastery } from '../core/economy.js'

@@ -1,4 +1,4 @@
-// ── SHELTER SURVIVOR — Écran d'accueil (Hub) ──
+// ── SHELTER 7 — Écran d'accueil (Hub) ──
 import { SURVIVORS, RARITY, ROLE_META, getSpriteUrl, classIconHtml } from '../data/survivors.js'
 import { ZONES } from '../data/zones.js'
 import { calcIdleRate } from '../core/state.js'
@@ -30,7 +30,7 @@ export function renderHome(state) {
 
     <!-- Titre overlay -->
     <div class="home-header">
-      <div class="home-title"><span class="home-title-icon">☣</span>SHELTER</div>
+      <div class="home-title"><span class="home-title-icon">☣</span>SHELTER 7</div>
       <div class="home-subtitle">Post-Apocalyptic Idle RPG</div>
     </div>
 

@@ -1,4 +1,4 @@
-// ── SHELTER SURVIVOR — Zones d'exploration ──
+// ── SHELTER 7 — Zones d'exploration ──
 // 7 zones post-apocalyptiques · 10 vagues + 1 boss chacune
 
 export const ZONES = [

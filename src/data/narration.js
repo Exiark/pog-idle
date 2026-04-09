@@ -1,4 +1,4 @@
-// ── SHELTER SURVIVOR — Narration contextuelle ──
+// ── SHELTER 7 — Narration contextuelle ──
 // Déclencheurs : zone_start, boss_wave, wave_X, victory, defeat, recruit_L
 
 export const NARRATION = {

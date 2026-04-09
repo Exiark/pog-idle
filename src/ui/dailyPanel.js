@@ -1,4 +1,4 @@
-// ── SHELTER SURVIVOR — Panel journalier ──
+// ── SHELTER 7 — Panel journalier ──
 import { DAILY_REWARDS, MISSIONS_DEFAULT } from '../core/economy.js'
 import { saveState } from '../core/state.js'
 import { ACHIEVEMENTS } from '../data/achievements.js'

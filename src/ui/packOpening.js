@@ -1,4 +1,4 @@
-// ── SHELTER SURVIVOR — Tour Radio : Signal de détresse (gacha rework) ──
+// ── SHELTER 7 — Tour Radio : Signal de détresse (gacha rework) ──
 import { SURVIVORS, RARITY, RARITY_ORDER, ROLE_META, getSpriteUrl, classIconHtml } from '../data/survivors.js'
 import { SIGNAL_CONFIG } from '../core/economy.js'
 

@@ -1,4 +1,4 @@
-// ── SHELTER SURVIVOR — Carte du monde visuelle ──
+// ── SHELTER 7 — Carte du monde visuelle ──
 import { ZONES } from '../data/zones.js'
 
 export function renderTower(state) {
