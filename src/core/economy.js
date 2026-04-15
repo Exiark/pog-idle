@@ -37,7 +37,7 @@ export function checkMissionsReset(state) {
 
 function getTodayKey() {
   const d = new Date()
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
 }
 
 export const DAILY_REWARDS = [

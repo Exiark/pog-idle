@@ -520,7 +520,7 @@ export function simulateFight(playerTeamIds, enemySquad, state) {
 // ── Récompense de vague ──
 export function calcWaveReward(state) {
   const zone    = ZONES[state.activeZone - 1]
-  const farming = state.activeZone < state.currentZone ? 0.4 : 1
+  const farming = state.activeZone < state.currentZone ? 0.6 : 1
   const baseCap = (15 + state.currentWave * 5) * zone.capsuleMultiplier
   let capMult   = farming
   if (hasTalent(state, 't4')) capMult += 0.15

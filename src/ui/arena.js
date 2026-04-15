@@ -39,7 +39,7 @@ export function renderPreCombat(state) {
       ${state.activeZone < state.currentZone ? `
         <div class="precombat-farming-warning">
           ⚠ Mode farming — Zone ${state.activeZone} (déjà sécurisée)<br>
-          <span>Récompenses ×0.4 · Passez en Zone ${state.currentZone} pour le plein tarif</span>
+          <span>Récompenses ×0.6 · Passez en Zone ${state.currentZone} pour le plein tarif</span>
         </div>` : ''}
       ${precombatRewardPreview(state)}
       <button class="btn-danger launch-btn" onclick="window.startCombat()">
