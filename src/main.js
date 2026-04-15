@@ -282,6 +282,7 @@ function showNarration(narr, onDone) {
 window.showNarration = showNarration
 
 function onCombatDone() {
+  if (currentPhase !== PHASE.FIGHTING) return  // garde contre double-appel
   currentPhase = PHASE.RESULT
   const stars  = lastResult.stars || 0
 

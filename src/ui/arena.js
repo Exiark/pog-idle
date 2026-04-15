@@ -260,7 +260,10 @@ function animateCombat(result, playerTeam, enemySquad, onDone) {
 
   function playNext() {
     if (combatSkipped || idx >= seq.length) {
-      if (!combatSkipped) setTimeout(onDone, 500)
+      if (!combatSkipped) {
+        combatSkipped = true  // empêche le bouton "Passer" de déclencher un 2e onDone
+        setTimeout(onDone, 500)
+      }
       return
     }
     const a = seq[idx++]
