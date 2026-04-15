@@ -61,48 +61,90 @@ function init() {
 // ── Onboarding (premier lancement) ──
 function checkOnboarding() {
   if (S.onboardingDone) return
-  import('../data/survivors.js').then(({ SURVIVORS }) => {
-    const dTier = SURVIVORS.filter(sv => sv.rarity === 'D' && !sv.boss).slice(0, 3)
-    dTier.forEach(sv => S.collection.push({ id: sv.id, rarity: sv.rarity }))
-    S.onboardingDone = true
-    saveState(S)
-    updateUI()
-    showOnboardingMessage()
+  // Marcus (s01) est offert et auto-équipé en slot 1
+  const marcus = SURVIVORS.find(sv => sv.id === 's01')
+  if (marcus && !S.collection.find(c => c.id === 's01')) {
+    S.collection.push({ id: marcus.id, rarity: marcus.rarity })
+    S.team[0] = { id: marcus.id, rarity: marcus.rarity, effect: marcus.effect }
+  }
+  // Deux survivants bonus en réserve (pas dans l'équipe)
+  ;['s07', 's13'].forEach(id => {
+    const sv = SURVIVORS.find(x => x.id === id)
+    if (sv && !S.collection.find(c => c.id === id)) {
+      S.collection.push({ id: sv.id, rarity: sv.rarity })
+    }
   })
+  S.onboardingDone = true
+  saveState(S)
+  updateUI()
+  showWelcomeScreen()
+}
+
+// ── Écran de bienvenue immersif ──
+function showWelcomeScreen() {
+  const overlay = document.createElement('div')
+  overlay.id = 'onboarding-overlay'
+  overlay.innerHTML = `
+    <div class="ob-backdrop"></div>
+    <div class="ob-welcome">
+      <div class="ob-welcome-icon">☣</div>
+      <div class="ob-welcome-title">SHELTER 7</div>
+      <div class="ob-welcome-sub">Post-Apocalyptic Idle RPG</div>
+      <div class="ob-welcome-lore">
+        Le monde a basculé. Les villes ne sont plus que ruines et les zombies pullulent.<br>
+        Vous êtes commandant du Shelter 7 — le dernier abri organisé de la région.
+      </div>
+      <div class="ob-recruit-card">
+        <div class="ob-recruit-label">🛡 Recrue offerte</div>
+        <div class="ob-recruit-name">Marcus</div>
+        <div class="ob-recruit-role">Bouclier · Commun</div>
+        <div class="ob-recruit-desc">Ancien agent de sécurité. Robuste, fiable, prêt à vous défendre dès maintenant.</div>
+        <div class="ob-recruit-equipped">✓ Déjà dans votre équipe</div>
+      </div>
+      <button class="ob-btn ob-welcome-btn" onclick="window._startTutorial()">
+        Commencer l'aventure →
+      </button>
+    </div>
+  `
+  document.body.appendChild(overlay)
+  requestAnimationFrame(() => overlay.classList.add('visible'))
 }
 
 const ONBOARDING_STEPS = [
   {
-    tab:     'survivors',
-    title:   'Vos premiers survivants',
-    body:    'Trois rescapés viennent de rejoindre votre abri. Ajoutez-les à votre équipe en appuyant sur leurs cartes.',
-    arrow:   'tab-survivors',
-    btnText: 'Voir l\'équipe →',
-    action:  () => setTab('survivors'),
-  },
-  {
     tab:     'combat',
     title:   'Première mission',
-    body:    'Votre équipe est prête. Allez dans Exploration et lancez votre première mission contre les zombies.',
+    body:    'Marcus est prêt au combat. Allez dans <strong>Exploration</strong> et appuyez sur <strong>☣ Partir en mission</strong> pour sécuriser la Zone 1.',
     arrow:   'tab-combat',
-    btnText: 'Partir en mission →',
+    btnText: 'Aller à l\'exploration →',
     action:  () => setTab('combat'),
   },
   {
+    tab:     'survivors',
+    title:   'Renforcez votre équipe',
+    body:    'Vous avez 2 autres survivants en réserve : <strong>Rage</strong> et <strong>Dusty</strong>. Ouvrez l\'onglet <strong>Survivants</strong> pour les ajouter à votre équipe.',
+    arrow:   'tab-survivors',
+    btnText: 'Voir mes survivants →',
+    action:  () => setTab('survivors'),
+  },
+  {
     tab:     'packs',
-    title:   'Renforcez-vous',
-    body:    'Après chaque victoire, vous gagnez des capsules. Utilisez-les à la Tour Radio pour recruter de nouveaux survivants.',
+    title:   'Tour Radio',
+    body:    'Après chaque victoire vous gagnez des <strong>💊 capsules</strong>. Dépensez-les à la <strong>Tour Radio</strong> pour recruter de nouveaux survivants.',
     arrow:   'tab-packs',
-    btnText: 'Compris !',
+    btnText: 'J\'ai compris !',
     action:  null,
   },
 ]
 
 let _onboardingStep = 0
 
-function showOnboardingMessage() {
-  _onboardingStep = 0
-  showOnboardingStep()
+window._startTutorial = function() {
+  const overlay = document.getElementById('onboarding-overlay')
+  if (overlay) {
+    overlay.classList.remove('visible')
+    setTimeout(() => { overlay.remove(); _onboardingStep = 0; showOnboardingStep() }, 300)
+  }
 }
 
 function showOnboardingStep() {
@@ -113,7 +155,6 @@ function showOnboardingStep() {
   const overlay = document.createElement('div')
   overlay.id = 'onboarding-overlay'
 
-  // Trouver la position de l'onglet cible pour la flèche
   const targetTab = document.querySelector(`.tab[data-tab="${step.tab}"]`)
   const rect = targetTab?.getBoundingClientRect()
 
@@ -124,7 +165,7 @@ function showOnboardingStep() {
       <div class="ob-title">☣ ${step.title}</div>
       <div class="ob-body">${step.body}</div>
       <div class="ob-actions">
-        ${_onboardingStep > 0 ? `<button class="ob-skip" onclick="window._dismissOnboarding()">Passer</button>` : ''}
+        <button class="ob-skip" onclick="window._dismissOnboarding()">Passer</button>
         <button class="ob-btn" onclick="window._nextOnboardingStep()">${step.btnText}</button>
       </div>
     </div>

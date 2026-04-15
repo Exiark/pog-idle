@@ -2306,6 +2306,93 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   50%       { box-shadow: 0 0 20px rgba(245,166,35,0.7); }
 }
 
+/* ── Écran de bienvenue onboarding ── */
+.ob-welcome {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(380px, 94vw);
+  background: var(--panel-bg);
+  border: 2px solid var(--accent);
+  border-radius: 16px;
+  padding: 28px 24px 24px;
+  box-shadow: 0 0 40px rgba(245,166,35,0.35);
+  z-index: 2;
+  text-align: center;
+}
+.ob-welcome-icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+  animation: ob-pulse 1.5s ease-in-out infinite;
+}
+.ob-welcome-title {
+  font-family: var(--pixel);
+  font-size: 14px;
+  color: var(--accent);
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+.ob-welcome-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  letter-spacing: 1px;
+}
+.ob-welcome-lore {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 18px;
+  padding: 12px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent);
+  text-align: left;
+}
+.ob-recruit-card {
+  background: #1A2810;
+  border: 1px solid #5AE05A55;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 18px;
+  text-align: left;
+}
+.ob-recruit-label {
+  font-size: 10px;
+  color: #5AE05A;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+.ob-recruit-name {
+  font-family: var(--pixel);
+  font-size: 11px;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.ob-recruit-role {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.ob-recruit-desc {
+  font-size: 11px;
+  color: var(--text);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.ob-recruit-equipped {
+  font-size: 11px;
+  color: #5AE05A;
+  font-weight: 700;
+}
+.ob-welcome-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 13px;
+}
+
 /* ── Effet spécial boss dans précombat ── */
 .pcr-boss-effect {
   font-size: 11px;
